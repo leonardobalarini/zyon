@@ -152,4 +152,61 @@ public class ToolActionTests
 
         Assert.NotEqual(0, h.Tiles.GetBlock(21, 40));
     }
+
+    [Fact]
+    public void ChangingBlockUnderTarget_ResetsProgress()
+    {
+        using var h = new SimHarness();
+        int needed = TicksToMineDirt(h);
+        ushort oreB = h.Registry.BlockId("ore_b");
+
+        h.Run(needed - 5, Use(21, 40));
+        h.Tiles.SetBlock(21, 40, oreB);
+        h.Run(30, Use(21, 40));
+
+        Assert.Equal(oreB, h.Tiles.GetBlock(21, 40));
+    }
+
+    [Fact]
+    public void Placing_CooldownIsExact()
+    {
+        using var h = new SimHarness();
+        h.Give("dirt", 5);
+        h.Send(new SelectHotbarSlot(h.PlayerId, 1));
+        int cd = h.Registry.Physics.PlaceCooldownTicks;
+
+        h.Run(1, Use(22, 39));
+        h.Run(cd - 1, Use(23, 39));
+        Assert.Equal(0, h.Tiles.GetBlock(23, 39));
+
+        h.Run(1, Use(23, 39));
+        Assert.NotEqual(0, h.Tiles.GetBlock(23, 39));
+    }
+
+    [Fact]
+    public void Placing_OutOfReach_DoesNothing()
+    {
+        using var h = new SimHarness();
+        h.Give("dirt", 5);
+        h.Send(new SelectHotbarSlot(h.PlayerId, 1));
+
+        h.Run(30, Use(28, 39));
+
+        Assert.Equal(0, h.Tiles.GetBlock(28, 39));
+        Assert.Equal(5, h.Inventory[1].Count);
+    }
+
+    [Fact]
+    public void Mining_OutOfWorldBounds_IsIgnored()
+    {
+        using var h = new SimHarness();
+        h.Sim.DrainEvents();
+        int invalid = h.Sim.InvalidCommandCount;
+
+        h.Run(60, Use(-5, 40));
+        h.Run(60, Use(5, 999));
+
+        Assert.Equal(invalid, h.Sim.InvalidCommandCount);
+        Assert.DoesNotContain(h.Sim.DrainEvents(), e => e is TileChanged);
+    }
 }

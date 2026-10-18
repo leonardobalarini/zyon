@@ -79,12 +79,13 @@ internal sealed class ToolActionSystem : ISystem
             return;
         }
 
-        if (!st.Mining || st.MineX != tx || st.MineY != ty)
+        if (!st.Mining || st.MineX != tx || st.MineY != ty || st.MineBlockId != blockId)
         {
             StopMining(sim, playerId, ref st);
             st.Mining = true;
             st.MineX = tx;
             st.MineY = ty;
+            st.MineBlockId = blockId;
             st.MineProgress = 0f;
         }
 

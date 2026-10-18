@@ -35,6 +35,7 @@ public struct PlayerState
     public int MineX;
     public int MineY;
     public float MineProgress;
+    public ushort MineBlockId;
 }
 
 public record struct InventoryRef(Inventory Inventory);
