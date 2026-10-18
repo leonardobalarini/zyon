@@ -160,4 +160,54 @@ public class ItemSystemsTests
         Assert.False(h.Sim.TryGetEntityView(id, out _));
         Assert.Equal(Dirt(h), h.Inventory[1]);
     }
+
+    [Fact]
+    public void MagnetBlockedByWall_ItemSettles()
+    {
+        using var h = new SimHarness();
+        var stone = h.Registry.BlockId("stone");
+        for (int y = 0; y < h.GroundY; y++) h.Tiles.SetBlock(21, y, stone);
+        int id = h.Sim.SpawnDroppedItem(Dirt(h), new Vector2(22.6f, RestingY(h)), Vector2.Zero, 0);
+
+        h.Idle(300);
+        float min = float.MaxValue, max = float.MinValue;
+        for (int i = 0; i < 60; i++)
+        {
+            h.Idle(1);
+            Assert.True(h.Sim.TryGetEntityView(id, out var v));
+            min = MathF.Min(min, v.Position.Y);
+            max = MathF.Max(max, v.Position.Y);
+        }
+        Assert.True(max - min < 0.05f, $"oscilou {max - min}");
+    }
+
+    [Fact]
+    public void PartialPickup_LeavesRemainderOnGround()
+    {
+        using var h = new SimHarness();
+        var pick = new ItemStack(h.Registry.ItemId("basic_pickaxe"), 1);
+        for (int i = 0; i < Inventory.Slots - 1; i++) h.Inventory.Set(i, pick);
+        h.Inventory.Set(Inventory.Slots - 1, Dirt(h, 997));
+        int id = h.Sim.SpawnDroppedItem(Dirt(h, 5), new Vector2(21f, RestingY(h)), Vector2.Zero, 0);
+
+        h.Idle(60);
+
+        Assert.Equal(999, h.Inventory[Inventory.Slots - 1].Count);
+        Assert.True(h.Sim.TryGetEntityView(id, out var view));
+        Assert.Equal(3, view.Item.Count);
+    }
+
+    [Fact]
+    public void Merge_RespectsMaxStack()
+    {
+        using var h = new SimHarness();
+        int a = h.Sim.SpawnDroppedItem(Dirt(h, 990), new Vector2(45f, RestingY(h)), Vector2.Zero, 0);
+        int b = h.Sim.SpawnDroppedItem(Dirt(h, 20), new Vector2(45.5f, RestingY(h)), Vector2.Zero, 0);
+
+        h.Idle(h.Registry.Physics.ItemMergeIntervalTicks + 1);
+
+        Assert.True(h.Sim.TryGetEntityView(a, out var va));
+        Assert.True(h.Sim.TryGetEntityView(b, out var vb));
+        Assert.Equal(new[] { 11, 999 }, new[] { va.Item.Count, vb.Item.Count }.OrderBy(x => x).ToArray());
+    }
 }

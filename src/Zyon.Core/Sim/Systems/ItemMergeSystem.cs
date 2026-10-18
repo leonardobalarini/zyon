@@ -10,12 +10,18 @@ internal sealed class ItemMergeSystem : ISystem
     private readonly Dictionary<long, List<Entity>> cells = new();
     private readonly List<Entity> items = new();
     private readonly List<int> emptied = new();
+    private readonly Stack<List<Entity>> pool = new();
 
     public void Update(Simulation sim)
     {
         var cfg = sim.Config;
         if (cfg.ItemMergeIntervalTicks <= 0 || sim.Tick % cfg.ItemMergeIntervalTicks != 0) return;
 
+        foreach (var list in cells.Values)
+        {
+            list.Clear();
+            pool.Push(list);
+        }
         cells.Clear();
         items.Clear();
         emptied.Clear();
@@ -24,7 +30,7 @@ internal sealed class ItemMergeSystem : ISystem
             items.Add(e);
             var key = Key((int)MathF.Floor(p.Value.X), (int)MathF.Floor(p.Value.Y));
             if (!cells.TryGetValue(key, out var list))
-                cells[key] = list = new List<Entity>();
+                cells[key] = list = pool.Count > 0 ? pool.Pop() : new List<Entity>();
             list.Add(e);
         });
 

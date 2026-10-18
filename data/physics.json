@@ -17,6 +17,7 @@
   "magnetRadius": 3,
   "magnetAcceleration": 80,
   "magnetMaxSpeed": 20,
+  "magnetDamping": 0.9,
   "itemMergeRadius": 1,
   "itemMergeIntervalTicks": 30,
   "itemDespawnSeconds": 300,

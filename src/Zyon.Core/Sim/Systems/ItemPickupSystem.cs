@@ -23,11 +23,12 @@ internal sealed class ItemPickupSystem : ISystem
         const float dt = Simulation.Dt;
 
         sim.Ecs.Query(in Queries.Items,
-            (ref NetworkId id, ref Position pos, ref Velocity vel, ref Body body, ref DroppedItem item) =>
+            (ref NetworkId id, ref Position pos, ref PreviousPosition prev, ref Velocity vel, ref Body body, ref DroppedItem item) =>
             {
                 if (sim.Collider.BoxHasSolid(pos.Value, body.Size))
                 {
                     pos.Value = FreeSpotAbove(sim.Collider, pos.Value, body.Size);
+                    prev.Value = pos.Value;
                     vel.Value = Vector2.Zero;
                 }
 
@@ -73,6 +74,9 @@ internal sealed class ItemPickupSystem : ISystem
                         var toPlayer = player.Center - pos.Value;
                         if (toPlayer.LengthSquared() > 1e-6f)
                             v += Vector2.Normalize(toPlayer) * cfg.MagnetAcceleration * dt;
+                        // Gravidade continua ativa e o amortecimento evita oscilar quando o ímã é bloqueado.
+                        v.Y = MathF.Min(v.Y + cfg.Gravity * dt, cfg.TerminalVelocity);
+                        v *= cfg.MagnetDamping;
                         if (v.Length() > cfg.MagnetMaxSpeed)
                             v = Vector2.Normalize(v) * cfg.MagnetMaxSpeed;
                     }

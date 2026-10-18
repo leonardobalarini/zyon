@@ -21,6 +21,7 @@ public sealed class PhysicsConfig
     public float MagnetRadius { get; init; } = 3f;
     public float MagnetAcceleration { get; init; } = 80f;
     public float MagnetMaxSpeed { get; init; } = 20f;
+    public float MagnetDamping { get; init; } = 0.9f;
     public float ItemMergeRadius { get; init; } = 1f;
     public int ItemMergeIntervalTicks { get; init; } = 30;
     public float ItemDespawnSeconds { get; init; } = 300f;
