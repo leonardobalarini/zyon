@@ -129,7 +129,7 @@ O jogador começa com uma picareta básica no slot 1 da hotbar.
 
 - **Alcance:** o centro do tile mirado está a no máximo 5 tiles (configurável) do centro do jogador.
 - **Minerar:** o tile está dentro do mundo e não é ar.
-- **Colocar:** o tile é ar, tem ao menos um vizinho ortogonal com bloco, ou uma parede no próprio tile, e não intersecta o AABB de nenhuma entidade com colisor.
+- **Colocar:** o tile é ar, tem ao menos um vizinho ortogonal com bloco, ou uma parede no próprio tile, e não intersecta o AABB de nenhum jogador. Itens caídos não bloqueiam a colocação; inimigos futuros poderão bloquear.
 - **Comando inválido:** é descartado em silêncio (sem exceção), com contador e log em modo debug.
 
 ### Eventos
