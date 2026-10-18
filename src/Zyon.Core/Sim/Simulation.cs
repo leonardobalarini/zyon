@@ -6,6 +6,7 @@ using Zyon.Core.Items;
 using Zyon.Core.Logging;
 using Zyon.Core.Physics;
 using Zyon.Core.Tiles;
+using Zyon.Core.Sim.Systems;
 
 namespace Zyon.Core.Sim;
 
@@ -28,7 +29,11 @@ public sealed class Simulation : IWorldView, IDisposable
         Log = log ?? NullLog.Instance;
         Collider = new TileCollider(tiles, registry);
         Ecs = World.Create();
-        systems = new List<ISystem>();
+        systems =
+        [
+            new PlayerMovementSystem(),
+            new PhysicsSystem(),
+        ];
     }
 
     public Registry Registry { get; }
