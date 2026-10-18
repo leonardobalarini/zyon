@@ -122,4 +122,37 @@ public class TileMoverTests
         Assert.True(Aabb.Overlaps(new Vector2(0, 0), Box, new Vector2(0.9f, 0), Box));
         Assert.False(Aabb.Overlaps(new Vector2(0, 0), Box, new Vector2(1f, 0), Box));
     }
+
+    [Fact]
+    public void FarCoordinates_FallingBesideWall_DoesNotStick()
+    {
+        var w = new TileWorld(4100, 60);
+        for (int y = 0; y < 50; y++) w.SetBlock(4000, y, r.BlockId("dirt"));
+        var c = new TileCollider(w, r);
+
+        var pushed = TileMover.Move(c, new Vector2(3999.0f, 20f), PlayerSize, new Vector2(0.5f, 0f), false);
+        Assert.Equal(3999.375f, pushed.Position.X, 3);
+        Assert.False(c.BoxHasSolid(pushed.Position, PlayerSize));
+
+        var res = TileMover.Move(c, new Vector2(4000f - PlayerSize.X / 2, 20f), PlayerSize, new Vector2(0f, 0.3f), false);
+
+        Assert.False(res.HitY);
+        Assert.Equal(20.3f, res.Position.Y, 3);
+    }
+
+    [Fact]
+    public void FarCoordinates_WalkOnDeepGround_Moves()
+    {
+        var w = new TileWorld(300, 2200);
+        for (int y = 2100; y < 2200; y++)
+            for (int x = 0; x < 300; x++) w.SetBlock(x, y, r.BlockId("dirt"));
+        var c = new TileCollider(w, r);
+        var start = new Vector2(150.5f, 2100f - PlayerSize.Y / 2);
+
+        var res = TileMover.Move(c, start, PlayerSize, new Vector2(0.2f, 0f), false);
+
+        Assert.False(res.HitX);
+        Assert.Equal(150.7f, res.Position.X, 3);
+        Assert.True(c.IsGrounded(res.Position, PlayerSize));
+    }
 }

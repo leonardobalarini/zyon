@@ -9,6 +9,7 @@ public static class TileMover
 {
     public const float MaxStep = 0.5f;
 
+    /// <param name="allowStepUp">Passe true somente quando a entidade estiver no chão (grounded); caso contrário ela sobe degraus no ar.</param>
     public static MoveResult Move(TileCollider collider, Vector2 position, Vector2 size, Vector2 delta, bool allowStepUp)
     {
         float longest = MathF.Max(MathF.Abs(delta.X), MathF.Abs(delta.Y));
