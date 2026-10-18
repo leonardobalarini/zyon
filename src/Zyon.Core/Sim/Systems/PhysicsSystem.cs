@@ -18,7 +18,7 @@ internal sealed class PhysicsSystem : ISystem
             var v = vel.Value;
             if (v != Vector2.Zero)
             {
-                var result = TileMover.Move(collider, pos.Value, body.Size, v * dt, body.CanStepUp && body.OnGround);
+                var result = TileMover.Move(collider, pos.Value, body.Size, v * dt, body.CanStepUp && body.OnGround && v.Y >= 0f);
                 pos.Value = result.Position;
                 if (result.HitX) v.X = 0f;
                 if (result.HitY) v.Y = 0f;

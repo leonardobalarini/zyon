@@ -15,7 +15,7 @@ internal sealed class PlayerMovementSystem : ISystem
             var input = st.Input;
             var v = vel.Value;
 
-            float move = Math.Clamp(input.MoveX, -1f, 1f);
+            float move = float.IsFinite(input.MoveX) ? Math.Clamp(input.MoveX, -1f, 1f) : 0f;
             if (move != 0f)
             {
                 st.Facing = move > 0 ? 1 : -1;
@@ -26,7 +26,7 @@ internal sealed class PlayerMovementSystem : ISystem
                 v.X = Approach(v.X, 0f, cfg.MoveDeceleration * dt);
             }
 
-            st.CoyoteTicks = body.OnGround ? cfg.CoyoteTicks : Math.Max(0, st.CoyoteTicks - 1);
+            if (body.OnGround) st.CoyoteTicks = cfg.CoyoteTicks;
 
             bool pressed = input.Jump && !st.PrevJump;
             bool released = !input.Jump && st.PrevJump;
@@ -39,6 +39,9 @@ internal sealed class PlayerMovementSystem : ISystem
             {
                 v.Y *= cfg.JumpCutFactor;
             }
+
+            // O decremento vem depois do teste: um aperto em qualquer dos CoyoteTicks ticks após sair do chão vale.
+            if (!body.OnGround && st.CoyoteTicks > 0) st.CoyoteTicks--;
 
             v.Y = MathF.Min(v.Y + cfg.Gravity * dt, cfg.TerminalVelocity);
             st.PrevJump = input.Jump;

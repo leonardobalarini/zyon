@@ -57,13 +57,14 @@ public sealed class Simulation : IWorldView, IDisposable
         foreach (var stack in Registry.StarterItems)
             inventory.Add(stack.ItemId, stack.Count);
 
+        var playerSize = new Vector2(Config.PlayerWidth, Config.PlayerHeight);
         int id = nextNetworkId++;
         var entity = Ecs.Create(
             new NetworkId(id),
             new Position(position),
             new PreviousPosition(position),
             new Velocity(Vector2.Zero),
-            new Body { Size = new Vector2(Config.PlayerWidth, Config.PlayerHeight), CanStepUp = true },
+            new Body { Size = playerSize, CanStepUp = true, OnGround = Collider.IsGrounded(position, playerSize) },
             new PlayerState { Facing = 1 },
             new InventoryRef(inventory));
         byNetworkId[id] = entity;

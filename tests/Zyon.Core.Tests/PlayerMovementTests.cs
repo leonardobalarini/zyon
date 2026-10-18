@@ -129,4 +129,94 @@ public class PlayerMovementTests
 
         Assert.Equal(23f - h.Registry.Physics.PlayerWidth / 2, h.PlayerPosition.X, 3);
     }
+
+    // Remove o chão à direita do jogador, anda até cair e devolve o mínimo de Y após apertar pulo
+    // depois de `idleTicks` ticks extras no ar.
+    private static float PeakAfterLeavingLedge(int idleTicks, out float standingY)
+    {
+        using var h = new SimHarness();
+        for (int y = 40; y < 64; y++)
+            for (int x = 22; x <= 40; x++)
+                h.Tiles.SetBlock(x, y, 0);
+        standingY = h.StandingY;
+
+        int guard = 0;
+        while (h.PlayerPosition.Y < h.StandingY + 1e-4f)
+        {
+            h.Run(1, Right);
+            Assert.True(++guard < 200, "jogador não caiu da borda");
+        }
+        // Neste ponto o 1º tick no ar já passou.
+        h.Idle(idleTicks);
+        float minY = float.MaxValue;
+        for (int i = 0; i < 30; i++)
+        {
+            h.Run(1, JumpHeld);
+            minY = MathF.Min(minY, h.PlayerPosition.Y);
+        }
+        return minY;
+    }
+
+    [Fact]
+    public void Coyote_AllowsJumpShortlyAfterLeavingLedge()
+    {
+        // idle 5 => o aperto cai no último tick da janela de 6 ticks (a janela antiga era 1 tick menor).
+        float minY = PeakAfterLeavingLedge(5, out float standingY);
+
+        Assert.True(standingY - minY > 2f, $"não pulou na janela de coyote: {standingY - minY}");
+    }
+
+    [Fact]
+    public void Coyote_DoesNotAllowJumpLongAfterLeavingLedge()
+    {
+        float minY = PeakAfterLeavingLedge(15, out float standingY);
+
+        Assert.True(minY >= standingY - 0.01f, $"pulou tarde demais: {standingY - minY}");
+    }
+
+    [Fact]
+    public void JumpHeldFromSpawn_Jumps()
+    {
+        using var h = new SimHarness();
+        float minY = float.MaxValue;
+
+        for (int i = 0; i < 30; i++)
+        {
+            h.Run(1, JumpHeld);
+            minY = MathF.Min(minY, h.PlayerPosition.Y);
+        }
+
+        Assert.True(h.StandingY - minY > 3f, $"pulo de só {h.StandingY - minY}");
+    }
+
+    [Fact]
+    public void NonFiniteMoveX_IsIgnored()
+    {
+        using var h = new SimHarness();
+
+        h.Run(10, new PlayerInput(float.NaN, false, false, 0, 0));
+
+        Assert.True(float.IsFinite(h.PlayerPosition.X) && float.IsFinite(h.PlayerPosition.Y));
+        Assert.Equal(20f, h.PlayerPosition.X, 3);
+    }
+
+    [Fact]
+    public void HeadBump_StopsRiseAndFallsBack()
+    {
+        using var h = new SimHarness();
+        for (int x = 18; x <= 22; x++)
+            h.Tiles.SetBlock(x, 35, h.Registry.BlockId("dirt"));
+        h.Idle(5);
+        float minY = float.MaxValue;
+
+        for (int i = 0; i < 40; i++)
+        {
+            h.Run(1, JumpHeld);
+            minY = MathF.Min(minY, h.PlayerPosition.Y);
+        }
+        h.Idle(120);
+
+        Assert.True(minY >= 36f + h.Registry.Physics.PlayerHeight / 2 - 0.01f, $"atravessou o teto: {minY}");
+        Assert.Equal(h.StandingY, h.PlayerPosition.Y, 3);
+    }
 }
