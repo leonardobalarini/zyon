@@ -25,6 +25,12 @@ internal sealed class ItemPickupSystem : ISystem
         sim.Ecs.Query(in Queries.Items,
             (ref NetworkId id, ref Position pos, ref Velocity vel, ref Body body, ref DroppedItem item) =>
             {
+                if (sim.Collider.BoxHasSolid(pos.Value, body.Size))
+                {
+                    pos.Value = FreeSpotAbove(sim.Collider, pos.Value, body.Size);
+                    vel.Value = Vector2.Zero;
+                }
+
                 item.AgeTicks++;
                 if (item.PickupDelayTicks > 0) item.PickupDelayTicks--;
                 var v = vel.Value;
@@ -83,5 +89,17 @@ internal sealed class ItemPickupSystem : ISystem
 
         foreach (var id in collected)
             sim.DestroyEntity(id);
+    }
+
+    // Itens não bloqueiam a colocação de blocos; sem isto um item ficaria preso dentro do bloco para sempre.
+    private static Vector2 FreeSpotAbove(TileCollider collider, Vector2 position, Vector2 size)
+    {
+        var p = position;
+        for (int i = 0; i < 32; i++)
+        {
+            p.Y -= 1f;
+            if (!collider.BoxHasSolid(p, size)) return p;
+        }
+        return position;
     }
 }

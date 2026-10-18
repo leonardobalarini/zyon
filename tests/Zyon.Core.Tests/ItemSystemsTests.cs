@@ -130,4 +130,34 @@ public class ItemSystemsTests
 
         Assert.Equal(h.Registry.ItemId("basic_pickaxe"), h.Inventory[0].ItemId);
     }
+
+    [Fact]
+    public void ItemInsidePlacedBlock_IsPushedOut()
+    {
+        using var h = new SimHarness();
+        int id = h.Sim.SpawnDroppedItem(Dirt(h), new Vector2(45.5f, RestingY(h)), Vector2.Zero, 0);
+        h.Idle(5);
+
+        h.Tiles.SetBlock(45, (int)MathF.Floor(RestingY(h)), h.Registry.BlockId("dirt"));
+        h.Idle(5);
+
+        Assert.True(h.Sim.TryGetEntityView(id, out var view));
+        Assert.False(h.Sim.Collider.BoxHasSolid(view.Position, view.Size));
+        h.Idle(60);
+        Assert.True(h.Sim.TryGetEntityView(id, out view));
+        Assert.Equal((int)MathF.Floor(RestingY(h)) - h.Registry.Physics.ItemSize / 2, view.Position.Y, 3);
+    }
+
+    [Fact]
+    public void ItemInsidePlacedBlock_NearPlayer_IsCollected()
+    {
+        using var h = new SimHarness();
+        int id = h.Sim.SpawnDroppedItem(Dirt(h), new Vector2(22.5f, RestingY(h)), Vector2.Zero, 0);
+
+        h.Tiles.SetBlock(22, (int)MathF.Floor(RestingY(h)), h.Registry.BlockId("dirt"));
+        h.Idle(60);
+
+        Assert.False(h.Sim.TryGetEntityView(id, out _));
+        Assert.Equal(Dirt(h), h.Inventory[1]);
+    }
 }
