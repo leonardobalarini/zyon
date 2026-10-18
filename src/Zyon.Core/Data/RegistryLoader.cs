@@ -42,6 +42,10 @@ public static class RegistryLoader
         var physics = Parse<PhysicsConfig>(physicsJson, PhysicsFile);
         var player = Parse<PlayerDto>(playerJson, PlayerFile);
 
+        RequireNoNulls(blockDtos, BlocksFile);
+        RequireNoNulls(wallDtos, WallsFile);
+        RequireNoNulls(itemDtos, ItemsFile);
+
         var blockIds = AssignIds(blockDtos.Select(b => b.Id).ToList(), BlocksFile, "air");
         var wallIds = AssignIds(wallDtos.Select(w => w.Id).ToList(), WallsFile, "none");
         var itemIds = AssignIds(itemDtos.Select(i => i.Id).ToList(), ItemsFile, "none");
@@ -100,8 +104,8 @@ public static class RegistryLoader
         var starterDtos = player.StarterItems ?? [];
         for (int i = 0; i < starterDtos.Count; i++)
         {
-            var s = starterDtos[i];
             var ctx = $"{PlayerFile} starterItems[{i}]";
+            var s = starterDtos[i] ?? throw new DataException($"{ctx}: entrada nula");
             ushort id = Resolve(itemIds, s.Item ?? throw Missing(ctx, "item"), ctx, "item");
             int count = s.Count ?? throw Missing(ctx, "count");
             if (count < 1 || count > items[id].MaxStack)
@@ -123,6 +127,13 @@ public static class RegistryLoader
         {
             throw new DataException($"{file}: JSON inválido — {ex.Message}");
         }
+    }
+
+    private static void RequireNoNulls<T>(List<T> list, string file) where T : class
+    {
+        for (int i = 0; i < list.Count; i++)
+            if (list[i] is null)
+                throw new DataException($"{file}[{i}]: entrada nula");
     }
 
     private static Dictionary<string, ushort> AssignIds(List<string?> names, string file, string reserved)

@@ -164,4 +164,137 @@ public class RegistryLoaderTests
         Assert.Throws<KeyNotFoundException>(() => r.BlockId("nope"));
         Assert.False(r.TryGetBlockId("nope", out _));
     }
+
+    private static string Fail(string? blocks = null, string? walls = null, string? items = null,
+        string? physics = null, string? player = null) =>
+        Assert.Throws<DataException>(() => Load(blocks, walls, items, physics, player)).Message;
+
+    private const string DirtBlock = """[{"id":"dirt","hardness":1,"solid":true}]""";
+
+    [Fact]
+    public void Load_NullElementInBlocks_Throws()
+    {
+        var msg = Fail(blocks: "[null]");
+        Assert.Contains("blocks.json", msg);
+        Assert.Contains("nula", msg);
+    }
+
+    [Fact]
+    public void Load_NullElementInWalls_Throws()
+    {
+        var msg = Fail(walls: """[{"id":"a"}, null]""");
+        Assert.Contains("walls.json", msg);
+        Assert.Contains("nula", msg);
+    }
+
+    [Fact]
+    public void Load_NullElementInItems_Throws()
+    {
+        var msg = Fail(items: "[null]", blocks: DirtBlock);
+        Assert.Contains("items.json", msg);
+        Assert.Contains("nula", msg);
+    }
+
+    [Fact]
+    public void Load_NullStarterEntry_Throws()
+    {
+        var msg = Fail(player: """{"starterItems":[null]}""");
+        Assert.Contains("player.json", msg);
+        Assert.Contains("nula", msg);
+    }
+
+    [Fact]
+    public void Load_UnknownDrops_Throws()
+    {
+        var msg = Fail(blocks: """[{"id":"dirt","hardness":1,"solid":true,"drops":"nope"}]""");
+        Assert.Contains("blocks.json", msg);
+        Assert.Contains("drops", msg);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public void Load_StarterCountOutOfRange_Throws(int count)
+    {
+        var msg = Fail(player: $$"""{"starterItems":[{"item":"pick","count":{{count}}}]}""");
+        Assert.Contains("player.json", msg);
+        Assert.Contains("count", msg);
+    }
+
+    [Fact]
+    public void Load_UnknownStarterItem_Throws()
+    {
+        var msg = Fail(player: """{"starterItems":[{"item":"nope","count":1}]}""");
+        Assert.Contains("player.json", msg);
+        Assert.Contains("item", msg);
+    }
+
+    [Fact]
+    public void Load_MaxStackZero_Throws()
+    {
+        var msg = Fail(items: """[{"id":"dirt","name":"T","maxStack":0,"kind":"Block","placesBlock":"dirt"}]""",
+            player: """{"starterItems":[]}""", blocks: DirtBlock);
+        Assert.Contains("items.json", msg);
+        Assert.Contains("maxStack", msg);
+    }
+
+    [Fact]
+    public void Load_NegativeHardness_Throws()
+    {
+        var msg = Fail(blocks: """[{"id":"dirt","hardness":-1,"solid":true}]""");
+        Assert.Contains("blocks.json", msg);
+        Assert.Contains("hardness", msg);
+    }
+
+    [Fact]
+    public void Load_ToolPowerZero_Throws()
+    {
+        var msg = Fail(items: """[{"id":"pick","name":"P","maxStack":1,"kind":"Tool","power":0,"speed":1}]""",
+            player: """{"starterItems":[]}""", blocks: DirtBlock);
+        Assert.Contains("items.json", msg);
+        Assert.Contains("power", msg);
+    }
+
+    [Fact]
+    public void Load_MissingKind_Throws()
+    {
+        var msg = Fail(items: """[{"id":"pick","name":"P","maxStack":1}]""",
+            player: """{"starterItems":[]}""", blocks: DirtBlock);
+        Assert.Contains("items.json", msg);
+        Assert.Contains("kind", msg);
+    }
+
+    [Fact]
+    public void Load_DuplicateItemId_Throws()
+    {
+        var msg = Fail(items: """
+            [{"id":"pick","name":"P","maxStack":1,"kind":"Tool","power":1,"speed":1},
+             {"id":"pick","name":"P","maxStack":1,"kind":"Tool","power":1,"speed":1}]
+            """, player: """{"starterItems":[]}""", blocks: DirtBlock);
+        Assert.Contains("items.json", msg);
+        Assert.Contains("duplicado", msg);
+    }
+
+    [Fact]
+    public void Load_ReservedWallName_Throws()
+    {
+        var msg = Fail(walls: """[{"id":"none"}]""");
+        Assert.Contains("walls.json", msg);
+        Assert.Contains("reservado", msg);
+    }
+
+    [Fact]
+    public void Load_JsonNullContent_Throws()
+    {
+        var msg = Fail(blocks: "null");
+        Assert.Contains("blocks.json", msg);
+        Assert.Contains("conteúdo vazio", msg);
+    }
+
+    [Fact]
+    public void Load_MisspelledBlockField_Throws()
+    {
+        var msg = Fail(blocks: """[{"id":"dirt","hardnes":1,"solid":true}]""");
+        Assert.Contains("blocks.json", msg);
+    }
 }
