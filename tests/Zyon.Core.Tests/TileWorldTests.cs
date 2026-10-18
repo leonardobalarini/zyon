@@ -78,4 +78,27 @@ public class TileWorldTests
         Assert.Equal(r.BlockId("dirt"), w.GetBlock(5, 40));
         Assert.Equal(r.BlockId("dirt"), w.GetBlock(63, 63));
     }
+
+    [Fact]
+    public void GetChunk_OutOfRange_Throws()
+    {
+        var w = new TileWorld(100, 40);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => w.GetChunk(w.ChunksX, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => w.GetChunk(0, w.ChunksY));
+        Assert.Throws<ArgumentOutOfRangeException>(() => w.GetChunk(-1, 0));
+    }
+
+    [Fact]
+    public void LastTileOfPartialChunk_RoundTrips()
+    {
+        var w = new TileWorld(100, 40);
+
+        w.SetBlock(99, 39, 5);
+        w.SetWall(99, 39, 6);
+
+        Assert.Equal(5, w.GetBlock(99, 39));
+        Assert.Equal(6, w.GetWall(99, 39));
+        Assert.True(w.GetChunk(3, 1).Dirty);
+    }
 }

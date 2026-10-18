@@ -26,7 +26,14 @@ public sealed class TileWorld
 
     public bool InBounds(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
 
-    public Chunk GetChunk(int chunkX, int chunkY) => chunks[chunkY * ChunksX + chunkX];
+    public Chunk GetChunk(int chunkX, int chunkY)
+    {
+        if ((uint)chunkX >= (uint)ChunksX || (uint)chunkY >= (uint)ChunksY)
+            throw new ArgumentOutOfRangeException(
+                (uint)chunkX >= (uint)ChunksX ? nameof(chunkX) : nameof(chunkY),
+                $"Chunk ({chunkX}, {chunkY}) fora da grade {ChunksX}×{ChunksY}");
+        return chunks[chunkY * ChunksX + chunkX];
+    }
 
     public ushort GetBlock(int x, int y) =>
         InBounds(x, y) ? ChunkAt(x, y).Blocks[LocalIndex(x, y)] : (ushort)0;
@@ -54,9 +61,11 @@ public sealed class TileWorld
 
     private static int LocalIndex(int x, int y) => Chunk.Index(x & Chunk.Mask, y & Chunk.Mask);
 
+    private bool InBoundsX(int x) => (uint)x < (uint)Width;
+
     private void EnsureInBounds(int x, int y)
     {
         if (!InBounds(x, y))
-            throw new ArgumentOutOfRangeException(nameof(x), $"Tile ({x}, {y}) fora do mundo {Width}×{Height}");
+            throw new ArgumentOutOfRangeException(InBoundsX(x) ? "y" : "x", $"Tile ({x}, {y}) fora do mundo {Width}×{Height}");
     }
 }
