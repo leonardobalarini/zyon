@@ -34,6 +34,9 @@ public sealed class Simulation : IWorldView, IDisposable
             new PlayerMovementSystem(),
             new PhysicsSystem(),
             new ToolActionSystem(),
+            new ItemPickupSystem(),
+            new ItemMergeSystem(),
+            new ItemDespawnSystem(),
         ];
     }
 
