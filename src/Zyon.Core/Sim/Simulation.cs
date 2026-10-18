@@ -33,6 +33,7 @@ public sealed class Simulation : IWorldView, IDisposable
         [
             new PlayerMovementSystem(),
             new PhysicsSystem(),
+            new ToolActionSystem(),
         ];
     }
 
