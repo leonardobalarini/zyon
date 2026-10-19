@@ -29,8 +29,8 @@
   "shallowWormFraction": 0.3,
   "shallowWormDepth": 60,
   "ores": [
-    { "block": "ore_a", "minDepth": 0.35, "maxDepth": 0.75, "veinsPerMillionTiles": 60, "veinSizeMin": 6, "veinSizeMax": 14 },
-    { "block": "ore_b", "minDepth": 0.65, "maxDepth": 1.0, "veinsPerMillionTiles": 30, "veinSizeMin": 4, "veinSizeMax": 10 }
+    { "block": "ore_a", "minDepth": 0.35, "maxDepth": 0.75, "veinsPerMillionTiles": 90, "veinSizeMin": 6, "veinSizeMax": 14 },
+    { "block": "ore_b", "minDepth": 0.65, "maxDepth": 1.0, "veinsPerMillionTiles": 60, "veinSizeMin": 6, "veinSizeMax": 12 }
   ],
   "spawnSearchRadius": 300,
   "spawnFlatWidth": 4

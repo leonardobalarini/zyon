@@ -218,4 +218,28 @@ public class WorldGenPassTests
                 Assert.Equal(y < ctx.DirtBottom[x] ? m.DirtWall : m.StoneWall, wall);
         }
     }
+
+    [Fact]
+    public void Ores_StayInsideANarrowBand()
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")))!;
+        root["ores"] = System.Text.Json.Nodes.JsonNode.Parse(
+            """[{"block":"ore_a","minDepth":0.50,"maxDepth":0.52,"veinsPerMillionTiles":500,"veinSizeMin":10,"veinSizeMax":14}]""");
+        var config = WorldGenConfigLoader.Load(root.ToJsonString());
+
+        var ctx = RunWith(config, new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass());
+        var (block, ore) = ctx.Materials.Ores[0];
+        int yMin = (int)(ore.MinDepth * Height);
+        int yMax = Math.Max(yMin + 1, (int)(ore.MaxDepth * Height));
+
+        int count = 0;
+        for (int y = 0; y < Height; y++)
+        for (int x = 0; x < Width; x++)
+        {
+            if (ctx.World.GetBlock(x, y) != block) continue;
+            count++;
+            Assert.InRange(y, yMin, yMax - 1);
+        }
+        Assert.True(count > 0);
+    }
 }

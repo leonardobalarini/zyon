@@ -24,16 +24,26 @@ internal sealed class OrePass : IWorldGenPass
                 int x = rng.Next(world.Width);
                 int y = rng.Next(yMin, yMax);
                 int size = rng.Next(ore.VeinSizeMin, ore.VeinSizeMax + 1);
-                for (int s = 0; s < size; s++)
+                int placed = 0;
+                // Caminhada em direções cardeais: conta só tiles realmente trocados; limita os passos para sempre terminar.
+                for (int step = 0; step < 4 * size && placed < size; step++)
                 {
                     if (world.InBounds(x, y) && y >= yMin && y < yMax)
                     {
                         ushort current = world.GetBlock(x, y);
                         if (current == m.Stone || current == m.DeepStone)
+                        {
                             world.SetBlock(x, y, block);
+                            placed++;
+                        }
                     }
-                    x += rng.Next(-1, 2);
-                    y += rng.Next(-1, 2);
+                    switch (rng.Next(4))
+                    {
+                        case 0: x++; break;
+                        case 1: x--; break;
+                        case 2: y++; break;
+                        default: y--; break;
+                    }
                 }
             }
             ctx.Report((i + 1f) / m.Ores.Count);
