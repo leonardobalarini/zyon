@@ -11,28 +11,34 @@ namespace Zyon.Core.Persistence;
 /// </summary>
 public readonly record struct LoadResult<T>(T Value, bool FromBackup, string? QuarantinedPath = null, bool RecoveredFromTemp = false);
 
-/// <summary>Não foi possível carregar o save (e, se for o caso, nem o backup). Nenhum arquivo foi alterado.</summary>
-public sealed class SaveLoadException : Exception
+/// <summary>
+/// Não foi possível carregar o save (e, se for o caso, nem o backup). <see cref="Kind"/> diz o motivo.
+/// Nenhum arquivo foi alterado.
+/// </summary>
+public sealed class SaveLoadException : SaveException
 {
-    public SaveLoadException(string filePath, Exception primaryError, Exception? backupError)
-        : this(filePath, primaryError, backupError,
+    public SaveLoadException(string filePath, SaveLoadFailure kind, Exception primaryError, Exception? backupError)
+        : this(filePath, kind, primaryError, backupError,
             backupError is null ? " (sem backup disponível)" : $"; o backup também falhou: {backupError.Message}")
     {
     }
 
-    private SaveLoadException(string filePath, Exception primaryError, Exception? backupError, string suffix)
+    private SaveLoadException(string filePath, SaveLoadFailure kind, Exception primaryError, Exception? backupError, string suffix)
         : base($"Não foi possível carregar '{filePath}': {primaryError.Message}{suffix}", primaryError)
     {
         FilePath = filePath;
+        Kind = kind;
         BackupError = backupError;
     }
 
     /// <summary>O arquivo existe mas não pôde ser aberto (em uso por outro programa, sem permissão). O backup não foi tentado.</summary>
     internal static SaveLoadException Inaccessible(string filePath, Exception error) =>
-        new(filePath, error, null, " (o arquivo está em uso ou sem permissão; o backup não foi usado — tente de novo)");
+        new(filePath, SaveLoadFailure.Inaccessible, error, null,
+            " (o arquivo está em uso ou sem permissão; o backup não foi usado — tente de novo)");
 
     public string FilePath { get; }
     public Exception? BackupError { get; }
+    public SaveLoadFailure Kind { get; }
 }
 
 /// <summary>Gravação atômica com backup e leitura com fallback. Caminhos são decididos por quem chama.</summary>
@@ -84,6 +90,12 @@ public static class SaveFiles
     /// Se o principal não existe mas há um "arquivo.tmp" legível (crash entre gravar o .tmp e trocar), ele é promovido
     /// a principal antes de se pensar no .bak; um .tmp ilegível fica onde está.
     /// Se principal e backup falharem, lança SaveLoadException sem alterar nada.
+    /// <para>
+    /// Contrato para o cliente: capture <see cref="SaveException"/>. <see cref="SaveIncompatibleException"/> = arquivo
+    /// intacto mas inutilizável por esta versão do jogo; <see cref="SaveLoadException"/> = não carregou, e
+    /// <see cref="SaveLoadException.Kind"/> diz o motivo (corrompido, ausente, inacessível). Qualquer outra exceção
+    /// vinda de <paramref name="read"/> é bug e sobe inalterada, sem fallback nem quarentena.
+    /// </para>
     /// </summary>
     public static LoadResult<T> ReadWithBackup<T>(string path, Func<Stream, T> read)
     {
@@ -106,7 +118,7 @@ public static class SaveFiles
 
         string backup = path + BackupSuffix;
         if (!File.Exists(backup))
-            throw new SaveLoadException(path, primaryError, null);
+            throw new SaveLoadException(path, IsMissing(primaryError) ? SaveLoadFailure.Missing : SaveLoadFailure.Corrupt, primaryError, null);
         T value;
         try
         {
@@ -114,7 +126,8 @@ public static class SaveFiles
         }
         catch (Exception ex) when (ex is DataException or IOException or UnauthorizedAccessException or SaveIncompatibleException)
         {
-            throw new SaveLoadException(path, primaryError, ex);
+            var kind = IsMissing(primaryError) && IsMissing(ex) ? SaveLoadFailure.Missing : SaveLoadFailure.Corrupt;
+            throw new SaveLoadException(path, kind, primaryError, ex);
         }
 
         return new LoadResult<T>(value, FromBackup: true, Quarantine(path));
@@ -136,6 +149,8 @@ public static class SaveFiles
             }
         }
     }
+
+    private static bool IsMissing(Exception ex) => ex is FileNotFoundException or DirectoryNotFoundException;
 
     private static bool IsCorruption(Exception ex) =>
         ex is DataException or FileNotFoundException or DirectoryNotFoundException or EndOfStreamException;

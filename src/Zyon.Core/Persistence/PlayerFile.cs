@@ -43,7 +43,11 @@ public static class PlayerFile
         }
         catch (JsonException ex)
         {
-            throw Fail($"JSON inválido — {ex.Message}");
+            throw new DataException($"{Extension}: JSON inválido — {ex.Message}", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new DataException($"{Extension}: arquivo corrompido — {ex.Message}", ex);
         }
 
         int version = dto.FormatVersion ?? throw Fail("campo 'formatVersion' ausente");

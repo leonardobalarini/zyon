@@ -101,13 +101,13 @@ public static class WorldFile
         {
             return ReadCore(stream, registry);
         }
-        catch (EndOfStreamException)
+        catch (EndOfStreamException ex)
         {
-            throw Corrupt("fim inesperado do arquivo");
+            throw Corrupt("fim inesperado do arquivo", ex);
         }
-        catch (Exception ex) when (ex is not DataException and not SaveIncompatibleException and not OutOfMemoryException)
+        catch (Exception ex) when (IsMalformedInput(ex))
         {
-            throw Corrupt(ex.Message);
+            throw Corrupt(ex.Message, ex);
         }
     }
 
@@ -178,7 +178,7 @@ public static class WorldFile
                 break;
             }
             if (status == OperationStatus.NeedMoreData)
-                throw Corrupt("fim inesperado do arquivo");
+                throw new EndOfStreamException("o conteúdo comprimido terminou antes do fim");
             if (status == OperationStatus.InvalidData || (consumed == 0 && written == 0))
                 throw Corrupt("dados comprimidos inválidos");
         }
@@ -355,4 +355,14 @@ public static class WorldFile
     private static SaveIncompatibleException Incompatible(string message) => new($"{Extension}: {message}");
 
     private static DataException Corrupt(string message) => Fail($"arquivo corrompido — {message}");
+
+    private static DataException Corrupt(string message, Exception inner) => new($"{Extension}: arquivo corrompido — {message}", inner);
+
+    /// <summary>
+    /// Exceções que entrada malformada produz (BinaryReader, decodificação UTF-8, TileWorld, E/S no meio da leitura).
+    /// Qualquer outra (ex.: NullReferenceException) é bug e sobe inalterada.
+    /// </summary>
+    private static bool IsMalformedInput(Exception ex) =>
+        ex is InvalidDataException or InvalidOperationException or FormatException or OverflowException
+            or ArgumentException or IOException;
 }

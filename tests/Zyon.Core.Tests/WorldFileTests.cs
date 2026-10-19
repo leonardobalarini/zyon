@@ -155,6 +155,7 @@ public class WorldFileTests(ITestOutputHelper output)
 
         var ex = Assert.Throws<DataException>(() => Read(bytes[..(bytes.Length / 2)], r));
         Assert.Contains("corrompido", ex.Message);
+        Assert.NotNull(ex.InnerException);
     }
 
     [Fact]

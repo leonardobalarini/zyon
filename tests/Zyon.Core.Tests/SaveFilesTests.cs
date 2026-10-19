@@ -105,6 +105,7 @@ public sealed class SaveFilesTests : IDisposable
         var ex = Assert.Throws<SaveLoadException>(() => SaveFiles.ReadWithBackup(SavePath, ReadText));
 
         Assert.Equal(SavePath, ex.FilePath);
+        Assert.Equal(SaveLoadFailure.Corrupt, ex.Kind);
         Assert.NotNull(ex.BackupError);
         Assert.Equal("corrompido", File.ReadAllText(SavePath));
         Assert.Equal("corrompido", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
@@ -117,6 +118,7 @@ public sealed class SaveFilesTests : IDisposable
 
         Assert.IsAssignableFrom<IOException>(ex.InnerException);
         Assert.Null(ex.BackupError);
+        Assert.Equal(SaveLoadFailure.Missing, ex.Kind);
     }
 
     [Fact]
@@ -164,6 +166,7 @@ public sealed class SaveFilesTests : IDisposable
             }));
             Assert.Null(ex.BackupError);
             Assert.IsAssignableFrom<IOException>(ex.InnerException);
+            Assert.Equal(SaveLoadFailure.Inaccessible, ex.Kind);
         }
 
         Assert.False(backupRead);
@@ -235,5 +238,25 @@ public sealed class SaveFilesTests : IDisposable
         Assert.Equal("v1", File.ReadAllText(SavePath));
         Assert.False(File.Exists(TempPath));
         Assert.Equal("talvez o save mais novo", File.ReadAllText(TempPath + SaveFiles.OrphanSuffix));
+    }
+
+    [Fact]
+    public void LoadErrors_AreSaveExceptions()
+    {
+        Assert.True(typeof(SaveException).IsAssignableFrom(typeof(SaveLoadException)));
+        Assert.True(typeof(SaveException).IsAssignableFrom(typeof(SaveIncompatibleException)));
+    }
+
+    [Fact]
+    public void ReaderBug_PropagatesUnchanged_AndNothingIsQuarantined()
+    {
+        Seed("good2", "good1");
+
+        Assert.Throws<NullReferenceException>(() =>
+            SaveFiles.ReadWithBackup<string>(SavePath, _ => throw new NullReferenceException("bug no leitor")));
+
+        Assert.Equal("good2", File.ReadAllText(SavePath));
+        Assert.Equal("good1", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
+        Assert.False(File.Exists(CorruptPath));
     }
 }
