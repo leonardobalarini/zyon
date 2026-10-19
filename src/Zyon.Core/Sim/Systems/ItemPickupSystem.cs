@@ -74,8 +74,7 @@ internal sealed class ItemPickupSystem : ISystem
                         var toPlayer = player.Center - pos.Value;
                         if (toPlayer.LengthSquared() > 1e-6f)
                             v += Vector2.Normalize(toPlayer) * cfg.MagnetAcceleration * dt;
-                        // Gravidade continua ativa e o amortecimento evita oscilar quando o ímã é bloqueado.
-                        v.Y = MathF.Min(v.Y + cfg.Gravity * dt, cfg.TerminalVelocity);
+                        // Amortecimento evita oscilar quando o ímã é bloqueado.
                         v *= cfg.MagnetDamping;
                         if (v.Length() > cfg.MagnetMaxSpeed)
                             v = Vector2.Normalize(v) * cfg.MagnetMaxSpeed;

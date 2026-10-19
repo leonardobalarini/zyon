@@ -210,4 +210,22 @@ public class ItemSystemsTests
         Assert.True(h.Sim.TryGetEntityView(b, out var vb));
         Assert.Equal(new[] { 11, 999 }, new[] { va.Item.Count, vb.Item.Count }.OrderBy(x => x).ToArray());
     }
+
+    [Fact]
+    public void MagnetPullsItemUpOneTileLedge()
+    {
+        using var h = new SimHarness(playerX: 10f);
+        var dirt = h.Registry.BlockId("dirt");
+        for (int x = 12; x <= 21; x++) h.Tiles.SetBlock(x, h.GroundY - 1, dirt);
+        for (int i = 0; i < 300 && h.PlayerPosition.X < 20.5f; i++)
+            h.Run(1, new PlayerInput(1f, false, false, 0, 0));
+        h.Idle(30);
+        Assert.Equal(h.GroundY - 1 - h.Registry.Physics.PlayerHeight / 2, h.PlayerPosition.Y, 2);
+
+        int id = h.Sim.SpawnDroppedItem(Dirt(h), new Vector2(h.PlayerPosition.X + 2.2f, RestingY(h)), Vector2.Zero, 0);
+        h.Idle(60);
+
+        Assert.False(h.Sim.TryGetEntityView(id, out _));
+        Assert.Equal(Dirt(h), h.Inventory[1]);
+    }
 }
