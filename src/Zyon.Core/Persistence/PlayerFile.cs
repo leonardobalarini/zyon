@@ -48,32 +48,26 @@ public static class PlayerFile
             throw Fail($"versão de formato {version} não suportada");
         // Migrações futuras entram aqui, em sequência: v1 → v2 → ... até FormatVersion.
 
-        if (string.IsNullOrWhiteSpace(dto.Name)) throw Fail("campo 'name' ausente");
+        string name = PlayerSave.ValidateName(dto.Name ?? throw Fail("campo 'name' ausente"));
         int selected = dto.SelectedSlot ?? throw Fail("campo 'selectedSlot' ausente");
         if ((uint)selected >= Inventory.HotbarSize)
             throw Fail($"'selectedSlot' {selected} fora da hotbar (0..{Inventory.HotbarSize - 1})");
 
         var entries = dto.Inventory ?? throw Fail("campo 'inventory' ausente");
-        var seen = new HashSet<int>();
         var slots = new List<SavedSlot>();
         for (int i = 0; i < entries.Count; i++)
         {
             var ctx = $"inventory[{i}]";
             var entry = entries[i] ?? throw Fail($"{ctx}: entrada nula");
-            int slot = entry.Slot ?? throw Fail($"{ctx}: campo 'slot' ausente");
-            if (!Inventory.IsValidSlot(slot)) throw Fail($"{ctx}: slot {slot} inválido");
-            if (!seen.Add(slot)) throw Fail($"{ctx}: slot {slot} repetido");
-            string item = entry.Item ?? throw Fail($"{ctx}: campo 'item' ausente");
-            if (!registry.TryGetItemId(item, out var itemId))
-                throw Fail($"{ctx}: item '{item}' não existe mais nos dados do jogo");
-            int count = entry.Count ?? throw Fail($"{ctx}: campo 'count' ausente");
-            int max = registry.Item(itemId).MaxStack;
-            if (count < 1 || count > max)
-                throw Fail($"{ctx}: quantidade {count} fora de 1..{max}");
-            slots.Add(new SavedSlot(slot, item, count));
+            slots.Add(new SavedSlot(
+                entry.Slot ?? throw Fail($"{ctx}: campo 'slot' ausente"),
+                entry.Item ?? throw Fail($"{ctx}: campo 'item' ausente"),
+                entry.Count ?? throw Fail($"{ctx}: campo 'count' ausente")));
         }
 
-        return new PlayerSave(dto.Name!, selected, slots);
+        var save = new PlayerSave(name, selected, slots);
+        save.Validate(registry);
+        return save;
     }
 
     private static DataException Fail(string message) => new($"{Extension}: {message}");

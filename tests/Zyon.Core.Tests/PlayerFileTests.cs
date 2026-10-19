@@ -91,4 +91,34 @@ public class PlayerFileTests
         Assert.Contains(".zplayer", ex.Message);
         Assert.Contains(expectedInMessage, ex.Message);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("../x")]
+    [InlineData("a:b")]
+    [InlineData("CON")]
+    [InlineData("nul")]
+    [InlineData("Leo.")]
+    [InlineData("abcdefghijklmnopqrstuvwxy")]
+    [InlineData("Le\no")]
+    public void ValidateName_Invalid_Throws(string name)
+    {
+        var ex = Assert.Throws<DataException>(() => PlayerSave.ValidateName(name));
+
+        Assert.Contains(".zplayer", ex.Message);
+    }
+
+    [Fact]
+    public void ValidateName_TrimsValidName() => Assert.Equal("Leo", PlayerSave.ValidateName(" Leo "));
+
+    [Fact]
+    public void SpawnInto_UnknownItem_Throws()
+    {
+        using var h = new SimHarness();
+        var save = new PlayerSave("Leo", 0, [new SavedSlot(0, "mithril", 1)]);
+
+        var ex = Assert.Throws<DataException>(() => save.SpawnInto(h.Sim, new Vector2(20f, h.StandingY)));
+        Assert.Contains("mithril", ex.Message);
+    }
 }
