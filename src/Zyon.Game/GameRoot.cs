@@ -4,6 +4,7 @@ using Zyon.Core.Data;
 using Zyon.Core.Persistence;
 using Zyon.Core.Sim;
 using Zyon.Core.WorldGen;
+using Zyon.Game.Hud;
 using Zyon.Game.Rendering;
 
 namespace Zyon.Game;
@@ -19,6 +20,8 @@ public partial class GameRoot : Node2D
     private int playerId;
     private EntityRenderer entityRenderer = null!;
     private PlayerController controller = null!;
+    private WorldOverlay overlay = null!;
+    private Hotbar hotbar = null!;
 
     public override void _Ready()
     {
@@ -59,6 +62,12 @@ public partial class GameRoot : Node2D
         entityRenderer = new EntityRenderer();
         AddChild(entityRenderer);
         entityRenderer.Init(session.World, visuals);
+        overlay = new WorldOverlay();
+        AddChild(overlay);
+        overlay.Init(session.World, playerId);
+        hotbar = new Hotbar();
+        AddChild(hotbar);
+        hotbar.Init(session.World, visuals, playerId);
         controller = new PlayerController();
         AddChild(controller);
         controller.Init(session);
@@ -80,10 +89,15 @@ public partial class GameRoot : Node2D
             controller.Poll(GetGlobalMousePosition());
             session.Update(delta);
             foreach (var gameEvent in session.DrainEvents())
+            {
                 worldRenderer.OnEvent(gameEvent);
+                overlay.OnEvent(gameEvent);
+            }
             if (session.World.TryGetEntityView(playerId, out var me))
                 camera.Follow(RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot());
             entityRenderer.Refresh(session.InterpolationAlpha);
+            overlay.Refresh(GetGlobalMousePosition());
+            hotbar.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
             if (options.SmokeTest && ++frame >= options.SmokeFrames)
             {
