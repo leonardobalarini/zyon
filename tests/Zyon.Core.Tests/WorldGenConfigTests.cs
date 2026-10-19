@@ -36,6 +36,8 @@ public class WorldGenConfigTests
     [InlineData("""{"surfaceMin": 0.5, "surfaceMax": 0.4}""", "surfaceMin")]
     [InlineData("""{"deepLayerStart": 0.2}""", "deepLayerStart")]
     [InlineData("""{"terrainOctaves": 0}""", "terrainOctaves")]
+    [InlineData("""{"hillinessMin": 1.5}""", "hillinessMin")]
+    [InlineData("""{"hillinessFrequency": 0}""", "hillinessFrequency")]
     [InlineData("""{"dirtDepth": 3, "dirtDepthVariation": 5}""", "dirtDepth")]
     [InlineData("""{"wormLengthMin": 50, "wormLengthMax": 10}""", "wormLength")]
     [InlineData("""{"spawnFlatWidth": 1}""", "spawnFlatWidth")]

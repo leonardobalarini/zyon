@@ -52,6 +52,8 @@ public static class WorldGenConfigLoader
             "'deepLayerStart' deve estar entre 'surfaceMax' e 1");
         Require(c.TerrainFrequency > 0 && c.LayerNoiseFrequency > 0 && c.CaveFrequency > 0,
             "frequências de ruído devem ser > 0");
+        Require(c.HillinessFrequency > 0, "'hillinessFrequency' deve ser > 0");
+        Require(c.HillinessMin >= 0 && c.HillinessMin <= 1, "'hillinessMin' deve estar entre 0 e 1");
         Require(c.TerrainOctaves >= 1, "'terrainOctaves' deve ser >= 1");
         Require(c.DirtDepthVariation >= 0, "'dirtDepthVariation' deve ser >= 0");
         Require(c.DirtDepth - c.DirtDepthVariation >= 1, "'dirtDepth' deve exceder 'dirtDepthVariation'");

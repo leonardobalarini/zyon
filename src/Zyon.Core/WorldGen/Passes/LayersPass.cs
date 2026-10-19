@@ -20,6 +20,7 @@ internal sealed class LayersPass : IWorldGenPass
             int dirtBottom = surface + cfg.DirtDepth + (int)MathF.Round(dirtNoise.GetNoise(x, 0f) * cfg.DirtDepthVariation);
             dirtBottom = Math.Clamp(dirtBottom, surface + 1, height);
             int deepStart = (int)MathF.Round(cfg.DeepLayerStart * height + deepNoise.GetNoise(x, 0f) * cfg.DeepLayerVariation);
+            deepStart = Math.Max(deepStart, dirtBottom + 1);
             ctx.DirtBottom[x] = dirtBottom;
 
             for (int y = surface; y < height; y++)

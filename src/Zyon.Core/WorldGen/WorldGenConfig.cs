@@ -6,8 +6,10 @@ public sealed class WorldGenConfig
     public MaterialNames Materials { get; init; } = new();
     public float SurfaceMin { get; init; } = 0.25f;
     public float SurfaceMax { get; init; } = 0.35f;
-    public float TerrainFrequency { get; init; } = 0.004f;
-    public int TerrainOctaves { get; init; } = 4;
+    public float TerrainFrequency { get; init; } = 0.0025f;
+    public int TerrainOctaves { get; init; } = 5;
+    public float HillinessFrequency { get; init; } = 0.0008f;
+    public float HillinessMin { get; init; } = 0.1f;
     public int DirtDepth { get; init; } = 12;
     public int DirtDepthVariation { get; init; } = 5;
     public float DeepLayerStart { get; init; } = 0.7f;
