@@ -2,6 +2,9 @@
   <Folder Name="/src/">
     <Project Path="src/Zyon.Client/Zyon.Client.csproj" />
     <Project Path="src/Zyon.Core/Zyon.Core.csproj" />
+    <Project Path="src/Zyon.Game/Zyon.Game.csproj">
+      <BuildType Project="Debug" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Zyon.Client.Tests/Zyon.Client.Tests.csproj" />

@@ -1,0 +1,12 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Zyon.Game</RootNamespace>
+    <!-- O Godot carrega os assemblies da pasta de saída: copia também os pacotes NuGet (Arch) das dependências. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Zyon.Core\Zyon.Core.csproj" />
+    <ProjectReference Include="..\Zyon.Client\Zyon.Client.csproj" />
+  </ItemGroup>
+</Project>
