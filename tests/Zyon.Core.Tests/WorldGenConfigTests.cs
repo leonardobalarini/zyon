@@ -42,6 +42,11 @@ public class WorldGenConfigTests
     [InlineData("""{"materials": null}""", "materials")]
     [InlineData("""{"ores": [{"block": "ore_a", "minDepth": 0.8, "maxDepth": 0.5, "veinsPerMillionTiles": 1, "veinSizeMin": 1, "veinSizeMax": 2}]}""", "ores[0]")]
     [InlineData("""{"ores": [null]}""", "ores[0]")]
+    [InlineData("""{"materials": {"dirt": null}}""", "materials.dirt")]
+    [InlineData("""{"materials": {"stoneWall": ""}}""", "materials.stoneWall")]
+    [InlineData("""{"caveThreshold": 1.5}""", "caveThreshold")]
+    [InlineData("""{"dirtDepthVariation": -1}""", "dirtDepthVariation")]
+    [InlineData("""{"ores": [{"block": "ore_a", "minDepth": 0.1, "maxDepth": 0.5, "veinsPerMillionTiles": 1, "veinSizeMin": 1, "veinSizeMax": 20000}]}""", "ores[0]")]
     [InlineData("""{"surfacMin": 0.3}""", "worldgen.json")]
     [InlineData("""{""", "worldgen.json")]
     public void InvalidConfig_Throws(string json, string expectedInMessage)
