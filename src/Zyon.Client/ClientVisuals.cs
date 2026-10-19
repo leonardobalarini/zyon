@@ -10,7 +10,7 @@ public readonly record struct Rgb(byte R, byte G, byte B)
     {
         color = default;
         if (hex is null || hex.Length != 7 || hex[0] != '#') return false;
-        if (!uint.TryParse(hex.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint v)) return false;
+        if (!uint.TryParse(hex.AsSpan(1), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out uint v)) return false;
         color = new Rgb((byte)(v >> 16), (byte)(v >> 8), (byte)v);
         return true;
     }
@@ -52,7 +52,7 @@ public sealed class ClientVisuals
         Dto dto;
         try
         {
-            dto = JsonSerializer.Deserialize<Dto>(json, RegistryOptions) ?? throw Fail("conteúdo vazio");
+            dto = JsonSerializer.Deserialize<Dto>(json, JsonOptions) ?? throw Fail("conteúdo vazio");
         }
         catch (JsonException ex)
         {
@@ -85,14 +85,17 @@ public sealed class ClientVisuals
     }
 
     private static Rgb Parse(string? hex, string field) =>
+        hex is null ? throw Fail($"campo '{field}' ausente") :
         Rgb.TryParse(hex, out var c) ? c : throw Fail($"'{field}': cor inválida '{hex}' (use #rrggbb)");
 
     private static DataException Fail(string message) => new($"{FileName}: {message}");
 
-    private static readonly JsonSerializerOptions RegistryOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
     };
 
     private sealed class Dto

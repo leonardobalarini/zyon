@@ -4,13 +4,21 @@ namespace Zyon.Client;
 /// Atlas de 16×16 px: uma linha por material (id), e em cada linha uma célula por (máscara, variação),
 /// na ordem máscara × Variations + variação.
 /// </summary>
-public sealed class TileAtlasLayout(int materialCount, int variations)
+public sealed class TileAtlasLayout
 {
     public const int TileSize = RenderMath.PixelsPerTile;
     private const float InsetPx = 0.01f;   // evita costuras entre células com filtro nearest
 
-    public int MaterialCount { get; } = materialCount;
-    public int Variations { get; } = variations;
+    public TileAtlasLayout(int materialCount, int variations)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(materialCount, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(variations, 1);
+        MaterialCount = materialCount;
+        Variations = variations;
+    }
+
+    public int MaterialCount { get; }
+    public int Variations { get; }
     public int WidthPx => AutoTile.MaskCount * Variations * TileSize;
     public int HeightPx => MaterialCount * TileSize;
 

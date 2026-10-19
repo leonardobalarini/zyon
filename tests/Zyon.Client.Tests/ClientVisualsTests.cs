@@ -40,4 +40,36 @@ public class ClientVisualsTests
         Assert.Contains("visuals.json", ex.Message);
         Assert.Contains(expectedInMessage, ex.Message);
     }
+
+    private const string AllBlocks = "\"dirt\":\"#000000\",\"stone\":\"#000000\",\"deep_stone\":\"#000000\",\"ore_a\":\"#000000\",\"ore_b\":\"#000000\"";
+    private const string AllWalls = "\"dirt_wall\":\"#000000\",\"stone_wall\":\"#000000\"";
+
+    [Fact]
+    public void ColorWithWhitespace_Throws()
+    {
+        var json = "{\"blocks\": {\"dirt\":\"# 12345\"}, \"walls\": {}, \"items\": {}, \"player\": \"#ffffff\", \"sky\": \"#000000\"}";
+
+        Assert.Throws<DataException>(() => ClientVisuals.Load(json, TestData.Registry()));
+    }
+
+    [Fact]
+    public void CommentsAndTrailingCommas_AreAccepted()
+    {
+        var json = "{\n// comentário\n\"blocks\": {" + AllBlocks + ",}, \"walls\": {" + AllWalls + "}, \"items\": {}, \"player\": \"#ffffff\", \"sky\": \"#000000\",\n}";
+
+        var v = ClientVisuals.Load(json, TestData.Registry());
+
+        Assert.Equal(new Rgb(255, 255, 255), v.Player);
+    }
+
+    [Fact]
+    public void MissingPlayer_SaysFieldIsAbsent()
+    {
+        var json = "{\"blocks\": {" + AllBlocks + "}, \"walls\": {" + AllWalls + "}, \"items\": {}, \"sky\": \"#000000\"}";
+
+        var ex = Assert.Throws<DataException>(() => ClientVisuals.Load(json, TestData.Registry()));
+
+        Assert.Contains("player", ex.Message);
+        Assert.Contains("ausente", ex.Message);
+    }
 }

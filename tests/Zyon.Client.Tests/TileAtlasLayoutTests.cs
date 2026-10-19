@@ -33,4 +33,12 @@ public class TileAtlasLayoutTests
         Assert.True(uv.V0 > y / (float)layout.HeightPx);
         Assert.True(uv.V1 < (y + 16) / (float)layout.HeightPx);
     }
+
+    [Theory]
+    [InlineData(0, 3)]
+    [InlineData(6, 0)]
+    public void NonPositiveArguments_Throw(int materials, int variations)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TileAtlasLayout(materials, variations));
+    }
 }

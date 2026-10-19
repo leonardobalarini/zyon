@@ -83,4 +83,19 @@ public class ChunkMeshBuilderTests
 
         Assert.Equal(1, data.QuadCount);
     }
+
+    [Fact]
+    public void PartialChunkAtWorldEdge_HasQuadsOnlyForExistingTiles()
+    {
+        var w = new TileWorld(40, 40);
+        for (int y = 32; y < 40; y++)
+            for (int x = 32; x < 40; x++)
+                w.SetBlock(x, y, 1);
+        using var view = TestData.View(w);
+        var data = new ChunkMeshData();
+
+        ChunkMeshBuilder.Build(view, 1, 1, TileLayer.Blocks, Atlas, data);
+
+        Assert.Equal(64, data.QuadCount);
+    }
 }
