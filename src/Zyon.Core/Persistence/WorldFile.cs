@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Compression;
 using System.Numerics;
 using System.Text;
@@ -7,68 +8,85 @@ using Zyon.Core.Tiles;
 namespace Zyon.Core.Persistence;
 
 /// <summary>
-/// Formato .zworld. Sem compressão: magic "ZYONWLD" + versão do formato (int32).
-/// Comprimido com Brotli: versão do gerador, seed, impressão digital da config, largura, altura, spawn, tick,
-/// paleta de blocos e de paredes (só os ids presentes), chunks em RLE, itens caídos e posições dos jogadores.
+/// Formato .zworld. Sem compressão: magic "ZYONWLD", versão do formato (int32), tamanho do payload descomprimido
+/// (int64) e seu hash FNV-1a 64 (uint64). Em seguida o payload comprimido com Brotli: versão do gerador, seed,
+/// impressão digital da config, largura, altura, spawn, tick, paleta de blocos e de paredes (só os ids presentes),
+/// chunks em RLE, itens caídos e posições dos jogadores.
+/// A leitura só lança DataException (arquivo corrompido/inválido) ou SaveIncompatibleException (íntegro, mas não
+/// utilizável por esta versão do jogo); nunca carrega conteúdo que não bata com o hash.
 /// </summary>
 public static class WorldFile
 {
     public const int FormatVersion = 1;
     public const string Extension = ".zworld";
-    private const int MaxDimension = 100_000;
+    public const int MaxWidth = 16384;
+    public const int MaxHeight = 8192;
+    public const long MaxPayloadBytes = 512L * 1024 * 1024;
+    private const int MaxItems = 1_000_000;
+    private const int MaxPlayers = 10_000;
 
     private static ReadOnlySpan<byte> Magic => "ZYONWLD"u8;
 
     public static void Write(Stream stream, WorldSave save, Registry registry)
     {
+        using var payload = new MemoryStream();
+        using (var w = new BinaryWriter(payload, Encoding.UTF8, leaveOpen: true))
+            WritePayload(w, save, registry);
+        var bytes = payload.GetBuffer().AsSpan(0, (int)payload.Length);
+
         stream.Write(Magic);
         using (var header = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
-            header.Write(FormatVersion);
-
-        using (var brotli = new BrotliStream(stream, CompressionLevel.Fastest, leaveOpen: true))
-        using (var w = new BinaryWriter(brotli, Encoding.UTF8, leaveOpen: true))
         {
-            var info = save.Info;
-            var tiles = save.Tiles;
-            w.Write(info.GeneratorVersion);
-            w.Write(info.Seed);
-            w.Write(info.ConfigFingerprint);
-            w.Write(tiles.Width);
-            w.Write(tiles.Height);
-            w.Write(info.SpawnFeet.X);
-            w.Write(info.SpawnFeet.Y);
-            w.Write(save.Tick);
-
-            WritePalette(w, UsedIds(tiles, c => c.Blocks), id => registry.Block(id).Name);
-            WritePalette(w, UsedIds(tiles, c => c.Walls), id => registry.Wall(id).Name);
-            foreach (var chunk in tiles.Chunks)
-            {
-                WriteRle(w, chunk.Blocks);
-                WriteRle(w, chunk.Walls);
-            }
-
-            w.Write(save.DroppedItems.Count);
-            foreach (var item in save.DroppedItems)
-            {
-                w.Write(item.Item);
-                w.Write(item.Count);
-                w.Write(item.Position.X);
-                w.Write(item.Position.Y);
-                w.Write(item.AgeTicks);
-                w.Write(item.PickupDelayTicks);
-            }
-
-            w.Write(save.PlayerPositions.Count);
-            foreach (var (name, position) in save.PlayerPositions.OrderBy(p => p.Key, StringComparer.Ordinal))
-            {
-                w.Write(name);
-                w.Write(position.X);
-                w.Write(position.Y);
-            }
+            header.Write(FormatVersion);
+            header.Write((long)bytes.Length);
+            header.Write(Fnv1a64(bytes));
         }
+        using (var brotli = new BrotliStream(stream, CompressionLevel.Fastest, leaveOpen: true))
+            brotli.Write(bytes);
 
         foreach (var chunk in save.Tiles.Chunks)
             chunk.Dirty = false;
+    }
+
+    private static void WritePayload(BinaryWriter w, WorldSave save, Registry registry)
+    {
+        var info = save.Info;
+        var tiles = save.Tiles;
+        w.Write(info.GeneratorVersion);
+        w.Write(info.Seed);
+        w.Write(info.ConfigFingerprint);
+        w.Write(tiles.Width);
+        w.Write(tiles.Height);
+        w.Write(info.SpawnFeet.X);
+        w.Write(info.SpawnFeet.Y);
+        w.Write(save.Tick);
+
+        WritePalette(w, UsedIds(tiles, c => c.Blocks), id => registry.Block(id).Name);
+        WritePalette(w, UsedIds(tiles, c => c.Walls), id => registry.Wall(id).Name);
+        foreach (var chunk in tiles.Chunks)
+        {
+            WriteRle(w, chunk.Blocks);
+            WriteRle(w, chunk.Walls);
+        }
+
+        w.Write(save.DroppedItems.Count);
+        foreach (var item in save.DroppedItems)
+        {
+            w.Write(item.Item);
+            w.Write(item.Count);
+            w.Write(item.Position.X);
+            w.Write(item.Position.Y);
+            w.Write(item.AgeTicks);
+            w.Write(item.PickupDelayTicks);
+        }
+
+        w.Write(save.PlayerPositions.Count);
+        foreach (var (name, position) in save.PlayerPositions.OrderBy(p => p.Key, StringComparer.Ordinal))
+        {
+            w.Write(name);
+            w.Write(position.X);
+            w.Write(position.Y);
+        }
     }
 
     public static WorldSave Read(Stream stream, Registry registry)
@@ -81,7 +99,7 @@ public static class WorldFile
         {
             throw Corrupt("fim inesperado do arquivo");
         }
-        catch (InvalidDataException ex)
+        catch (Exception ex) when (ex is not DataException and not SaveIncompatibleException and not OutOfMemoryException)
         {
             throw Corrupt(ex.Message);
         }
@@ -97,29 +115,90 @@ public static class WorldFile
         using var header = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
         int version = header.ReadInt32();
         if (version > FormatVersion)
-            throw Fail($"feito por uma versão mais nova do jogo (formato {version}, suportado até {FormatVersion})");
+            throw Incompatible($"feito por uma versão mais nova do jogo (formato {version}, suportado até {FormatVersion})");
         if (version < 1)
             throw Fail($"versão de formato {version} não suportada");
         // Migrações futuras: ao criar o formato 2, mantenha a leitura do 1 e converta para o 2 aqui.
 
-        using var brotli = new BrotliStream(stream, CompressionMode.Decompress, leaveOpen: true);
-        using var r = new BinaryReader(brotli, Encoding.UTF8, leaveOpen: true);
+        long payloadLength = header.ReadInt64();
+        ulong expectedHash = header.ReadUInt64();
+        if (payloadLength <= 0 || payloadLength > MaxPayloadBytes)
+            throw Corrupt($"tamanho do conteúdo inválido ({payloadLength} bytes)");
 
+        var payload = Decompress(stream, (int)payloadLength);
+        if (Fnv1a64(payload) != expectedHash)
+            throw Corrupt("o conteúdo não confere com o hash gravado");
+
+        using var r = new BinaryReader(new MemoryStream(payload, writable: false), Encoding.UTF8);
+        var save = ReadPayload(r, registry);
+        if (r.BaseStream.Position != r.BaseStream.Length)
+            throw Corrupt("dados extras no fim do conteúdo");
+        return save;
+    }
+
+    /// <summary>
+    /// Descomprime todo o resto do stream. Exige exatamente <paramref name="length"/> bytes descomprimidos e nenhum byte
+    /// depois do fim do Brotli. A memória cresce com os dados reais, não com o tamanho declarado no cabeçalho.
+    /// </summary>
+    private static byte[] Decompress(Stream stream, int length)
+    {
+        using var compressed = new MemoryStream();
+        var copyBuffer = new byte[81920];
+        int n;
+        while ((n = stream.Read(copyBuffer)) > 0)
+        {
+            if (compressed.Length + n > MaxPayloadBytes)
+                throw Corrupt("conteúdo comprimido grande demais");
+            compressed.Write(copyBuffer, 0, n);
+        }
+
+        ReadOnlySpan<byte> source = compressed.GetBuffer().AsSpan(0, (int)compressed.Length);
+        using var output = new MemoryStream(Math.Min(length, 1 << 20));
+        var buffer = new byte[64 * 1024];
+        using var decoder = new BrotliDecoder();
+        while (true)
+        {
+            var status = decoder.Decompress(source, buffer, out int consumed, out int written);
+            source = source[consumed..];
+            if (output.Length + written > length)
+                throw Corrupt("conteúdo descomprimido maior que o declarado");
+            output.Write(buffer, 0, written);
+
+            if (status == OperationStatus.Done)
+            {
+                if (!source.IsEmpty) throw Corrupt("dados extras após o conteúdo comprimido");
+                break;
+            }
+            if (status == OperationStatus.NeedMoreData)
+                throw Corrupt("fim inesperado do arquivo");
+            if (status == OperationStatus.InvalidData || (consumed == 0 && written == 0))
+                throw Corrupt("dados comprimidos inválidos");
+        }
+
+        if (output.Length != length)
+            throw Corrupt("conteúdo descomprimido menor que o declarado");
+        return output.ToArray();
+    }
+
+    private static WorldSave ReadPayload(BinaryReader r, Registry registry)
+    {
         int generatorVersion = r.ReadInt32();
         int seed = r.ReadInt32();
         ulong fingerprint = r.ReadUInt64();
         int width = r.ReadInt32();
         int height = r.ReadInt32();
-        if (width <= 0 || height <= 0 || width > MaxDimension || height > MaxDimension)
-            throw Corrupt($"dimensões inválidas {width}×{height}");
+        if (width <= 0 || height <= 0 || width > MaxWidth || height > MaxHeight)
+            throw Corrupt($"dimensões inválidas {width}×{height} (máximo {MaxWidth}×{MaxHeight})");
         var spawn = new Vector2(r.ReadSingle(), r.ReadSingle());
+        if (!float.IsFinite(spawn.X) || !float.IsFinite(spawn.Y))
+            throw Corrupt("ponto de spawn inválido");
         long tick = r.ReadInt64();
         if (tick < 0) throw Corrupt("tick negativo");
 
         var blockRemap = ReadPalette(r, name =>
-            registry.TryGetBlockId(name, out var id) ? id : throw Fail($"bloco '{name}' do save não existe mais nos dados do jogo"));
+            registry.TryGetBlockId(name, out var id) ? id : throw Incompatible($"bloco '{name}' do save não existe mais nos dados do jogo"));
         var wallRemap = ReadPalette(r, name =>
-            registry.TryGetWallId(name, out var id) ? id : throw Fail($"parede '{name}' do save não existe mais nos dados do jogo"));
+            registry.TryGetWallId(name, out var id) ? id : throw Incompatible($"parede '{name}' do save não existe mais nos dados do jogo"));
 
         var tiles = new TileWorld(width, height);
         foreach (var chunk in tiles.Chunks)
@@ -130,16 +209,23 @@ public static class WorldFile
         }
 
         int itemCount = r.ReadInt32();
-        if (itemCount < 0) throw Corrupt("contagem de itens negativa");
-        var items = new List<SavedDroppedItem>(itemCount);
+        if (itemCount < 0 || itemCount > MaxItems) throw Corrupt($"contagem de itens inválida ({itemCount})");
+        var items = new List<SavedDroppedItem>();
         for (int i = 0; i < itemCount; i++)
             items.Add(new SavedDroppedItem(r.ReadString(), r.ReadInt32(), new Vector2(r.ReadSingle(), r.ReadSingle()), r.ReadInt32(), r.ReadInt32()));
 
         int playerCount = r.ReadInt32();
-        if (playerCount < 0) throw Corrupt("contagem de jogadores negativa");
-        var positions = new Dictionary<string, Vector2>(playerCount);
+        if (playerCount < 0 || playerCount > MaxPlayers) throw Corrupt($"contagem de jogadores inválida ({playerCount})");
+        var positions = new Dictionary<string, Vector2>();
         for (int i = 0; i < playerCount; i++)
-            positions[r.ReadString()] = new Vector2(r.ReadSingle(), r.ReadSingle());
+        {
+            string name = r.ReadString();
+            var position = new Vector2(r.ReadSingle(), r.ReadSingle());
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
+                throw Corrupt($"posição do jogador '{name}' inválida");
+            if (!positions.TryAdd(name, position))
+                throw Corrupt($"jogador '{name}' repetido");
+        }
 
         return new WorldSave(new WorldInfo(seed, generatorVersion, fingerprint, spawn), tiles, tick, items, positions);
     }
@@ -172,11 +258,14 @@ public static class WorldFile
         int count = r.ReadInt32();
         if (count < 0 || count > ushort.MaxValue) throw Corrupt("paleta inválida");
         var remap = new ushort[ushort.MaxValue + 1];
+        var seen = new bool[ushort.MaxValue + 1];
         for (int i = 0; i < count; i++)
         {
             ushort saved = r.ReadUInt16();
             string name = r.ReadString();
             if (saved == 0) throw Corrupt("id 0 na paleta");
+            if (seen[saved]) throw Corrupt($"id {saved} repetido na paleta");
+            seen[saved] = true;
             remap[saved] = resolve(name);
         }
         return remap;
@@ -215,7 +304,21 @@ public static class WorldFile
         }
     }
 
+    /// <summary>FNV-1a 64 bits do payload descomprimido.</summary>
+    private static ulong Fnv1a64(ReadOnlySpan<byte> data)
+    {
+        ulong hash = 14695981039346656037UL;
+        foreach (byte b in data)
+        {
+            hash ^= b;
+            hash *= 1099511628211UL;
+        }
+        return hash;
+    }
+
     private static DataException Fail(string message) => new($"{Extension}: {message}");
+
+    private static SaveIncompatibleException Incompatible(string message) => new($"{Extension}: {message}");
 
     private static DataException Corrupt(string message) => Fail($"arquivo corrompido — {message}");
 }
