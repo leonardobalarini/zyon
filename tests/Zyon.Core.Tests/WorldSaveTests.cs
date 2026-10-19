@@ -66,6 +66,7 @@ public class WorldSaveTests
             new Dictionary<string, Vector2> { ["Leo"] = new Vector2(5f, 6f) });
 
         Assert.Equal(new Vector2(5f, 6f), save.PlayerPosition("Leo", physics));
+        Assert.Equal(new Vector2(5f, 6f), save.PlayerPosition(" Leo ", physics));
         Assert.Equal(new Vector2(20f, 40f - physics.PlayerHeight / 2), save.PlayerPosition("Ana", physics));
     }
 
@@ -123,5 +124,18 @@ public class WorldSaveTests
 
         Assert.True(sim2.GetInventory(id2)![0].IsEmpty);
         Assert.Single(sim2.SnapshotDroppedItems());
+    }
+
+    [Fact]
+    public void Capture_NormalizesPlayerNames()
+    {
+        using var h = new SimHarness();
+
+        var save = WorldSave.Capture(h.Sim, Info, new Dictionary<string, int> { [" Leo "] = h.PlayerId },
+            new Dictionary<string, Vector2> { ["Le\u0301o"] = new Vector2(5f, 6f) });
+
+        Assert.Equal(h.PlayerPosition, save.PlayerPositions["Leo"]);
+        Assert.Equal(new Vector2(5f, 6f), save.PlayerPositions["L\u00E9o"]);
+        Assert.Equal(2, save.PlayerPositions.Count);
     }
 }

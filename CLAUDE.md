@@ -35,7 +35,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Mudou o que vai num save? Incremente `WorldFile.FormatVersion`/`PlayerFile.FormatVersion` e escreva a migração da versão anterior; saves antigos são migrados, nunca descartados.
 - Saves referenciam blocos/paredes/itens **pelo nome**; um nome que sumiu dos dados faz a carga falhar com mensagem clara (nunca carregar com ids errados).
 - Carga com erro nunca sobrescreve arquivos: use `SaveFiles.ReadWithBackup` e capture `SaveException`. `SaveIncompatibleException` → mostre "save de versão mais nova ou conteúdo removido"; `SaveLoadException.Kind` diz o motivo (`Corrupt`, `Missing`, `Inaccessible` — este último vale tentar de novo). Com `FromBackup` avise o jogador que voltou ao backup (o principal ruim ficou em `QuarantinedPath`). Outras exceções são bugs: não as engula.
-- Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano.
+- Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano (gravações no mesmo arquivo em fila única). `Write` valida antes de gravar e não limpa `Dirty`: chame `WorldSave.MarkSaved()` depois que a gravação em disco der certo.
 - Ao salvar, passe as posições do save anterior para `WorldSave.Capture(..., previousPositions)` para não perder personagens ausentes.
 - Nomes de personagem passam por `PlayerSave.ValidateName` (também chamado por `Capture` e `PlayerFile.Write`); ele devolve o nome normalizado (NFC) — o Godot deve montar o caminho do arquivo a partir desse valor.
 

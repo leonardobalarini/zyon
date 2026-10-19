@@ -28,16 +28,23 @@ public static class WorldFile
     public const long MaxPayloadBytes = 512L * 1024 * 1024;
     /// <summary>Quantas versões de formato à frente ainda contam como "save de um jogo mais novo" e não como corrupção.</summary>
     public const int MaxPlausibleVersionJump = 100;
-    private const int MaxItems = 1_000_000;
-    private const int MaxPlayers = 10_000;
+    public const int MaxItems = 1_000_000;
+    public const int MaxPlayers = 10_000;
 
     private static ReadOnlySpan<byte> Magic => "ZYONWLD"u8;
 
+    /// <summary>
+    /// Serializa o mundo. Valida antes de escrever qualquer byte (DataException): nunca grava o que a leitura recusaria.
+    /// Não mexe nas flags Dirty — chame <see cref="WorldSave.MarkSaved"/> depois que a gravação em disco der certo.
+    /// </summary>
     public static void Write(Stream stream, WorldSave save, Registry registry)
     {
+        ValidateForWrite(save, registry);
         using var payload = new MemoryStream();
         using (var w = new BinaryWriter(payload, Encoding.UTF8, leaveOpen: true))
             WritePayload(w, save, registry);
+        if (payload.Length > MaxPayloadBytes)
+            throw Fail($"mundo grande demais para salvar ({payload.Length} bytes, máximo {MaxPayloadBytes})");
         var bytes = payload.GetBuffer().AsSpan(0, (int)payload.Length);
 
         stream.Write(Magic);
@@ -49,9 +56,55 @@ public static class WorldFile
         }
         using (var brotli = new BrotliStream(stream, CompressionLevel.Fastest, leaveOpen: true))
             brotli.Write(bytes);
+    }
 
-        foreach (var chunk in save.Tiles.Chunks)
-            chunk.Dirty = false;
+    /// <summary>As mesmas regras de <see cref="Read"/>, aplicadas ao estado em memória.</summary>
+    private static void ValidateForWrite(WorldSave save, Registry registry)
+    {
+        var tiles = save.Tiles;
+        if (tiles.Width > MaxWidth || tiles.Height > MaxHeight)
+            throw Fail($"dimensões {tiles.Width}×{tiles.Height} acima do máximo {MaxWidth}×{MaxHeight}");
+        if (!float.IsFinite(save.Info.SpawnFeet.X) || !float.IsFinite(save.Info.SpawnFeet.Y))
+            throw Fail("ponto de spawn inválido");
+        if (save.Tick < 0)
+            throw Fail("tick negativo");
+
+        if (save.DroppedItems.Count > MaxItems)
+            throw Fail($"itens caídos demais ({save.DroppedItems.Count}, máximo {MaxItems})");
+        foreach (var item in save.DroppedItems)
+        {
+            if (!registry.TryGetItemId(item.Item, out var itemId))
+                throw Fail($"item caído '{item.Item}' não existe nos dados do jogo");
+            int max = registry.Item(itemId).MaxStack;
+            if (item.Count < 1 || item.Count > max)
+                throw Fail($"item caído '{item.Item}' com quantidade {item.Count} fora de 1..{max}");
+            if (item.AgeTicks < 0 || item.PickupDelayTicks < 0)
+                throw Fail($"item caído '{item.Item}' com contador de ticks negativo");
+            if (!float.IsFinite(item.Position.X) || !float.IsFinite(item.Position.Y))
+                throw Fail($"item caído '{item.Item}' com posição inválida");
+        }
+
+        if (save.PlayerPositions.Count > MaxPlayers)
+            throw Fail($"jogadores demais ({save.PlayerPositions.Count}, máximo {MaxPlayers})");
+        foreach (var (name, position) in save.PlayerPositions)
+        {
+            if (!IsNormalizedName(name))
+                throw Fail($"nome de jogador '{name}' inválido");
+            if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
+                throw Fail($"posição do jogador '{name}' inválida");
+        }
+    }
+
+    private static bool IsNormalizedName(string name)
+    {
+        try
+        {
+            return PlayerSave.ValidateName(name) == name;
+        }
+        catch (DataException)
+        {
+            return false;
+        }
     }
 
     private static void WritePayload(BinaryWriter w, WorldSave save, Registry registry)
@@ -246,7 +299,16 @@ public static class WorldFile
         var positions = new Dictionary<string, Vector2>();
         for (int i = 0; i < playerCount; i++)
         {
-            string name = r.ReadString();
+            string rawName = r.ReadString();
+            string name;
+            try
+            {
+                name = PlayerSave.ValidateName(rawName);
+            }
+            catch (DataException ex)
+            {
+                throw Corrupt($"nome de jogador '{rawName}' inválido ({ex.Message})", ex);
+            }
             var position = new Vector2(r.ReadSingle(), r.ReadSingle());
             if (!float.IsFinite(position.X) || !float.IsFinite(position.Y))
                 throw Corrupt($"posição do jogador '{name}' inválida");

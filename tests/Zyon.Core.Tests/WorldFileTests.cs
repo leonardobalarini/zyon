@@ -50,7 +50,7 @@ public class WorldFileTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Write_ClearsDirty_AndLoadedWorldIsClean()
+    public void Write_KeepsDirty_MarkSavedClears_AndLoadedWorldIsClean()
     {
         var r = TestData.Registry();
         var save = Sample(r);
@@ -58,6 +58,8 @@ public class WorldFileTests(ITestOutputHelper output)
 
         var bytes = Write(save, r);
 
+        Assert.Contains(save.Tiles.Chunks, c => c.Dirty);
+        save.MarkSaved();
         Assert.All(save.Tiles.Chunks, c => Assert.False(c.Dirty));
         Assert.All(Read(bytes, r).Tiles.Chunks, c => Assert.False(c.Dirty));
     }
@@ -408,14 +410,34 @@ public class WorldFileTests(ITestOutputHelper output)
         Assert.Contains("paleta", ex.Message);
     }
 
+    /// <summary>Payload de um mundo vazio com a seção de itens e jogadores (as duas contagens finais) reescrita.</summary>
+    private static byte[] WithTail(Registry r, Action<BinaryWriter> writeItemsAndPlayers)
+    {
+        var payload = Unpack(Write(EmptySmall(r), r));
+        using var ms = new MemoryStream();
+        ms.Write(payload.AsSpan(0, payload.Length - 8));
+        using (var w = new BinaryWriter(ms, Encoding.UTF8, leaveOpen: true))
+            writeItemsAndPlayers(w);
+        return Pack(ms.ToArray());
+    }
+
+    private static Action<BinaryWriter> OnePlayer(string name, float x, float y) => w =>
+    {
+        w.Write(0);
+        w.Write(1);
+        w.Write(name);
+        w.Write(x);
+        w.Write(y);
+    };
+
     [Fact]
     public void NonFiniteSpawn_Throws()
     {
         var r = TestData.Registry();
-        var save = new WorldSave(Info with { SpawnFeet = new Vector2(float.NaN, 1f) }, TestWorlds.Flat(r, 64, 64, 40), 0, [],
-            new Dictionary<string, Vector2>());
+        var payload = Unpack(Write(EmptySmall(r), r));
+        BitConverter.GetBytes(float.NaN).CopyTo(payload, 24);
 
-        var ex = Assert.Throws<DataException>(() => Read(Write(save, r), r));
+        var ex = Assert.Throws<DataException>(() => Read(Pack(payload), r));
         Assert.Contains("spawn", ex.Message);
     }
 
@@ -423,11 +445,83 @@ public class WorldFileTests(ITestOutputHelper output)
     public void NonFinitePlayerPosition_Throws()
     {
         var r = TestData.Registry();
-        var save = new WorldSave(Info, TestWorlds.Flat(r, 64, 64, 40), 0, [],
-            new Dictionary<string, Vector2> { ["Leo"] = new Vector2(1f, float.PositiveInfinity) });
 
-        var ex = Assert.Throws<DataException>(() => Read(Write(save, r), r));
+        var ex = Assert.Throws<DataException>(() => Read(WithTail(r, OnePlayer("Leo", 1f, float.PositiveInfinity)), r));
         Assert.Contains("Leo", ex.Message);
+    }
+
+    [Fact]
+    public void InvalidPlayerName_IsCorruption()
+    {
+        var r = TestData.Registry();
+
+        var ex = Assert.Throws<DataException>(() => Read(WithTail(r, OnePlayer("a/b", 1f, 1f)), r));
+        Assert.Contains("corrompido", ex.Message);
+    }
+
+    [Fact]
+    public void PlayerNames_AreNormalizedOnRead()
+    {
+        var r = TestData.Registry();
+
+        var loaded = Read(WithTail(r, OnePlayer(" Le\u0301o ", 1f, 2f)), r);
+
+        Assert.Equal(new Vector2(1f, 2f), loaded.PlayerPositions["L\u00E9o"]);
+    }
+
+    private static byte[] WriteOrThrow(WorldSave save, Registry r, out long written)
+    {
+        using var ms = new MemoryStream();
+        try
+        {
+            WorldFile.Write(ms, save, r);
+            return ms.ToArray();
+        }
+        finally
+        {
+            written = ms.Length;
+        }
+    }
+
+    public static TheoryData<string> InvalidSaves =>
+        ["spawn NaN", "posicao NaN", "item NaN", "largura", "nome", "item inexistente", "quantidade"];
+
+    [Theory]
+    [MemberData(nameof(InvalidSaves))]
+    public void Write_InvalidSave_ThrowsAndWritesNothing(string kind)
+    {
+        var r = TestData.Registry();
+        var tiles = TestWorlds.Flat(r, 64, 64, 40);
+        var none = new Dictionary<string, Vector2>();
+        var save = kind switch
+        {
+            "spawn NaN" => new WorldSave(Info with { SpawnFeet = new Vector2(float.NaN, 1f) }, tiles, 0, [], none),
+            "posicao NaN" => new WorldSave(Info, tiles, 0, [], new Dictionary<string, Vector2> { ["Leo"] = new(float.NaN, 1f) }),
+            "item NaN" => new WorldSave(Info, tiles, 0, [new SavedDroppedItem("dirt", 1, new Vector2(1f, float.NaN), 0, 0)], none),
+            "largura" => new WorldSave(Info, new TileWorld(WorldFile.MaxWidth + 1, 32), 0, [], none),
+            "nome" => new WorldSave(Info, tiles, 0, [], new Dictionary<string, Vector2> { ["a/b"] = new(1f, 1f) }),
+            "item inexistente" => new WorldSave(Info, tiles, 0, [new SavedDroppedItem("mithril", 1, new Vector2(1f, 1f), 0, 0)], none),
+            _ => new WorldSave(Info, tiles, 0, [new SavedDroppedItem("dirt", 0, new Vector2(1f, 1f), 0, 0)], none),
+        };
+
+        long written = -1;
+        var ex = Assert.Throws<DataException>(() => WriteOrThrow(save, r, out written));
+        Assert.Contains(".zworld", ex.Message);
+        Assert.Equal(0, written);
+    }
+
+    [Fact]
+    public void Write_TooManyItems_ThrowsAndWritesNothing()
+    {
+        var r = TestData.Registry();
+        var item = new SavedDroppedItem("dirt", 1, new Vector2(1f, 1f), 0, 0);
+        var save = new WorldSave(Info, TestWorlds.Flat(r, 64, 64, 40), 0,
+            Enumerable.Repeat(item, WorldFile.MaxItems + 1).ToList(), new Dictionary<string, Vector2>());
+
+        long written = -1;
+        var ex = Assert.Throws<DataException>(() => WriteOrThrow(save, r, out written));
+        Assert.Contains("itens", ex.Message);
+        Assert.Equal(0, written);
     }
     [Fact]
     public void ImplausibleVersion_IsCorruption()
@@ -507,7 +601,17 @@ public class WorldFileTests(ITestOutputHelper output)
     public void InvalidDroppedItem_IsCorruption(int count, int age, int pickupDelay)
     {
         var r = TestData.Registry();
-        var bytes = Write(WithItem(r, new SavedDroppedItem("dirt", count, new Vector2(3f, 3f), age, pickupDelay)), r);
+        var bytes = WithTail(r, w =>
+        {
+            w.Write(1);
+            w.Write("dirt");
+            w.Write(count);
+            w.Write(3f);
+            w.Write(3f);
+            w.Write(age);
+            w.Write(pickupDelay);
+            w.Write(0);
+        });
 
         var ex = Assert.Throws<DataException>(() => Read(bytes, r));
         Assert.Contains("dirt", ex.Message);

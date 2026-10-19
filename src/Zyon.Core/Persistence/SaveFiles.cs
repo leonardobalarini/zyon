@@ -52,7 +52,11 @@ public static class SaveFiles
     private const int MaxAttempts = 3;
     private const int RetryDelayMs = 100;
 
-    /// <summary>Grava em "arquivo.tmp" e só então troca: o arquivo anterior vira "arquivo.bak". Uma falha no meio nunca corrompe o save atual.</summary>
+    /// <summary>
+    /// Grava em "arquivo.tmp" e só então troca: o arquivo anterior vira "arquivo.bak". Uma falha no meio nunca corrompe
+    /// o save atual. Gravações no mesmo caminho devem ser serializadas (uma única fila): duas ao mesmo tempo disputam o
+    /// .tmp. Problemas de disco lançam IOException/UnauthorizedAccessException; exceções de <paramref name="write"/> sobem.
+    /// </summary>
     public static void WriteAtomic(string path, Action<Stream> write)
     {
         string? directory = Path.GetDirectoryName(Path.GetFullPath(path));

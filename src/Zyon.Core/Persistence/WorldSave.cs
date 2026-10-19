@@ -39,6 +39,7 @@ public sealed class WorldSave(
     /// Captura o estado atual. Os tiles não são copiados: serialize (WorldFile.Write) de forma síncrona na thread da
     /// simulação, entre dois Steps; só os bytes resultantes podem ser gravados em disco em segundo plano.
     /// <paramref name="previousPositions"/> preserva as posições de personagens que não estão na sessão atual.
+    /// Os nomes são normalizados por PlayerSave.ValidateName (nome inválido lança DataException).
     /// </summary>
     public static WorldSave Capture(Simulation sim, WorldInfo info, IReadOnlyDictionary<string, int> playerIdsByName,
         IReadOnlyDictionary<string, Vector2>? previousPositions = null)
@@ -46,18 +47,29 @@ public sealed class WorldSave(
         var items = sim.SnapshotDroppedItems()
             .Select(d => new SavedDroppedItem(sim.Registry.Item(d.Stack.ItemId).Name, d.Stack.Count, d.Position, d.AgeTicks, d.PickupDelayTicks))
             .ToList();
-        var positions = previousPositions is null
-            ? new Dictionary<string, Vector2>()
-            : new Dictionary<string, Vector2>(previousPositions);
+        var positions = new Dictionary<string, Vector2>();
+        if (previousPositions is not null)
+            foreach (var (name, position) in previousPositions)
+                positions[PlayerSave.ValidateName(name)] = position;
         foreach (var (name, id) in playerIdsByName)
             if (sim.TryGetEntityView(id, out var view))
-                positions[name] = view.Position;
+                positions[PlayerSave.ValidateName(name)] = view.Position;
         return new WorldSave(info, sim.Tiles, sim.Tick, items, positions);
     }
 
-    /// <summary>Centro do jogador ao entrar: a posição salva neste mundo, ou o ponto de spawn.</summary>
+    /// <summary>
+    /// Marca os chunks como salvos (Dirty = false). Chame após a gravação em disco dar certo — nunca antes, para que uma
+    /// falha de disco não faça o jogo achar que não há nada pendente.
+    /// </summary>
+    public void MarkSaved()
+    {
+        foreach (var chunk in Tiles.Chunks)
+            chunk.Dirty = false;
+    }
+
+    /// <summary>Centro do jogador ao entrar: a posição salva neste mundo, ou o ponto de spawn. O nome é normalizado.</summary>
     public Vector2 PlayerPosition(string playerName, PhysicsConfig physics) =>
-        PlayerPositions.TryGetValue(playerName, out var saved)
+        PlayerPositions.TryGetValue(PlayerSave.ValidateName(playerName), out var saved)
             ? saved
             : Info.SpawnFeet - new Vector2(0f, physics.PlayerHeight / 2);
 
