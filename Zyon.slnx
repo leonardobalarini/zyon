@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Zyon.Client/Zyon.Client.csproj" />
     <Project Path="src/Zyon.Core/Zyon.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Zyon.Client.Tests/Zyon.Client.Tests.csproj" />
     <Project Path="tests/Zyon.Core.Tests/Zyon.Core.Tests.csproj" />
   </Folder>
 </Solution>
