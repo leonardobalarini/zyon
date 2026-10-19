@@ -92,4 +92,33 @@ public class WorldGenPassTests
         for (int x = 0; x + 1 < 4200; x++)
             Assert.True(Math.Abs(ctx.Surface[x + 1] - ctx.Surface[x]) <= 3, $"degrau na coluna {x}");
     }
+
+    [Fact]
+    public void Caves_CarveAirUnderground()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass());
+        var cfg = ctx.Config;
+        int floor = Height - cfg.BottomSolidRows;
+
+        int carved = 0;
+        for (int x = 0; x < Width; x++)
+            for (int y = ctx.Surface[x] + 1; y < floor; y++)
+                if (ctx.World.GetBlock(x, y) == 0) carved++;
+
+        Assert.True(carved > 200, $"só {carved} tiles escavados");
+    }
+
+    [Fact]
+    public void Caves_KeepSurfaceTileAndBottomRowsSolid()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass());
+        int floor = Height - ctx.Config.BottomSolidRows;
+
+        for (int x = 0; x < Width; x++)
+        {
+            Assert.NotEqual(0, ctx.World.GetBlock(x, ctx.Surface[x]));
+            for (int y = floor; y < Height; y++)
+                Assert.NotEqual(0, ctx.World.GetBlock(x, y));
+        }
+    }
 }
