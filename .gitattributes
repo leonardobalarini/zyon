@@ -1,1 +1,2 @@
 src/Zyon.Core/WorldGen/ThirdParty/FastNoiseLite.cs -text
+*.sh text eol=lf

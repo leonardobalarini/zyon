@@ -4,6 +4,7 @@ using Zyon.Core.Data;
 using Zyon.Core.Persistence;
 using Zyon.Core.Sim;
 using Zyon.Core.WorldGen;
+using Zyon.Game.Rendering;
 
 namespace Zyon.Game;
 
@@ -13,6 +14,9 @@ public partial class GameRoot : Node2D
     private IGameSession? session;
     private LaunchOptions options = null!;
     private int frame;
+    private WorldRenderer worldRenderer = null!;
+    private GameCamera camera = null!;
+    private int playerId;
 
     public override void _Ready()
     {
@@ -23,7 +27,10 @@ public partial class GameRoot : Node2D
         }
         catch (System.Exception ex) when (options.SmokeTest)
         {
+            // Sem isto uma falha na montagem deixaria o jogo aberto sem nunca chamar Quit.
             GD.PrintErr($"SMOKE FAIL: {ex}");
+            session?.Dispose();
+            session = null;
             GetTree().Quit(1);
         }
     }
@@ -39,9 +46,22 @@ public partial class GameRoot : Node2D
         var world = WorldSave.FromGenerated(generated);
         var sim = world.CreateSimulation(registry, new GodotLog());
         int player = PlayerSave.New("Dev", registry).SpawnInto(sim, world.PlayerPosition("Dev", registry.Physics));
+        playerId = player;
         session = new LocalSession(sim, player);
         RenderingServer.SetDefaultClearColor(visuals.Sky.ToGodot());
         GD.Print($"Zyon: mundo {options.Width}×{options.Height}, seed {seed}");
+
+        worldRenderer = new WorldRenderer();
+        AddChild(worldRenderer);
+        worldRenderer.Init(session.World, visuals);
+        camera = new GameCamera();
+        AddChild(camera);
+        camera.Init(options.Width, options.Height);
+        if (session.World.TryGetEntityView(playerId, out var start))
+        {
+            camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
+            camera.ResetSmoothing();
+        }
     }
 
     public override void _Process(double delta)
@@ -50,10 +70,14 @@ public partial class GameRoot : Node2D
         try
         {
             session.Update(delta);
-            session.DrainEvents();
+            foreach (var gameEvent in session.DrainEvents())
+                worldRenderer.OnEvent(gameEvent);
+            if (session.World.TryGetEntityView(playerId, out var me))
+                camera.Follow(RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot());
+            worldRenderer.UpdateVisible(camera.VisiblePixels());
             if (options.SmokeTest && ++frame >= options.SmokeFrames)
             {
-                GD.Print($"SMOKE OK: {frame} frames, tick {session.World.Tick}");
+                GD.Print($"SMOKE OK: {frame} frames, tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}");
                 GetTree().Quit(0);
             }
         }
