@@ -67,11 +67,20 @@ public sealed class Simulation : IWorldView, IDisposable
     public ushort GetBlock(int x, int y) => Tiles.GetBlock(x, y);
     public ushort GetWall(int x, int y) => Tiles.GetWall(x, y);
 
+    /// <summary>Cria um jogador novo com os itens iniciais do Registry.</summary>
     public int SpawnPlayer(Vector2 position)
     {
         var inventory = new Inventory(Registry);
         foreach (var stack in Registry.StarterItems)
             inventory.Add(stack.ItemId, stack.Count);
+        return SpawnPlayer(position, inventory, selectedSlot: 0);
+    }
+
+    /// <summary>Cria um jogador com um inventário já montado (ex.: vindo de um save). Não adiciona itens iniciais.</summary>
+    internal int SpawnPlayer(Vector2 position, Inventory inventory, int selectedSlot)
+    {
+        if ((uint)selectedSlot >= Inventory.HotbarSize)
+            throw new ArgumentOutOfRangeException(nameof(selectedSlot), $"Slot selecionado {selectedSlot} fora da hotbar");
 
         var playerSize = new Vector2(Config.PlayerWidth, Config.PlayerHeight);
         int id = nextNetworkId++;
@@ -81,11 +90,28 @@ public sealed class Simulation : IWorldView, IDisposable
             new PreviousPosition(position),
             new Velocity(Vector2.Zero),
             new Body { Size = playerSize, CanStepUp = true, OnGround = Collider.IsGrounded(position, playerSize) },
-            new PlayerState { Facing = 1 },
+            new PlayerState { Facing = 1, SelectedSlot = selectedSlot },
             new InventoryRef(inventory));
         byNetworkId[id] = entity;
         Emit(new EntitySpawned(id, EntityKind.Player, position));
         return id;
+    }
+
+    /// <summary>Restaura o relógio ao carregar um mundo. Use antes do primeiro Step.</summary>
+    internal void RestoreTick(long tick)
+    {
+        if (tick < 0) throw new ArgumentOutOfRangeException(nameof(tick));
+        Tick = tick;
+    }
+
+    /// <summary>Itens caídos com o estado necessário para salvar, na ordem em que foram criados.</summary>
+    internal List<(ItemStack Stack, Vector2 Position, int AgeTicks)> SnapshotDroppedItems()
+    {
+        var found = new List<(int Id, ItemStack Stack, Vector2 Position, int AgeTicks)>();
+        Ecs.Query(in Queries.Items, (ref NetworkId id, ref Position pos, ref DroppedItem item) =>
+            found.Add((id.Value, item.Stack, pos.Value, item.AgeTicks)));
+        found.Sort((a, b) => a.Id.CompareTo(b.Id));
+        return found.Select(f => (f.Stack, f.Position, f.AgeTicks)).ToList();
     }
 
     public void SetInput(int playerId, PlayerInput input)
@@ -146,7 +172,7 @@ public sealed class Simulation : IWorldView, IDisposable
         World.Destroy(Ecs);
     }
 
-    internal int SpawnDroppedItem(ItemStack stack, Vector2 position, Vector2 velocity, int pickupDelayTicks)
+    internal int SpawnDroppedItem(ItemStack stack, Vector2 position, Vector2 velocity, int pickupDelayTicks, int ageTicks = 0)
     {
         int id = nextNetworkId++;
         float size = Config.ItemSize;
@@ -156,7 +182,7 @@ public sealed class Simulation : IWorldView, IDisposable
             new PreviousPosition(position),
             new Velocity(velocity),
             new Body { Size = new Vector2(size, size) },
-            new DroppedItem { Stack = stack, PickupDelayTicks = pickupDelayTicks });
+            new DroppedItem { Stack = stack, PickupDelayTicks = pickupDelayTicks, AgeTicks = ageTicks });
         byNetworkId[id] = entity;
         Emit(new EntitySpawned(id, EntityKind.DroppedItem, position));
         return id;
