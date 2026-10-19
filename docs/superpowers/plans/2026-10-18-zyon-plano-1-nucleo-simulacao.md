@@ -6,7 +6,7 @@
 
 **Architecture:** Tiles em arrays densos por chunk (`TileWorld`); entidades (jogador, itens caídos) no ECS Arch; uma `Simulation` com tick fixo de 60 Hz processa inputs e comandos, roda sistemas em ordem fixa e emite eventos; `LocalSession` implementa `IGameSession` para a camada de apresentação futura. Definições de conteúdo e constantes de física vêm de JSON em `data/`.
 
-**Tech Stack:** .NET 8 (`net8.0`, compilado com o SDK 10 instalado), C# latest, Arch 2.1.0 (ECS), System.Text.Json, xUnit 2.9.
+**Tech Stack:** .NET 10 (`net10.0`), C# latest, Arch 2.1.0 (ECS), System.Text.Json, xUnit 2.9.
 
 **Spec:** `docs/superpowers/specs/2026-10-15-zyon-fatia-vertical-design.md`
 
@@ -30,7 +30,7 @@
 
 ```
 .gitignore
-Directory.Build.props                 # net8.0, nullable, warnings como erro
+Directory.Build.props                 # net10.0, nullable, warnings como erro
 Zyon.slnx
 CLAUDE.md                             # regras do projeto para a IA
 data/
@@ -103,7 +103,7 @@ TestResults/
 ```xml
 <Project>
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>

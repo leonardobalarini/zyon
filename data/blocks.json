@@ -1,0 +1,7 @@
+[
+  { "id": "dirt",       "hardness": 1.0, "solid": true, "drops": "dirt" },
+  { "id": "stone",      "hardness": 2.0, "solid": true, "drops": "stone" },
+  { "id": "deep_stone", "hardness": 3.5, "solid": true, "drops": "deep_stone" },
+  { "id": "ore_a",      "hardness": 2.5, "solid": true, "drops": "ore_a" },
+  { "id": "ore_b",      "hardness": 4.0, "solid": true, "drops": "ore_b" }
+]
