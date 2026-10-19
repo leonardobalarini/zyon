@@ -1,0 +1,33 @@
+{
+  "materials": {
+    "dirt": "dirt",
+    "stone": "stone",
+    "deepStone": "deep_stone",
+    "dirtWall": "dirt_wall",
+    "stoneWall": "stone_wall"
+  },
+  "surfaceMin": 0.25,
+  "surfaceMax": 0.35,
+  "terrainFrequency": 0.004,
+  "terrainOctaves": 4,
+  "dirtDepth": 12,
+  "dirtDepthVariation": 5,
+  "deepLayerStart": 0.7,
+  "deepLayerVariation": 8,
+  "layerNoiseFrequency": 0.03,
+  "caveFrequency": 0.025,
+  "caveThreshold": 0.6,
+  "caveMinDepth": 15,
+  "bottomSolidRows": 3,
+  "wormsPerThousandColumns": 4,
+  "wormLengthMin": 80,
+  "wormLengthMax": 300,
+  "wormRadiusMin": 1.2,
+  "wormRadiusMax": 2.5,
+  "ores": [
+    { "block": "ore_a", "minDepth": 0.35, "maxDepth": 0.75, "veinsPerMillionTiles": 60, "veinSizeMin": 6, "veinSizeMax": 14 },
+    { "block": "ore_b", "minDepth": 0.65, "maxDepth": 1.0, "veinsPerMillionTiles": 30, "veinSizeMin": 4, "veinSizeMax": 10 }
+  ],
+  "spawnSearchRadius": 300,
+  "spawnFlatWidth": 4
+}
