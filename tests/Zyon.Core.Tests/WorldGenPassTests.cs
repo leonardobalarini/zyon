@@ -164,4 +164,41 @@ public class WorldGenPassTests
 
         Assert.InRange(fraction, 0.08, 0.20);
     }
+
+    [Fact]
+    public void Ores_AppearOnlyWithinTheirDepthBand()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass());
+
+        foreach (var (block, ore) in ctx.Materials.Ores)
+        {
+            int yMin = (int)(ore.MinDepth * Height);
+            int yMax = Math.Max(yMin + 1, (int)(ore.MaxDepth * Height));
+            int count = 0;
+            for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+            {
+                if (ctx.World.GetBlock(x, y) != block) continue;
+                count++;
+                Assert.InRange(y, yMin, yMax - 1);
+            }
+            Assert.True(count > 0, $"minério {ore.Block} não apareceu");
+        }
+    }
+
+    [Fact]
+    public void Ores_NeverReplaceDirtOrAir()
+    {
+        var before = Run(new TerrainPass(), new LayersPass(), new CavesPass());
+        var after = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass());
+        var m = after.Materials;
+
+        for (int y = 0; y < Height; y++)
+        for (int x = 0; x < Width; x++)
+        {
+            ushort old = before.World.GetBlock(x, y);
+            if (old == 0 || old == m.Dirt)
+                Assert.Equal(old, after.World.GetBlock(x, y));
+        }
+    }
 }
