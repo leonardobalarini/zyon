@@ -35,13 +35,20 @@ public sealed class WorldSave(
     public static WorldSave FromGenerated(GeneratedWorld world) =>
         new(WorldInfo.From(world), world.Tiles, 0, [], new Dictionary<string, Vector2>());
 
-    /// <summary>Captura o estado atual. Os tiles não são copiados: grave antes do próximo Step.</summary>
-    public static WorldSave Capture(Simulation sim, WorldInfo info, IReadOnlyDictionary<string, int> playerIdsByName)
+    /// <summary>
+    /// Captura o estado atual. Os tiles não são copiados: serialize (WorldFile.Write) de forma síncrona na thread da
+    /// simulação, entre dois Steps; só os bytes resultantes podem ser gravados em disco em segundo plano.
+    /// <paramref name="previousPositions"/> preserva as posições de personagens que não estão na sessão atual.
+    /// </summary>
+    public static WorldSave Capture(Simulation sim, WorldInfo info, IReadOnlyDictionary<string, int> playerIdsByName,
+        IReadOnlyDictionary<string, Vector2>? previousPositions = null)
     {
         var items = sim.SnapshotDroppedItems()
             .Select(d => new SavedDroppedItem(sim.Registry.Item(d.Stack.ItemId).Name, d.Stack.Count, d.Position, d.AgeTicks))
             .ToList();
-        var positions = new Dictionary<string, Vector2>();
+        var positions = previousPositions is null
+            ? new Dictionary<string, Vector2>()
+            : new Dictionary<string, Vector2>(previousPositions);
         foreach (var (name, id) in playerIdsByName)
             if (sim.TryGetEntityView(id, out var view))
                 positions[name] = view.Position;

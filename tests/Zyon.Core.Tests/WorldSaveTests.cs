@@ -80,4 +80,16 @@ public class WorldSaveTests
         Assert.Equal(new WorldInfo(5, gen.GeneratorVersion, gen.ConfigFingerprint, gen.SpawnFeet), save.Info);
         Assert.Empty(save.DroppedItems);
     }
+
+    [Fact]
+    public void Capture_KeepsPreviousPositionsOfAbsentPlayers()
+    {
+        using var h = new SimHarness();
+
+        var save = WorldSave.Capture(h.Sim, Info, new Dictionary<string, int> { ["Leo"] = h.PlayerId },
+            new Dictionary<string, Vector2> { ["Ana"] = new Vector2(5f, 6f) });
+
+        Assert.Equal(new Vector2(5f, 6f), save.PlayerPositions["Ana"]);
+        Assert.Equal(h.PlayerPosition, save.PlayerPositions["Leo"]);
+    }
 }
