@@ -242,4 +242,46 @@ public class WorldGenPassTests
         }
         Assert.True(count > 0);
     }
+
+    private static void AssertValidSpawn(WorldGenContext ctx)
+    {
+        Assert.True(ctx.SpawnFound);
+        int feetY = (int)ctx.SpawnFeet.Y;
+        Assert.Equal(ctx.SpawnFeet.Y, feetY);   // pés exatamente no topo de um tile
+        int flat = ctx.Config.SpawnFlatWidth;
+        int x0 = (int)MathF.Floor(ctx.SpawnFeet.X - flat / 2f);
+        for (int x = x0; x < x0 + flat; x++)
+        {
+            Assert.NotEqual(0, ctx.World.GetBlock(x, feetY));
+            for (int y = feetY - SpawnPass.ClearanceRows; y < feetY; y++)
+                Assert.Equal(0, ctx.World.GetBlock(x, y));
+        }
+    }
+
+    [Fact]
+    public void Spawn_OnNaturalTerrain_IsFlatSolidAndClear()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass(), new WallsPass(), new SpawnPass());
+
+        AssertValidSpawn(ctx);
+        Assert.InRange(ctx.SpawnFeet.X, Width / 2f - ctx.Config.SpawnSearchRadius - 4, Width / 2f + ctx.Config.SpawnSearchRadius + 4);
+    }
+
+    [Fact]
+    public void Spawn_WithoutFlatGround_FlattensAtCenter()
+    {
+        var ctx = Context();
+        ushort dirt = ctx.Materials.Dirt;
+        for (int x = 0; x < Width; x++)
+        {
+            ctx.Surface[x] = 100 + (x % 2);   // zigue-zague: nunca 2 colunas iguais seguidas
+            for (int y = ctx.Surface[x]; y < Height; y++)
+                ctx.World.SetBlock(x, y, dirt);
+        }
+
+        WorldGenerator.RunPass(ctx, new SpawnPass());
+
+        AssertValidSpawn(ctx);
+        Assert.Equal(Width / 2 + ctx.Config.SpawnFlatWidth / 2f, ctx.SpawnFeet.X);
+    }
 }

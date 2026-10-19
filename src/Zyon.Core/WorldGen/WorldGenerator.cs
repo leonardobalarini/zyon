@@ -1,3 +1,4 @@
+using Zyon.Core.WorldGen.Passes;
 using System.Numerics;
 using Zyon.Core.Data;
 using Zyon.Core.Sim;
@@ -21,6 +22,22 @@ public sealed class WorldGenerator
     private readonly Registry registry;
     private readonly WorldGenConfig config;
     private readonly WorldGenMaterials materials;
+
+    /// <summary>Gerador com os passes padrão do spec (seção 6).</summary>
+    public WorldGenerator(Registry registry, WorldGenConfig config)
+        : this(registry, config, DefaultPasses())
+    {
+    }
+
+    public static IReadOnlyList<IWorldGenPass> DefaultPasses() =>
+    [
+        new TerrainPass(),
+        new LayersPass(),
+        new CavesPass(),
+        new OrePass(),
+        new WallsPass(),
+        new SpawnPass(),
+    ];
 
     public WorldGenerator(Registry registry, WorldGenConfig config, IReadOnlyList<IWorldGenPass> passes)
     {
