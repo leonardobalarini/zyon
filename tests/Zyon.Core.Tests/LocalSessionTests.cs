@@ -57,11 +57,26 @@ public class LocalSessionTests
         session.Send(new SelectHotbarSlot(session.LocalPlayerId, 2));
         session.SetInput(new PlayerInput(1f, false, false, 0, 0));
         for (int i = 0; i < 6; i++)
-            session.Update(5.0 / Simulation.TicksPerSecond);
+            session.Update(5.0 / Simulation.TicksPerSecond + 1e-9);
         Assert.Equal(30, session.World.Tick);
 
         Assert.Equal(2, session.World.GetSelectedSlot(session.LocalPlayerId));
         Assert.True(h.PlayerPosition.X > 20.5f);
         Assert.Contains(new HotbarSelectionChanged(session.LocalPlayerId, 2), session.DrainEvents());
+    }
+
+    [Fact]
+    public void Update_NaNOrNegativeDelta_IsIgnored()
+    {
+        var (session, _) = Create();
+        using var _s = session;
+
+        session.Update(double.NaN);
+        session.Update(-1.0);
+        session.Update(2.0 / Simulation.TicksPerSecond);
+
+        Assert.Equal(2, session.World.Tick);
+        Assert.True(float.IsFinite(session.InterpolationAlpha));
+        Assert.InRange(session.InterpolationAlpha, 0f, 0.99999994f);
     }
 }

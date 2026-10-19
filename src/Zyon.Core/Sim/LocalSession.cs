@@ -1,6 +1,10 @@
 namespace Zyon.Core.Sim;
 
-/// <summary>Roda a Simulation no mesmo processo, com acumulador de tempo para tick fixo.</summary>
+/// <summary>
+/// Roda a Simulation no mesmo processo, com acumulador de tempo para tick fixo.
+/// Assume a posse da Simulation (Dispose a descarta). Quadros mais lentos que 1/12 s rodam em câmera lenta,
+/// pois MaxTicksPerUpdate limita os ticks por chamada e o excedente é descartado.
+/// </summary>
 public sealed class LocalSession(Simulation simulation, int localPlayerId) : IGameSession
 {
     public const int MaxTicksPerUpdate = 5;
@@ -18,6 +22,9 @@ public sealed class LocalSession(Simulation simulation, int localPlayerId) : IGa
 
     public void Update(double deltaSeconds)
     {
+        if (!(deltaSeconds > 0))
+            return;
+
         accumulator += deltaSeconds;
         int ticks = 0;
         while (accumulator >= TickSeconds && ticks < MaxTicksPerUpdate)
@@ -28,7 +35,7 @@ public sealed class LocalSession(Simulation simulation, int localPlayerId) : IGa
         }
         if (accumulator >= TickSeconds)
             accumulator = 0;
-        InterpolationAlpha = (float)(accumulator / TickSeconds);
+        InterpolationAlpha = Math.Clamp((float)(accumulator / TickSeconds), 0f, 0.99999994f);
     }
 
     public IReadOnlyList<IGameEvent> DrainEvents() => simulation.DrainEvents();
