@@ -201,4 +201,21 @@ public class WorldGenPassTests
                 Assert.Equal(old, after.World.GetBlock(x, y));
         }
     }
+
+    [Fact]
+    public void Walls_FillBelowSurface_IncludingCaves_AndNothingAbove()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new WallsPass());
+        var m = ctx.Materials;
+
+        for (int x = 0; x < Width; x++)
+        for (int y = 0; y < Height; y++)
+        {
+            ushort wall = ctx.World.GetWall(x, y);
+            if (y <= ctx.Surface[x])
+                Assert.Equal(0, wall);
+            else
+                Assert.Equal(y < ctx.DirtBottom[x] ? m.DirtWall : m.StoneWall, wall);
+        }
+    }
 }
