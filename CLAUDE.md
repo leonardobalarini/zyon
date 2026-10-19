@@ -12,6 +12,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - `tests/Zyon.Core.Tests` — xUnit.
 - `data/` — definições JSON (blocos, paredes, itens, física, jogador). Conteúdo novo entra aqui, nunca hardcoded.
 - `src/Zyon.Core/WorldGen` — geração de mundo: `WorldGenerator` roda passes (`terrain`, `layers`, `caves`, `ores`, `walls`, `spawn`); parâmetros em `data/worldgen.json`; FastNoiseLite vendorizada em `WorldGen/ThirdParty` (ver `THIRD_PARTY_NOTICES.md`, não editar).
+- `src/Zyon.Core/Persistence` — saves: `WorldSave`/`WorldFile` (`.zworld`, binário: magic + versão sem compressão, resto em Brotli com paleta de nomes e RLE) e `PlayerSave`/`PlayerFile` (`.zplayer`, JSON). `SaveFiles` grava atomicamente (`.tmp` → troca, anterior vira `.bak`) e lê com fallback para o `.bak`.
 
 ## Regras invioláveis
 
@@ -31,6 +32,12 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Nomes de passes semeiam Random e ruído: renomear um passe muda o mundo gerado.
 - Na geração, nunca use `MathF`/`Math` transcendentais (Sin, Cos, Exp, Log, Pow, Atan…): divergem entre plataformas. Use `DeterministicMath` (Floor/Ceiling/Round/Abs/Sqrt/Min/Max/Clamp são seguros).
 - `WorldGenDeterminismTests.GoldenHash_*` fixa o hash de um mundo de referência: se falhar, a saída da geração mudou — se foi intencional, incremente `WorldGenerator.Version` e atualize as constantes.
+- Mudou o que vai num save? Incremente `WorldFile.FormatVersion`/`PlayerFile.FormatVersion` e escreva a migração da versão anterior; saves antigos são migrados, nunca descartados.
+- Saves referenciam blocos/paredes/itens **pelo nome**; um nome que sumiu dos dados faz a carga falhar com mensagem clara (nunca carregar com ids errados).
+- Carga com erro nunca sobrescreve arquivos: use `SaveFiles.ReadWithBackup` e mostre a `SaveLoadException` ao jogador.
+- Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano.
+- Ao salvar, passe as posições do save anterior para `WorldSave.Capture(..., previousPositions)` para não perder personagens ausentes.
+- Nomes de personagem passam por `PlayerSave.ValidateName`; o Godot deve montar o caminho do arquivo a partir do nome validado.
 
 ## Comandos
 
