@@ -13,7 +13,7 @@ public sealed class Chunk(int chunkX, int chunkY)
     public ushort[] Blocks { get; } = new ushort[Area];
     public ushort[] Walls { get; } = new ushort[Area];
 
-    /// <summary>Alterado desde a última vez que alguém limpou a flag (render, save, rede).</summary>
+    /// <summary>Pertence somente à persistência (save): alterado desde o último salvamento. Renderização deve usar eventos <c>TileChanged</c>. Quem gera/carrega um mundo deve limpar a flag depois.</summary>
     public bool Dirty { get; set; }
 
     public static int Index(int localX, int localY) => (localY << Shift) + localX;

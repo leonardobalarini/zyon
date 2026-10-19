@@ -21,6 +21,7 @@ public sealed class Simulation : IWorldView, IDisposable
     private readonly Dictionary<int, Entity> byNetworkId = new();
     private readonly List<ISystem> systems;
     private int nextNetworkId = 1;
+    private bool disposed;
 
     public Simulation(Registry registry, TileWorld tiles, ILog? log = null)
     {
@@ -29,6 +30,12 @@ public sealed class Simulation : IWorldView, IDisposable
         Log = log ?? NullLog.Instance;
         Collider = new TileCollider(tiles, registry);
         Ecs = World.Create();
+        // Ordem importa: comandos rodam antes dos sistemas.
+        // Movement -> Physics -> ToolAction -> ItemPickup -> ItemMerge -> ItemDespawn.
+        // ItemPickupSystem também aplica as forças dos itens (gravidade/atrito/ímã), expulsa
+        // itens de dentro de blocos e incrementa AgeTicks/PickupDelayTicks (o ItemDespawnSystem
+        // depende de AgeTicks). ToolAction precisa vir antes de ItemPickup para que itens sob um
+        // bloco colocado neste tick sejam expulsos no mesmo tick.
         systems =
         [
             new PlayerMovementSystem(),
@@ -41,6 +48,11 @@ public sealed class Simulation : IWorldView, IDisposable
     }
 
     public Registry Registry { get; }
+    /// <summary>
+    /// Mundo de tiles. Escritas diretas não emitem <c>TileChanged</c>: escreva no <c>TileWorld</c>
+    /// diretamente só antes da sessão começar (geração/carregamento); mudanças durante o jogo
+    /// passam pelos sistemas, que emitem os eventos.
+    /// </summary>
     public TileWorld Tiles { get; }
     public ILog Log { get; }
     public long Tick { get; private set; }
@@ -94,6 +106,8 @@ public sealed class Simulation : IWorldView, IDisposable
 
     public IReadOnlyList<IGameEvent> DrainEvents()
     {
+        if (events.Count == 0)
+            return Array.Empty<IGameEvent>();
         var drained = events.ToArray();
         events.Clear();
         return drained;
@@ -124,7 +138,13 @@ public sealed class Simulation : IWorldView, IDisposable
     public int GetSelectedSlot(int playerId) =>
         TryGetEntity(playerId, out var e) && Ecs.Has<PlayerState>(e) ? Ecs.Get<PlayerState>(e).SelectedSlot : -1;
 
-    public void Dispose() => World.Destroy(Ecs);
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+        disposed = true;
+        World.Destroy(Ecs);
+    }
 
     internal int SpawnDroppedItem(ItemStack stack, Vector2 position, Vector2 velocity, int pickupDelayTicks)
     {

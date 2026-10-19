@@ -19,6 +19,17 @@ public class SimulationCommandTests
     }
 
     [Fact]
+    public void Dispose_Twice_DoesNotThrow()
+    {
+        var h = new SimHarness();
+
+        h.Dispose();
+        var ex = Record.Exception(() => h.Dispose());
+
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public void Step_AdvancesTick()
     {
         using var h = new SimHarness();
