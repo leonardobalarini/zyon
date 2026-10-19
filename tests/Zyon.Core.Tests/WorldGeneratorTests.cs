@@ -162,4 +162,25 @@ public class WorldGeneratorTests
 
         Assert.Equal(new Vector2(10.5f, 20f - physics.PlayerHeight / 2), center);
     }
+
+    [Fact]
+    public void Generate_SpawnFlatWidthTooLargeForWorld_Throws()
+    {
+        var cfg = WorldGenConfigLoader.Load("""{"spawnFlatWidth": 40}""");
+        var gen = new WorldGenerator(TestData.Registry(), cfg);
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => gen.Generate(128, 128, 1));
+        Assert.Equal("width", ex.ParamName);
+        Assert.Contains("spawnFlatWidth", ex.Message);
+    }
+
+    [Fact]
+    public void Generate_BottomRowsPlusCaveDepthTooLargeForHeight_Throws()
+    {
+        var cfg = WorldGenConfigLoader.Load("""{"bottomSolidRows": 60}""");
+        var gen = new WorldGenerator(TestData.Registry(), cfg);
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => gen.Generate(128, 128, 1));
+        Assert.Equal("height", ex.ParamName);
+    }
 }

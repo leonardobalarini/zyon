@@ -60,6 +60,12 @@ public sealed class WorldGenerator
     {
         if (width < MinSize) throw new ArgumentOutOfRangeException(nameof(width), $"Largura mínima: {MinSize}");
         if (height < MinSize) throw new ArgumentOutOfRangeException(nameof(height), $"Altura mínima: {MinSize}");
+        if (config.SpawnFlatWidth > width / 4)
+            throw new ArgumentOutOfRangeException(nameof(width),
+                $"Largura {width} é pequena demais para spawnFlatWidth={config.SpawnFlatWidth} (máximo: largura / 4)");
+        if (config.BottomSolidRows + config.CaveMinDepth >= height / 2)
+            throw new ArgumentOutOfRangeException(nameof(height),
+                $"Altura {height} é pequena demais para bottomSolidRows={config.BottomSolidRows} + caveMinDepth={config.CaveMinDepth} (devem somar menos que altura / 2)");
 
         var world = new TileWorld(width, height);
         int current = 0;
