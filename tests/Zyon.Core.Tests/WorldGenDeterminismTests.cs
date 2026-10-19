@@ -39,7 +39,7 @@ public class WorldGenDeterminismTests
     // Se este teste falhar após uma atualização do .NET, da FastNoiseLite ou de uma mudança
     // intencional na geração: incremente WorldGenerator.Version (quando for intencional) e
     // atualize as constantes abaixo com os novos valores.
-    private const ulong GoldenHash = 0x8E1D31FB72C67FA2UL;
+    private const ulong GoldenHash = 0x02CD35E0FC08A1D0UL;
     private static readonly System.Numerics.Vector2 GoldenSpawnFeet = new(257f, 75f);
 
     [Fact]

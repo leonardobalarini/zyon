@@ -41,10 +41,10 @@ internal sealed class CavesPass : IWorldGenPass
             {
                 Carve(ctx, x, y, radius, floor);
                 angle += ((float)rng.NextDouble() - 0.5f) * 0.6f;
-                x += MathF.Cos(angle);
-                y += MathF.Sin(angle) * 0.6f;
+                x += DeterministicMath.Cos(angle);
+                y += DeterministicMath.Sin(angle) * 0.6f;
                 // Ao alcançar a superfície, volta a descer (Y cresce para baixo)
-                if (y <= ctx.Surface[Math.Clamp((int)x, 0, world.Width - 1)] && MathF.Sin(angle) < 0)
+                if (y <= ctx.Surface[Math.Clamp((int)x, 0, world.Width - 1)] && DeterministicMath.Sin(angle) < 0)
                     angle = -angle;
                 if (x < 1 || x >= world.Width - 1 || y >= floor) break;
             }
