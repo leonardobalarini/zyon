@@ -3,7 +3,7 @@ using Zyon.Core.WorldGen;
 
 namespace Zyon.Client;
 
-/// <summary>Argumentos do jogo (depois de "--" na linha de comando do Godot).</summary>
+/// <summary>Argumentos do jogo (depois de "--" na linha de comando do executável do jogo).</summary>
 public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames)
 {
     public static readonly (int Width, int Height) DevSize = (1050, 300);

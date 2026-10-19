@@ -14,7 +14,6 @@ public partial class GameRoot : Node2D
 {
     private IGameSession? session;
     private LaunchOptions options = null!;
-    private int frame;
     private WorldRenderer worldRenderer = null!;
     private GameCamera camera = null!;
     private int playerId;
@@ -22,6 +21,7 @@ public partial class GameRoot : Node2D
     private PlayerController controller = null!;
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
+    private SmokeTest? smoke;
 
     public override void _Ready()
     {
@@ -79,6 +79,7 @@ public partial class GameRoot : Node2D
             camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
             camera.ResetSmoothing();
         }
+        if (options.SmokeTest) smoke = new SmokeTest(session, controller, options.SmokeFrames);
     }
 
     public override void _Process(double delta)
@@ -92,6 +93,7 @@ public partial class GameRoot : Node2D
             {
                 worldRenderer.OnEvent(gameEvent);
                 overlay.OnEvent(gameEvent);
+                smoke?.OnEvent(gameEvent);
             }
             if (session.World.TryGetEntityView(playerId, out var me))
                 camera.Follow(RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot());
@@ -99,10 +101,22 @@ public partial class GameRoot : Node2D
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
-            if (options.SmokeTest && ++frame >= options.SmokeFrames)
+            if (smoke is not null)
             {
-                GD.Print($"SMOKE OK: {frame} frames, tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}");
-                GetTree().Quit(0);
+                smoke.Step();
+                if (smoke.Finished)
+                {
+                    if (smoke.Failure is null)
+                    {
+                        GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}");
+                        GetTree().Quit(0);
+                    }
+                    else
+                    {
+                        GD.PrintErr($"SMOKE FAIL: {smoke.Failure}");
+                        GetTree().Quit(1);
+                    }
+                }
             }
         }
         catch (System.Exception ex) when (options.SmokeTest)

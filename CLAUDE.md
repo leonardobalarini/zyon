@@ -13,6 +13,8 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - `data/` — definições JSON (blocos, paredes, itens, física, jogador). Conteúdo novo entra aqui, nunca hardcoded.
 - `src/Zyon.Core/WorldGen` — geração de mundo: `WorldGenerator` roda passes (`terrain`, `layers`, `caves`, `ores`, `walls`, `spawn`); parâmetros em `data/worldgen.json`; FastNoiseLite vendorizada em `WorldGen/ThirdParty` (ver `THIRD_PARTY_NOTICES.md`, não editar).
 - `src/Zyon.Core/Persistence` — saves: `WorldSave`/`WorldFile` (`.zworld`, binário: magic + versão + tamanho e hash FNV-1a (de versão + tamanho + payload) sem compressão, payload em Brotli com paleta de nomes e RLE; leitura só lança `DataException` (corrompido) ou `SaveIncompatibleException` (íntegro mas inutilizável por esta versão)) e `PlayerSave`/`PlayerFile` (`.zplayer`, JSON). `SaveFiles` grava atomicamente (`.tmp` → troca, anterior vira `.bak`) e lê com fallback para o `.bak` só em corrupção (o principal ruim vai para `.corrupt`; com `FromBackup` avise o jogador). Save incompatível ou arquivo em uso nunca caem para o `.bak`. Principal ausente com `.tmp` legível (crash no meio da troca): o `.tmp` é promovido a principal (`RecoveredFromTemp`); ao gravar sem principal, um `.tmp` existente vira `.tmp.orphan` em vez de ser apagado.
+- `src/Zyon.Client` — lógica de apresentação sem Godot (autotiling, malhas de chunk, visibilidade, chunks sujos, cores e atlas provisórios, opções de lançamento). Testes em `tests/Zyon.Client.Tests`.
+- `src/Zyon.Game` — projeto Godot 4.7 (.NET) fino: converte dados do Client em `ArrayMesh`/`MultiMesh`/nós, lê input e só conversa com `IGameSession`. Cores provisórias em `data/client/visuals.json`. O csproj usa `CopyLocalLockFileAssemblies` (o Godot carrega as DLLs da pasta de saída, inclusive pacotes NuGet como o Arch).
 
 ## Regras invioláveis
 
@@ -38,11 +40,15 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano (gravações no mesmo arquivo em fila única). `Write` valida antes de gravar e não limpa `Dirty`: chame `WorldSave.MarkSaved()` depois que a gravação em disco der certo.
 - Ao salvar, passe as posições do save anterior para `WorldSave.Capture(..., previousPositions)` para não perder personagens ausentes.
 - Nomes de personagem passam por `PlayerSave.ValidateName` (também chamado por `Capture` e `PlayerFile.Write`); ele devolve o nome normalizado (NFC) — o Godot deve montar o caminho do arquivo a partir desse valor.
+- Nós Godot criados por código: construtor sem parâmetros + `Init(...)`. Lógica testável vai para `Zyon.Client`, nunca para `Zyon.Game`.
 
 ## Comandos
 
 - Build: `dotnet build`
 - Testes: `dotnet test`
 - Desempenho (só vale em Release): `dotnet test -c Release --filter Category=Performance` (já compila em Release; não usar `--no-build` sem um `dotnet build -c Release` prévio)
+- Godot (portátil): `/d/Projetos/Ferramentas/Godot/Godot_v4.7.2-stable_mono_win64_console.exe` (variável `GODOT` sobrescreve).
+- Jogar: `"$GODOT" --path src/Zyon.Game -- --size dev` (opções: `--size dev|small|medium|large`, `--seed N`).
+- Smoke test do jogo (headless): `tools/smoke-test.sh [frames]` (padrão 600; o roteiro de mineração precisa de uns 300) — rode sempre que mexer em `src/Zyon.Game`.
 
 Toda mudança termina com `dotnet test` passando.
