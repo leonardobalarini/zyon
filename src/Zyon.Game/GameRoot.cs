@@ -25,7 +25,19 @@ public partial class GameRoot : Node2D
 
     public override void _Ready()
     {
-        options = LaunchOptions.Parse(OS.GetCmdlineUserArgs());
+        string[] args = OS.GetCmdlineUserArgs();
+        bool smokeRequested = System.Array.IndexOf(args, "--smoke-test") >= 0;
+        try
+        {
+            options = LaunchOptions.Parse(args);
+        }
+        catch (System.ArgumentException ex)
+        {
+            GD.PrintErr(smokeRequested ? $"SMOKE FAIL: argumentos inválidos: {ex.Message}" : $"Argumentos inválidos: {ex.Message}");
+            GetTree().Quit(smokeRequested ? 1 : 2);
+            return;
+        }
+
         try
         {
             Start();
@@ -34,12 +46,11 @@ public partial class GameRoot : Node2D
         {
             // Sem isto uma falha na montagem deixaria o jogo aberto sem nunca chamar Quit.
             GD.PrintErr($"SMOKE FAIL: {ex}");
-            session?.Dispose();
-            session = null;
             GetTree().Quit(1);
         }
     }
 
+    /// <summary>Monta tudo; a sessão só é publicada no campo no fim, então _Process nunca a vê pela metade.</summary>
     private void Start()
     {
         string dataDir = DataPaths.Resolve();
@@ -52,34 +63,43 @@ public partial class GameRoot : Node2D
         var sim = world.CreateSimulation(registry, new GodotLog());
         int player = PlayerSave.New("Dev", registry).SpawnInto(sim, world.PlayerPosition("Dev", registry.Physics));
         playerId = player;
-        session = new LocalSession(sim, player);
-        RenderingServer.SetDefaultClearColor(visuals.Sky.ToGodot());
-        GD.Print($"Zyon: mundo {options.Width}×{options.Height}, seed {seed}");
-
-        worldRenderer = new WorldRenderer();
-        AddChild(worldRenderer);
-        worldRenderer.Init(session.World, visuals);
-        entityRenderer = new EntityRenderer();
-        AddChild(entityRenderer);
-        entityRenderer.Init(session.World, visuals);
-        overlay = new WorldOverlay();
-        AddChild(overlay);
-        overlay.Init(session.World, playerId);
-        hotbar = new Hotbar();
-        AddChild(hotbar);
-        hotbar.Init(session.World, visuals, playerId);
-        controller = new PlayerController();
-        AddChild(controller);
-        controller.Init(session);
-        camera = new GameCamera();
-        AddChild(camera);
-        camera.Init(options.Width, options.Height);
-        if (session.World.TryGetEntityView(playerId, out var start))
+        var newSession = new LocalSession(sim, player);
+        try
         {
-            camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
-            camera.ResetSmoothing();
+            RenderingServer.SetDefaultClearColor(visuals.Sky.ToGodot());
+            GD.Print($"Zyon: mundo {options.Width}×{options.Height}, seed {seed}");
+
+            worldRenderer = new WorldRenderer();
+            AddChild(worldRenderer);
+            worldRenderer.Init(newSession.World, visuals);
+            entityRenderer = new EntityRenderer();
+            AddChild(entityRenderer);
+            entityRenderer.Init(newSession.World, visuals);
+            overlay = new WorldOverlay();
+            AddChild(overlay);
+            overlay.Init(newSession.World, playerId);
+            hotbar = new Hotbar();
+            AddChild(hotbar);
+            hotbar.Init(newSession.World, visuals, playerId);
+            controller = new PlayerController();
+            AddChild(controller);
+            controller.Init(newSession);
+            camera = new GameCamera();
+            AddChild(camera);
+            camera.Init(options.Width, options.Height);
+            if (newSession.World.TryGetEntityView(playerId, out var start))
+            {
+                camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
+                camera.ResetSmoothing();
+            }
+            if (options.SmokeTest) smoke = new SmokeTest(newSession, controller, options.SmokeFrames);
         }
-        if (options.SmokeTest) smoke = new SmokeTest(session, controller, options.SmokeFrames);
+        catch
+        {
+            newSession.Dispose();
+            throw;
+        }
+        session = newSession;
     }
 
     public override void _Process(double delta)

@@ -16,6 +16,8 @@ public partial class Hotbar : CanvasLayer
     private readonly ColorRect[] backs = new ColorRect[Inventory.HotbarSize];
     private readonly ColorRect[] icons = new ColorRect[Inventory.HotbarSize];
     private readonly Label[] counts = new Label[Inventory.HotbarSize];
+    // Último estado mostrado em cada slot: só mexe nos nós quando muda (sem string nova por frame).
+    private readonly (ItemStack Stack, bool Selected)?[] shown = new (ItemStack, bool)?[Inventory.HotbarSize];
     private IWorldView view = null!;
     private ClientVisuals visuals = null!;
     private int playerId;
@@ -29,9 +31,10 @@ public partial class Hotbar : CanvasLayer
         for (int i = 0; i < Inventory.HotbarSize; i++)
         {
             var x = (640 - total) / 2 + i * (SlotSize + Gap);
-            backs[i] = new ColorRect { Position = new Vector2(x, 360 - SlotSize - 4), Size = new Vector2(SlotSize, SlotSize), Color = SlotBack };
-            icons[i] = new ColorRect { Position = new Vector2(5, 5), Size = new Vector2(SlotSize - 10, SlotSize - 10) };
-            counts[i] = new Label { Position = new Vector2(1, SlotSize - 12) };
+            // Ignore: a hotbar não captura o mouse (clicar sobre ela não é "clique na interface").
+            backs[i] = new ColorRect { Position = new Vector2(x, 360 - SlotSize - 4), Size = new Vector2(SlotSize, SlotSize), Color = SlotBack, MouseFilter = Control.MouseFilterEnum.Ignore };
+            icons[i] = new ColorRect { Position = new Vector2(5, 5), Size = new Vector2(SlotSize - 10, SlotSize - 10), MouseFilter = Control.MouseFilterEnum.Ignore };
+            counts[i] = new Label { Position = new Vector2(1, SlotSize - 12), MouseFilter = Control.MouseFilterEnum.Ignore };
             counts[i].AddThemeFontSizeOverride("font_size", 8);
             backs[i].AddChild(icons[i]);
             backs[i].AddChild(counts[i]);
@@ -47,10 +50,13 @@ public partial class Hotbar : CanvasLayer
         for (int i = 0; i < Inventory.HotbarSize; i++)
         {
             var stack = inventory[i];
+            bool isSelected = i == selected;
+            if (shown[i] is { } last && last.Stack == stack && last.Selected == isSelected) continue;
+            shown[i] = (stack, isSelected);
             icons[i].Visible = !stack.IsEmpty;
             if (!stack.IsEmpty) icons[i].Color = visuals.ItemColor(stack.ItemId).ToGodot();
             counts[i].Text = stack.Count > 1 ? stack.Count.ToString() : "";
-            backs[i].Color = i == selected ? Selected : SlotBack;
+            backs[i].Color = isSelected ? Selected : SlotBack;
         }
     }
 }

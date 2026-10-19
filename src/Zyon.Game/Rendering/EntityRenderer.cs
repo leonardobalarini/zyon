@@ -14,6 +14,7 @@ public partial class EntityRenderer : Node2D
     private readonly List<EntityView> buffer = new();
     private readonly Dictionary<int, ColorRect> players = new();
     private readonly HashSet<int> seen = new();
+    private readonly List<int> gone = new();
     private IWorldView view = null!;
     private ClientVisuals visuals = null!;
     private MultiMesh items = null!;
@@ -66,9 +67,11 @@ public partial class EntityRenderer : Node2D
             rect.Position = center - size / 2;
         }
 
-        foreach (var id in new List<int>(players.Keys))
+        gone.Clear();
+        foreach (var id in players.Keys)
+            if (!seen.Contains(id)) gone.Add(id);
+        foreach (var id in gone)
         {
-            if (seen.Contains(id)) continue;
             players[id].QueueFree();
             players.Remove(id);
         }

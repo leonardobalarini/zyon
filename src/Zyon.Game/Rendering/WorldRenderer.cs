@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 using Zyon.Client;
 using Zyon.Core.Sim;
@@ -19,6 +18,7 @@ public partial class WorldRenderer : Node2D
     private readonly Dictionary<(int, int), ChunkNode> active = new();
     private readonly Stack<ChunkNode> pool = new();
     private readonly ChunkMeshData scratch = new();
+    private readonly List<(int, int)> leaving = new();
     private IWorldView view = null!;
     private TileAtlasLayout blockLayout = null!;
     private TileAtlasLayout wallLayout = null!;
@@ -53,7 +53,10 @@ public partial class WorldRenderer : Node2D
         var range = ChunkVisibility.Range(visiblePixels.Position.X, visiblePixels.Position.Y,
             visiblePixels.Size.X, visiblePixels.Size.Y, MarginChunks, chunksX, chunksY);
 
-        foreach (var key in active.Keys.Where(k => !range.Contains(k.Item1, k.Item2)).ToList())
+        leaving.Clear();
+        foreach (var key in active.Keys)
+            if (!range.Contains(key.Item1, key.Item2)) leaving.Add(key);
+        foreach (var key in leaving)
         {
             var node = active[key];
             node.Visible = false;

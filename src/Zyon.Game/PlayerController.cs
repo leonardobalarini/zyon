@@ -25,7 +25,8 @@ public partial class PlayerController : Node
         }
         float move = (Input.IsPhysicalKeyPressed(Key.D) ? 1f : 0f) - (Input.IsPhysicalKeyPressed(Key.A) ? 1f : 0f);
         bool jump = Input.IsPhysicalKeyPressed(Key.Space);
-        bool primary = Input.IsMouseButtonPressed(MouseButton.Left);
+        // Clique sobre um controle da interface não minera nem coloca no mundo.
+        bool primary = Input.IsMouseButtonPressed(MouseButton.Left) && GetViewport().GuiGetHoveredControl() is null;
         var (tx, ty) = RenderMath.TileAtPixel(mouseWorldPixels.ToNumerics());
         session.SetInput(new PlayerInput(move, jump, primary, tx, ty));
     }
