@@ -70,7 +70,7 @@ public class SimulationRestoreTests
         var snapshot = sim.SnapshotDroppedItems();
 
         Assert.Equal(2, snapshot.Count);
-        Assert.Equal((new ItemStack(r.ItemId("stone"), 3), new Vector2(30f, 39.625f), 7), snapshot[0]);
-        Assert.Equal((new ItemStack(r.ItemId("dirt"), 5), new Vector2(10f, 39.625f), 9), snapshot[1]);
+        Assert.Equal((new ItemStack(r.ItemId("stone"), 3), new Vector2(30f, 39.625f), 7, 0), snapshot[0]);
+        Assert.Equal((new ItemStack(r.ItemId("dirt"), 5), new Vector2(10f, 39.625f), 9, 0), snapshot[1]);
     }
 }

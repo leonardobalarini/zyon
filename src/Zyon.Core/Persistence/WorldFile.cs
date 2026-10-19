@@ -55,6 +55,7 @@ public static class WorldFile
                 w.Write(item.Position.X);
                 w.Write(item.Position.Y);
                 w.Write(item.AgeTicks);
+                w.Write(item.PickupDelayTicks);
             }
 
             w.Write(save.PlayerPositions.Count);
@@ -132,7 +133,7 @@ public static class WorldFile
         if (itemCount < 0) throw Corrupt("contagem de itens negativa");
         var items = new List<SavedDroppedItem>(itemCount);
         for (int i = 0; i < itemCount; i++)
-            items.Add(new SavedDroppedItem(r.ReadString(), r.ReadInt32(), new Vector2(r.ReadSingle(), r.ReadSingle()), r.ReadInt32()));
+            items.Add(new SavedDroppedItem(r.ReadString(), r.ReadInt32(), new Vector2(r.ReadSingle(), r.ReadSingle()), r.ReadInt32(), r.ReadInt32()));
 
         int playerCount = r.ReadInt32();
         if (playerCount < 0) throw Corrupt("contagem de jogadores negativa");

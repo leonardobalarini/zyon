@@ -33,7 +33,7 @@ public class WorldSaveTests
     {
         var r = TestData.Registry();
         var save = new WorldSave(Info, TestWorlds.Flat(r, 64, 64, 40), 777,
-            [new SavedDroppedItem("dirt", 3, new Vector2(30.5f, 39.625f), 12)],
+            [new SavedDroppedItem("dirt", 3, new Vector2(30.5f, 39.625f), 12, 33)],
             new Dictionary<string, Vector2>());
 
         using var sim = save.CreateSimulation(r);
@@ -43,6 +43,7 @@ public class WorldSaveTests
         Assert.Equal(new ItemStack(r.ItemId("dirt"), 3), restored.Stack);
         Assert.Equal(new Vector2(30.5f, 39.625f), restored.Position);
         Assert.Equal(12, restored.AgeTicks);
+        Assert.Equal(33, restored.PickupDelayTicks);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class WorldSaveTests
     {
         var r = TestData.Registry();
         var save = new WorldSave(Info, TestWorlds.Flat(r, 64, 64, 40), 0,
-            [new SavedDroppedItem("mithril", 1, new Vector2(30.5f, 39.625f), 0)],
+            [new SavedDroppedItem("mithril", 1, new Vector2(30.5f, 39.625f), 0, 0)],
             new Dictionary<string, Vector2>());
 
         var ex = Assert.Throws<DataException>(() => save.CreateSimulation(r));
@@ -91,5 +92,36 @@ public class WorldSaveTests
 
         Assert.Equal(new Vector2(5f, 6f), save.PlayerPositions["Ana"]);
         Assert.Equal(h.PlayerPosition, save.PlayerPositions["Leo"]);
+    }
+
+    [Fact]
+    public void CreateSimulation_InvalidCount_Throws()
+    {
+        var r = TestData.Registry();
+        var save = new WorldSave(Info, TestWorlds.Flat(r, 64, 64, 40), 0,
+            [new SavedDroppedItem("dirt", 0, new Vector2(30.5f, 39.625f), 0, 0)],
+            new Dictionary<string, Vector2>());
+
+        var ex = Assert.Throws<DataException>(() => save.CreateSimulation(r));
+        Assert.Contains(".zworld", ex.Message);
+        Assert.Contains("dirt", ex.Message);
+    }
+
+    [Fact]
+    public void ThrownItem_KeepsPickupDelayAcrossSaveAndLoad()
+    {
+        using var h = new SimHarness();
+        h.Send(new Zyon.Core.Sim.DropItem(h.PlayerId, 0));
+        h.Idle(1);
+        var names = new Dictionary<string, int> { ["Leo"] = h.PlayerId };
+        var world = WorldSave.Capture(h.Sim, Info, names);
+        var player = PlayerSave.Capture(h.Sim, h.PlayerId, "Leo");
+
+        using var sim2 = world.CreateSimulation(h.Registry);
+        int id2 = player.SpawnInto(sim2, world.PlayerPosition("Leo", h.Registry.Physics));
+        for (int i = 0; i < 3; i++) sim2.Step();
+
+        Assert.True(sim2.GetInventory(id2)![0].IsEmpty);
+        Assert.Single(sim2.SnapshotDroppedItems());
     }
 }

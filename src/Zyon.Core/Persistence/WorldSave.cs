@@ -16,7 +16,7 @@ public sealed record WorldInfo(int Seed, int GeneratorVersion, ulong ConfigFinge
 }
 
 /// <summary>Item caído salvo, referenciado pelo nome.</summary>
-public sealed record SavedDroppedItem(string Item, int Count, Vector2 Position, int AgeTicks);
+public sealed record SavedDroppedItem(string Item, int Count, Vector2 Position, int AgeTicks, int PickupDelayTicks);
 
 /// <summary>Estado de um mundo em memória: tiles, relógio, itens caídos e posição de cada personagem que já esteve nele.</summary>
 public sealed class WorldSave(
@@ -44,7 +44,7 @@ public sealed class WorldSave(
         IReadOnlyDictionary<string, Vector2>? previousPositions = null)
     {
         var items = sim.SnapshotDroppedItems()
-            .Select(d => new SavedDroppedItem(sim.Registry.Item(d.Stack.ItemId).Name, d.Stack.Count, d.Position, d.AgeTicks))
+            .Select(d => new SavedDroppedItem(sim.Registry.Item(d.Stack.ItemId).Name, d.Stack.Count, d.Position, d.AgeTicks, d.PickupDelayTicks))
             .ToList();
         var positions = previousPositions is null
             ? new Dictionary<string, Vector2>()
@@ -71,8 +71,15 @@ public sealed class WorldSave(
             foreach (var item in DroppedItems)
             {
                 if (!registry.TryGetItemId(item.Item, out var id))
-                    throw new DataException($"save do mundo: item caído '{item.Item}' não existe mais nos dados do jogo");
-                sim.SpawnDroppedItem(new ItemStack(id, item.Count), item.Position, Vector2.Zero, 0, item.AgeTicks);
+                    throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' não existe mais nos dados do jogo");
+                int max = registry.Item(id).MaxStack;
+                if (item.Count < 1 || item.Count > max)
+                    throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' com quantidade {item.Count} fora de 1..{max}");
+                if (item.AgeTicks < 0 || item.PickupDelayTicks < 0)
+                    throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' com contador de ticks negativo");
+                if (!float.IsFinite(item.Position.X) || !float.IsFinite(item.Position.Y))
+                    throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' com posição inválida");
+                sim.SpawnDroppedItem(new ItemStack(id, item.Count), item.Position, Vector2.Zero, item.PickupDelayTicks, item.AgeTicks);
             }
             return sim;
         }

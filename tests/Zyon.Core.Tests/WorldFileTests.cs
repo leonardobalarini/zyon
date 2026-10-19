@@ -25,8 +25,8 @@ public class WorldFileTests
         var tiles = new WorldGenerator(r, TestData.WorldGenConfig()).Generate(512, 256, 3).Tiles;
         return new WorldSave(Info, tiles, 1234,
             [
-                new SavedDroppedItem("dirt", 5, new Vector2(10.5f, 20.25f), 30),
-                new SavedDroppedItem("ore_b", 1, new Vector2(400.125f, 200f), 0),
+                new SavedDroppedItem("dirt", 5, new Vector2(10.5f, 20.25f), 30, 45),
+                new SavedDroppedItem("ore_b", 1, new Vector2(400.125f, 200f), 0, 0),
             ],
             new Dictionary<string, Vector2> { ["Leo"] = new Vector2(100.5f, 60.625f), ["Ana"] = new Vector2(1f, 2f) });
     }

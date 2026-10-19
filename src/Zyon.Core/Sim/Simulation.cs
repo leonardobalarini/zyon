@@ -105,13 +105,13 @@ public sealed class Simulation : IWorldView, IDisposable
     }
 
     /// <summary>Itens caídos com o estado necessário para salvar, na ordem em que foram criados.</summary>
-    internal List<(ItemStack Stack, Vector2 Position, int AgeTicks)> SnapshotDroppedItems()
+    internal List<(ItemStack Stack, Vector2 Position, int AgeTicks, int PickupDelayTicks)> SnapshotDroppedItems()
     {
-        var found = new List<(int Id, ItemStack Stack, Vector2 Position, int AgeTicks)>();
+        var found = new List<(int Id, ItemStack Stack, Vector2 Position, int AgeTicks, int PickupDelayTicks)>();
         Ecs.Query(in Queries.Items, (ref NetworkId id, ref Position pos, ref DroppedItem item) =>
-            found.Add((id.Value, item.Stack, pos.Value, item.AgeTicks)));
+            found.Add((id.Value, item.Stack, pos.Value, item.AgeTicks, item.PickupDelayTicks)));
         found.Sort((a, b) => a.Id.CompareTo(b.Id));
-        return found.Select(f => (f.Stack, f.Position, f.AgeTicks)).ToList();
+        return found.Select(f => (f.Stack, f.Position, f.AgeTicks, f.PickupDelayTicks)).ToList();
     }
 
     public void SetInput(int playerId, PlayerInput input)
