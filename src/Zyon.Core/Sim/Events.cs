@@ -17,3 +17,6 @@ public sealed record HotbarSelectionChanged(int PlayerId, int Slot) : IGameEvent
 
 /// <summary>Progress 0 significa que a mineração parou (limpar overlay).</summary>
 public sealed record MiningProgressChanged(int PlayerId, int X, int Y, float Progress) : IGameEvent;
+
+/// <summary>Progresso da geração de mundo: passe atual e fração total em [0, 1].</summary>
+public sealed record WorldGenProgress(string Pass, int PassIndex, int PassCount, float Fraction) : IGameEvent;

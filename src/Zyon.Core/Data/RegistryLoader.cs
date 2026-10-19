@@ -12,7 +12,7 @@ public static class RegistryLoader
     public const string PhysicsFile = "physics.json";
     public const string PlayerFile = "player.json";
 
-    private static readonly JsonSerializerOptions Options = new()
+    internal static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
