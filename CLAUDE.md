@@ -12,6 +12,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - `tests/Zyon.Core.Tests` — xUnit.
 - `data/` — definições JSON (blocos, paredes, itens, física, jogador). Conteúdo novo entra aqui, nunca hardcoded.
 - `src/Zyon.Core/WorldGen` — geração de mundo: `WorldGenerator` roda passes (`terrain`, `layers`, `caves`, `ores`, `walls`, `spawn`); parâmetros em `data/worldgen.json`; FastNoiseLite vendorizada em `WorldGen/ThirdParty` (ver `THIRD_PARTY_NOTICES.md`, não editar).
+- `src/Zyon.Core/Persistence` — saves: `WorldSave`/`WorldFile` (`.zworld`, binário: magic + versão + tamanho e hash FNV-1a (de versão + tamanho + payload) sem compressão, payload em Brotli com paleta de nomes e RLE; leitura só lança `DataException` (corrompido) ou `SaveIncompatibleException` (íntegro mas inutilizável por esta versão)) e `PlayerSave`/`PlayerFile` (`.zplayer`, JSON). `SaveFiles` grava atomicamente (`.tmp` → troca, anterior vira `.bak`) e lê com fallback para o `.bak` só em corrupção (o principal ruim vai para `.corrupt`; com `FromBackup` avise o jogador). Save incompatível ou arquivo em uso nunca caem para o `.bak`. Principal ausente com `.tmp` legível (crash no meio da troca): o `.tmp` é promovido a principal (`RecoveredFromTemp`); ao gravar sem principal, um `.tmp` existente vira `.tmp.orphan` em vez de ser apagado.
 
 ## Regras invioláveis
 
@@ -31,6 +32,12 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Nomes de passes semeiam Random e ruído: renomear um passe muda o mundo gerado.
 - Na geração, nunca use `MathF`/`Math` transcendentais (Sin, Cos, Exp, Log, Pow, Atan…): divergem entre plataformas. Use `DeterministicMath` (Floor/Ceiling/Round/Abs/Sqrt/Min/Max/Clamp são seguros).
 - `WorldGenDeterminismTests.GoldenHash_*` fixa o hash de um mundo de referência: se falhar, a saída da geração mudou — se foi intencional, incremente `WorldGenerator.Version` e atualize as constantes.
+- Mudou o que vai num save? Incremente `WorldFile.FormatVersion`/`PlayerFile.FormatVersion` e escreva a migração da versão anterior; saves antigos são migrados, nunca descartados.
+- Saves referenciam blocos/paredes/itens **pelo nome**; um nome que sumiu dos dados faz a carga falhar com mensagem clara (nunca carregar com ids errados).
+- Carga com erro nunca sobrescreve arquivos: use `SaveFiles.ReadWithBackup` e capture `SaveException`. `SaveIncompatibleException` → mostre "save de versão mais nova ou conteúdo removido"; `SaveLoadException.Kind` diz o motivo (`Corrupt`, `Missing`, `Inaccessible` — este último vale tentar de novo). Com `FromBackup` avise o jogador que voltou ao backup (o principal ruim ficou em `QuarantinedPath`). Outras exceções são bugs: não as engula.
+- Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano (gravações no mesmo arquivo em fila única). `Write` valida antes de gravar e não limpa `Dirty`: chame `WorldSave.MarkSaved()` depois que a gravação em disco der certo.
+- Ao salvar, passe as posições do save anterior para `WorldSave.Capture(..., previousPositions)` para não perder personagens ausentes.
+- Nomes de personagem passam por `PlayerSave.ValidateName` (também chamado por `Capture` e `PlayerFile.Write`); ele devolve o nome normalizado (NFC) — o Godot deve montar o caminho do arquivo a partir desse valor.
 
 ## Comandos
 
