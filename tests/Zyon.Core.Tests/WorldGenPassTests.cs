@@ -32,4 +32,31 @@ public class WorldGenPassTests
 
         Assert.True(ctx.Surface.Distinct().Count() > 3);
     }
+
+    [Fact]
+    public void Layers_DirtOnTop_StoneBelow_DeepStoneAtBottom()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass());
+        var m = ctx.Materials;
+
+        for (int x = 0; x < Width; x++)
+        {
+            int s = ctx.Surface[x];
+            int d = ctx.DirtBottom[x];
+            Assert.True(d > s, $"coluna {x}: DirtBottom {d} <= superfície {s}");
+            Assert.Equal(m.Dirt, ctx.World.GetBlock(x, s));
+            Assert.Equal(m.Dirt, ctx.World.GetBlock(x, d - 1));
+            Assert.Equal(m.Stone, ctx.World.GetBlock(x, d));
+            Assert.Equal(m.DeepStone, ctx.World.GetBlock(x, Height - 1));
+        }
+    }
+
+    [Fact]
+    public void Layers_BoundaryIsIrregular()
+    {
+        var ctx = Run(new TerrainPass(), new LayersPass());
+
+        var depths = Enumerable.Range(0, Width).Select(x => ctx.DirtBottom[x] - ctx.Surface[x]);
+        Assert.True(depths.Distinct().Count() > 2);
+    }
 }
