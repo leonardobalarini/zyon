@@ -6,7 +6,7 @@ namespace Zyon.Core.WorldGen;
 
 /// <summary>
 /// Estado compartilhado entre os passes. Dentro de Parallel.For use só ruído e escreva só na própria coluna:
-/// Random e Report não são thread-safe nem determinísticos fora de código sequencial.
+/// GenRandom e Report não são thread-safe nem determinísticos fora de código sequencial.
 /// </summary>
 public sealed class WorldGenContext
 {
@@ -32,7 +32,7 @@ public sealed class WorldGenContext
     public int Seed { get; }
 
     /// <summary>Random exclusivo do passe atual, derivado de seed + nome do passe.</summary>
-    public Random Random { get; internal set; } = new(0);
+    public GenRandom Random { get; internal set; } = new(0);
 
     /// <summary>Linha do primeiro tile sólido de cada coluna (definida pelo passe de terreno).</summary>
     public int[] Surface { get; }

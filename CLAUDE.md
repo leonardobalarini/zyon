@@ -27,7 +27,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Ordem dos sistemas: comandos → Movement → Physics → ToolAction → ItemPickup → ItemMerge → ItemDespawn. A física dos itens vive no `ItemPickupSystem`.
 - Escritas diretas no `TileWorld` não emitem `TileChanged` (só use antes da sessão começar).
 - Interfaces somente leitura (`IWorldView`, `IReadOnlyInventory`) são read-only por convenção — não fazer downcast no código de apresentação.
-- Geração determinística: dentro de `Parallel.For` use só ruído e escreva só na própria coluna; nunca `ctx.Random` nem `ctx.Report`. Mudou a saída da geração para a mesma seed? Incremente `WorldGenerator.Version`.
+- Geração determinística: dentro de `Parallel.For` use só ruído e escreva só na própria coluna; nunca `ctx.Random` nem `ctx.Report`. `ctx.Random` é um `GenRandom` (SplitMix64 próprio): nunca use `System.Random` na geração (a sequência com seed não é garantida entre versões do .NET). Mudou a saída da geração para a mesma seed? Incremente `WorldGenerator.Version`.
 - Nomes de passes semeiam Random e ruído: renomear um passe muda o mundo gerado.
 - Na geração, nunca use `MathF`/`Math` transcendentais (Sin, Cos, Exp, Log, Pow, Atan…): divergem entre plataformas. Use `DeterministicMath` (Floor/Ceiling/Round/Abs/Sqrt/Min/Max/Clamp são seguros).
 - `WorldGenDeterminismTests.GoldenHash_*` fixa o hash de um mundo de referência: se falhar, a saída da geração mudou — se foi intencional, incremente `WorldGenerator.Version` e atualize as constantes.

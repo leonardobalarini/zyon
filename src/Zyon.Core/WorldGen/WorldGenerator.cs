@@ -86,7 +86,7 @@ public sealed class WorldGenerator
     /// <summary>Prepara o Random do passe (seed + nome) e o executa.</summary>
     internal static void RunPass(WorldGenContext ctx, IWorldGenPass pass)
     {
-        ctx.Random = new Random(StableHash.Seed(ctx.Seed, pass.Name));
+        ctx.Random = new GenRandom(StableHash.Seed(ctx.Seed, pass.Name));
         pass.Apply(ctx);
     }
 }
