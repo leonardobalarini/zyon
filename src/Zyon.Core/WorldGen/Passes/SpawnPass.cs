@@ -53,7 +53,7 @@ internal sealed class SpawnPass : IWorldGenPass
         ushort dirt = ctx.Materials.Dirt;
         for (int x = x0; x < x0 + flat; x++)
         {
-            for (int y = Math.Max(0, s - ClearanceRows); y < s; y++)
+            for (int y = 0; y < s; y++)   // limpa tudo acima, sem deixar saliência
                 world.SetBlock(x, y, 0);
             for (int y = s; y < Math.Max(ctx.Surface[x], s + 1); y++)
                 world.SetBlock(x, y, dirt);

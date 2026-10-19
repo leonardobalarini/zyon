@@ -284,4 +284,33 @@ public class WorldGenPassTests
         AssertValidSpawn(ctx);
         Assert.Equal(Width / 2 + ctx.Config.SpawnFlatWidth / 2f, ctx.SpawnFeet.X);
     }
+
+    [Theory]
+    [InlineData(512)]   // coluna central par: é a alta (y=100); vizinhas em y=110
+    [InlineData(514)]   // Width/2 ímpar: a coluna central é a baixa (y=110)
+    public void Spawn_FallbackWithTallZigzag_LeavesNoOverhang(int width)
+    {
+        var ctx = Context(width, Height, Seed);
+        ushort dirt = ctx.Materials.Dirt;
+        for (int x = 0; x < width; x++)
+        {
+            ctx.Surface[x] = 100 + (x % 2) * 10;   // degraus de 10 linhas, maiores que ClearanceRows
+            for (int y = ctx.Surface[x]; y < Height; y++)
+                ctx.World.SetBlock(x, y, dirt);
+        }
+
+        WorldGenerator.RunPass(ctx, new SpawnPass());
+
+        AssertValidSpawn(ctx);
+        int feetY = (int)ctx.SpawnFeet.Y;
+        int flat = ctx.Config.SpawnFlatWidth;
+        int x0 = (int)MathF.Floor(ctx.SpawnFeet.X - flat / 2f);
+        for (int x = x0; x < x0 + flat; x++)
+        {
+            int firstSolid = 0;
+            while (ctx.World.GetBlock(x, firstSolid) == 0) firstSolid++;
+            Assert.Equal(feetY, firstSolid);
+            Assert.Equal(firstSolid, ctx.Surface[x]);
+        }
+    }
 }
