@@ -6,7 +6,7 @@ using Zyon.Core.Tiles;
 
 namespace Zyon.Core.WorldGen;
 
-public sealed record GeneratedWorld(TileWorld Tiles, int Seed, int GeneratorVersion, Vector2 SpawnFeet)
+public sealed record GeneratedWorld(TileWorld Tiles, int Seed, int GeneratorVersion, ulong ConfigFingerprint, Vector2 SpawnFeet)
 {
     /// <summary>Centro do AABB do jogador em pé no ponto de spawn.</summary>
     public Vector2 PlayerSpawnCenter(PhysicsConfig physics) => SpawnFeet - new Vector2(0f, physics.PlayerHeight / 2);
@@ -22,6 +22,7 @@ public sealed class WorldGenerator
     private readonly Registry registry;
     private readonly WorldGenConfig config;
     private readonly WorldGenMaterials materials;
+    private readonly ulong fingerprint;
 
     /// <summary>Gerador com os passes padrão do spec (seção 6).</summary>
     public WorldGenerator(Registry registry, WorldGenConfig config)
@@ -43,6 +44,7 @@ public sealed class WorldGenerator
     {
         this.registry = registry;
         this.config = config;
+        fingerprint = WorldGenConfigFingerprint.Compute(config);
         Passes = passes.ToArray();
         var seen = new HashSet<string>();
         foreach (var pass in Passes)
@@ -86,7 +88,7 @@ public sealed class WorldGenerator
 
         foreach (var chunk in world.Chunks)
             chunk.Dirty = false;
-        return new GeneratedWorld(world, seed, Version, ctx.SpawnFeet);
+        return new GeneratedWorld(world, seed, Version, fingerprint, ctx.SpawnFeet);
     }
 
     /// <summary>Prepara o Random do passe (seed + nome) e o executa.</summary>
