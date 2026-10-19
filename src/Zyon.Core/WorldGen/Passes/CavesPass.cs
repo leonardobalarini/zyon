@@ -28,9 +28,11 @@ internal sealed class CavesPass : IWorldGenPass
         for (int i = 0; i < worms; i++)
         {
             int startX = rng.Next(world.Width);
+            bool shallow = rng.NextDouble() < cfg.ShallowWormFraction;
             int top = Math.Min(ctx.Surface[startX] + cfg.CaveMinDepth, floor - 1);
+            int bottom = shallow ? Math.Min(top + cfg.ShallowWormDepth, floor) : floor;
             float x = startX;
-            float y = rng.Next(top, floor);
+            float y = rng.Next(top, Math.Max(bottom, top + 1));
             float angle = (float)(rng.NextDouble() * Math.PI * 2);
             int length = rng.Next(cfg.WormLengthMin, cfg.WormLengthMax + 1);
             float radius = cfg.WormRadiusMin + (float)rng.NextDouble() * (cfg.WormRadiusMax - cfg.WormRadiusMin);
@@ -41,6 +43,9 @@ internal sealed class CavesPass : IWorldGenPass
                 angle += ((float)rng.NextDouble() - 0.5f) * 0.6f;
                 x += MathF.Cos(angle);
                 y += MathF.Sin(angle) * 0.6f;
+                // Ao alcançar a superfície, volta a descer (Y cresce para baixo)
+                if (y <= ctx.Surface[Math.Clamp((int)x, 0, world.Width - 1)] && MathF.Sin(angle) < 0)
+                    angle = -angle;
                 if (x < 1 || x >= world.Width - 1 || y >= floor) break;
             }
             ctx.Report(0.5f + 0.5f * (i + 1) / worms);

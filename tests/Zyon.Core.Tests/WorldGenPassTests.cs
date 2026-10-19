@@ -121,4 +121,47 @@ public class WorldGenPassTests
                 Assert.NotEqual(0, ctx.World.GetBlock(x, y));
         }
     }
+
+    private static WorldGenContext WideCaves()
+    {
+        var ctx = Context(4200, 1200, 7);
+        WorldGenerator.RunPass(ctx, new TerrainPass());
+        WorldGenerator.RunPass(ctx, new LayersPass());
+        WorldGenerator.RunPass(ctx, new CavesPass());
+        return ctx;
+    }
+
+    [Fact]
+    public void Caves_SomeTunnelsStartNearTheSurface()
+    {
+        var ctx = WideCaves();
+        int limit = ctx.Config.CaveMinDepth + ctx.Config.ShallowWormDepth;
+
+        int shallow = 0;
+        for (int x = 0; x < 4200; x++)
+            for (int y = ctx.Surface[x] + 1; y <= ctx.Surface[x] + limit; y++)
+                if (ctx.World.GetBlock(x, y) == 0) shallow++;
+        Console.WriteLine($"shallow carved={shallow}");
+
+        Assert.True(shallow > 500, $"só {shallow} tiles escavados perto da superfície");
+    }
+
+    [Fact]
+    public void Caves_UndergroundCarvedFractionIsReasonable()
+    {
+        var ctx = WideCaves();
+        int floor = 1200 - ctx.Config.BottomSolidRows;
+
+        long carved = 0, total = 0;
+        for (int x = 0; x < 4200; x++)
+            for (int y = ctx.Surface[x] + 1; y < floor; y++)
+            {
+                total++;
+                if (ctx.World.GetBlock(x, y) == 0) carved++;
+            }
+        double fraction = (double)carved / total;
+        Console.WriteLine($"carved fraction={fraction:P2}");
+
+        Assert.InRange(fraction, 0.08, 0.20);
+    }
 }

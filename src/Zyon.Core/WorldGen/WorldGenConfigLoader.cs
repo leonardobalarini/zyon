@@ -64,6 +64,8 @@ public static class WorldGenConfigLoader
         Require(c.WormsPerThousandColumns >= 0, "'wormsPerThousandColumns' deve ser >= 0");
         Require(c.WormLengthMin >= 1 && c.WormLengthMin <= c.WormLengthMax,
             "'wormLengthMin' e 'wormLengthMax' devem satisfazer 1 <= min <= max");
+        Require(c.ShallowWormFraction >= 0 && c.ShallowWormFraction <= 1, "'shallowWormFraction' deve estar entre 0 e 1");
+        Require(c.ShallowWormDepth >= 1, "'shallowWormDepth' deve ser >= 1");
         Require(c.WormRadiusMin > 0 && c.WormRadiusMin <= c.WormRadiusMax,
             "'wormRadiusMin' e 'wormRadiusMax' devem satisfazer 0 < min <= max");
         Require(c.SpawnSearchRadius >= 0, "'spawnSearchRadius' deve ser >= 0");

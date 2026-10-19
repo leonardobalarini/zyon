@@ -47,6 +47,8 @@ public class WorldGenConfigTests
     [InlineData("""{"materials": {"dirt": null}}""", "materials.dirt")]
     [InlineData("""{"materials": {"stoneWall": ""}}""", "materials.stoneWall")]
     [InlineData("""{"caveThreshold": 1.5}""", "caveThreshold")]
+    [InlineData("""{"shallowWormFraction": 1.5}""", "shallowWormFraction")]
+    [InlineData("""{"shallowWormDepth": 0}""", "shallowWormDepth")]
     [InlineData("""{"dirtDepthVariation": -1}""", "dirtDepthVariation")]
     [InlineData("""{"ores": [{"block": "ore_a", "minDepth": 0.1, "maxDepth": 0.5, "veinsPerMillionTiles": 1, "veinSizeMin": 1, "veinSizeMax": 20000}]}""", "ores[0]")]
     [InlineData("""{"surfacMin": 0.3}""", "worldgen.json")]
