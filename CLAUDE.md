@@ -37,7 +37,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Carga com erro nunca sobrescreve arquivos: use `SaveFiles.ReadWithBackup` e mostre a `SaveLoadException` ao jogador.
 - Salvar o mundo: `WorldFile.Write` roda na thread da simulação entre Steps (os tiles não são copiados); só os bytes resultantes podem ir para o disco em segundo plano.
 - Ao salvar, passe as posições do save anterior para `WorldSave.Capture(..., previousPositions)` para não perder personagens ausentes.
-- Nomes de personagem passam por `PlayerSave.ValidateName`; o Godot deve montar o caminho do arquivo a partir do nome validado.
+- Nomes de personagem passam por `PlayerSave.ValidateName` (também chamado por `Capture` e `PlayerFile.Write`); ele devolve o nome normalizado (NFC) — o Godot deve montar o caminho do arquivo a partir desse valor.
 
 ## Comandos
 

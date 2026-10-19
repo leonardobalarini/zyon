@@ -70,7 +70,6 @@ public class PlayerFileTests
     }
 
     [Theory]
-    [InlineData("""{"formatVersion": 2, "name": "L", "selectedSlot": 0, "inventory": []}""", "versão mais nova")]
     [InlineData("""{"formatVersion": 0, "name": "L", "selectedSlot": 0, "inventory": []}""", "não suportada")]
     [InlineData("""{"name": "L", "selectedSlot": 0, "inventory": []}""", "formatVersion")]
     [InlineData("""{"formatVersion": 1, "name": " ", "selectedSlot": 0, "inventory": []}""", "name")]
@@ -79,7 +78,6 @@ public class PlayerFileTests
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [null]}""", "inventory[0]")]
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 50, "item": "dirt", "count": 1}]}""", "slot 50")]
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 1, "item": "dirt", "count": 1}, {"slot": 1, "item": "dirt", "count": 1}]}""", "repetido")]
-    [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 1, "item": "mithril", "count": 1}]}""", "mithril")]
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 1, "item": "dirt", "count": 0}]}""", "quantidade")]
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 1, "item": "basic_pickaxe", "count": 2}]}""", "quantidade")]
     [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [], "extra": 1}""", ".zplayer")]
@@ -102,6 +100,19 @@ public class PlayerFileTests
     [InlineData("Leo.")]
     [InlineData("abcdefghijklmnopqrstuvwxy")]
     [InlineData("Le\no")]
+    [InlineData("CON.txt")]
+    [InlineData("COM1")]
+    [InlineData("LPT9")]
+    [InlineData("..")]
+    [InlineData("a/b")]
+    [InlineData("Leo​")]
+    [InlineData("Leo‮abc")]
+    [InlineData("﻿Leo")]
+    [InlineData("CONIN$")]
+    [InlineData("conout$")]
+    [InlineData("COM¹")]
+    [InlineData("LPT²")]
+    [InlineData("COM³.txt")]
     public void ValidateName_Invalid_Throws(string name)
     {
         var ex = Assert.Throws<DataException>(() => PlayerSave.ValidateName(name));
@@ -113,12 +124,72 @@ public class PlayerFileTests
     public void ValidateName_TrimsValidName() => Assert.Equal("Leo", PlayerSave.ValidateName(" Leo "));
 
     [Fact]
+    public void ValidateName_ExactlyMaxLength_IsValid()
+    {
+        string name = new('a', PlayerSave.MaxNameLength);
+
+        Assert.Equal(24, name.Length);
+        Assert.Equal(name, PlayerSave.ValidateName(name));
+    }
+
+    [Fact]
+    public void ValidateName_ReturnsNfc() => Assert.Equal("Léo", PlayerSave.ValidateName("Léo"));
+
+    [Theory]
+    [InlineData("""{"formatVersion": 2, "name": "L", "selectedSlot": 0, "inventory": []}""", "versão mais nova")]
+    [InlineData("""{"formatVersion": 1, "name": "L", "selectedSlot": 0, "inventory": [{"slot": 1, "item": "mithril", "count": 1}]}""", "mithril")]
+    public void IncompatibleFile_ThrowsSaveIncompatible(string json, string expectedInMessage)
+    {
+        var ex = Assert.Throws<SaveIncompatibleException>(() => ReadJson(json));
+
+        Assert.Contains(".zplayer", ex.Message);
+        Assert.Contains(expectedInMessage, ex.Message);
+    }
+
+    [Fact]
+    public void Capture_InvalidName_Throws()
+    {
+        using var h = new SimHarness();
+
+        var ex = Assert.Throws<DataException>(() => PlayerSave.Capture(h.Sim, h.PlayerId, "CON"));
+        Assert.Contains(".zplayer", ex.Message);
+    }
+
+    [Fact]
+    public void Capture_ReturnsNormalizedName()
+    {
+        using var h = new SimHarness();
+
+        Assert.Equal("Léo", PlayerSave.Capture(h.Sim, h.PlayerId, " Léo ").Name);
+    }
+
+    [Fact]
+    public void Write_InvalidName_ThrowsAndWritesNothing()
+    {
+        using var ms = new MemoryStream();
+
+        Assert.Throws<DataException>(() => PlayerFile.Write(ms, new PlayerSave("a/b", 0, [])));
+        Assert.Equal(0, ms.Length);
+    }
+
+    [Fact]
+    public void SpawnInto_SelectedSlotOutsideHotbar_Throws()
+    {
+        using var h = new SimHarness();
+        var save = new PlayerSave("Leo", 12, []);
+
+        var ex = Assert.Throws<DataException>(() => save.SpawnInto(h.Sim, new Vector2(20f, h.StandingY)));
+        Assert.Contains(".zplayer", ex.Message);
+        Assert.Contains("12", ex.Message);
+    }
+
+    [Fact]
     public void SpawnInto_UnknownItem_Throws()
     {
         using var h = new SimHarness();
         var save = new PlayerSave("Leo", 0, [new SavedSlot(0, "mithril", 1)]);
 
-        var ex = Assert.Throws<DataException>(() => save.SpawnInto(h.Sim, new Vector2(20f, h.StandingY)));
+        var ex = Assert.Throws<SaveIncompatibleException>(() => save.SpawnInto(h.Sim, new Vector2(20f, h.StandingY)));
         Assert.Contains("mithril", ex.Message);
     }
 }

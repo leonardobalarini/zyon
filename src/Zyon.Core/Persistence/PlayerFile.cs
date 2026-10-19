@@ -16,19 +16,24 @@ public static class PlayerFile
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    /// <summary>Grava o personagem. Nome inválido lança DataException antes de escrever qualquer byte.</summary>
     public static void Write(Stream stream, PlayerSave save)
     {
+        string name = PlayerSave.ValidateName(save.Name);
         var dto = new PlayerDto
         {
             FormatVersion = FormatVersion,
-            Name = save.Name,
+            Name = name,
             SelectedSlot = save.SelectedSlot,
             Inventory = save.Slots.Select(s => (SlotDto?)new SlotDto { Slot = s.Slot, Item = s.Item, Count = s.Count }).ToList(),
         };
         JsonSerializer.Serialize(stream, dto, WriteOptions);
     }
 
-    /// <summary>Lê e valida contra o Registry atual (itens inexistentes, slots e quantidades inválidos falham).</summary>
+    /// <summary>
+    /// Lê e valida contra o Registry atual. Arquivo inválido lança DataException; formato mais novo ou item que sumiu
+    /// dos dados lança SaveIncompatibleException (o arquivo está íntegro: não cair para o backup).
+    /// </summary>
     public static PlayerSave Read(Stream stream, Registry registry)
     {
         PlayerDto dto;
@@ -43,7 +48,7 @@ public static class PlayerFile
 
         int version = dto.FormatVersion ?? throw Fail("campo 'formatVersion' ausente");
         if (version > FormatVersion)
-            throw Fail($"feito por uma versão mais nova do jogo (formato {version}, suportado até {FormatVersion})");
+            throw new SaveIncompatibleException($"{Extension}: feito por uma versão mais nova do jogo (formato {version}, suportado até {FormatVersion})");
         if (version < 1)
             throw Fail($"versão de formato {version} não suportada");
         // Migrações futuras entram aqui, em sequência: v1 → v2 → ... até FormatVersion.

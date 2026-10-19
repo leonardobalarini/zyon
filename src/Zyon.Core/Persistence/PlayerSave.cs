@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Numerics;
+using System.Text;
 using Zyon.Core.Data;
 using Zyon.Core.Items;
 using Zyon.Core.Sim;
@@ -22,16 +24,31 @@ public sealed record PlayerSave(string Name, int SelectedSlot, IReadOnlyList<Sav
 
     public const int MaxNameLength = 24;
 
-    private static readonly string[] ReservedNames =
-        ["CON", "PRN", "AUX", "NUL", .. Enumerable.Range(1, 9).Select(i => $"COM{i}"), .. Enumerable.Range(1, 9).Select(i => $"LPT{i}")];
+    private static readonly string[] DeviceSuffixes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "¹", "²", "³"]; // ¹ ² ³ também são dispositivos no Windows
 
-    /// <summary>Valida o nome do personagem (usado como nome de arquivo) e devolve-o sem espaços nas pontas.</summary>
+    private static readonly string[] ReservedNames =
+        ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", .. DeviceSuffixes.Select(s => "COM" + s), .. DeviceSuffixes.Select(s => "LPT" + s)];
+
+    /// <summary>
+    /// Valida o nome do personagem (usado como nome de arquivo) e devolve-o normalizado (NFC) e sem espaços nas pontas.
+    /// Use sempre o valor devolvido.
+    /// </summary>
     public static string ValidateName(string name)
     {
-        string trimmed = (name ?? "").Trim();
+        string trimmed;
+        try
+        {
+            trimmed = (name ?? "").Normalize(NormalizationForm.FormC).Trim();
+        }
+        catch (ArgumentException)
+        {
+            throw Fail("nome do personagem ('name') contém caracteres inválidos");
+        }
         if (trimmed.Length == 0) throw Fail("nome do personagem ('name') vazio");
         if (trimmed.Length > MaxNameLength) throw Fail($"nome do personagem ('name') com mais de {MaxNameLength} caracteres");
         if (trimmed.Any(char.IsControl)) throw Fail("nome do personagem ('name') contém caracteres de controle");
+        if (trimmed.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.Format))
+            throw Fail("nome do personagem ('name') contém caracteres invisíveis de formatação");
         if (trimmed.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || trimmed.IndexOfAny("/\\:*?\"<>|".ToCharArray()) >= 0)
             throw Fail("nome do personagem ('name') contém caracteres inválidos");
         if (trimmed.EndsWith('.')) throw Fail("nome do personagem ('name') não pode terminar com ponto");
@@ -41,9 +58,14 @@ public sealed record PlayerSave(string Name, int SelectedSlot, IReadOnlyList<Sav
         return trimmed;
     }
 
-    /// <summary>Valida slots (válidos e únicos), itens (existentes) e quantidades (1..MaxStack) contra o Registry.</summary>
+    /// <summary>
+    /// Valida slot selecionado (na hotbar), slots (válidos e únicos), itens (existentes) e quantidades (1..MaxStack)
+    /// contra o Registry. Item que sumiu dos dados lança SaveIncompatibleException; o resto, DataException.
+    /// </summary>
     public void Validate(Registry registry)
     {
+        if ((uint)SelectedSlot >= Inventory.HotbarSize)
+            throw Fail($"'selectedSlot' {SelectedSlot} fora da hotbar (0..{Inventory.HotbarSize - 1})");
         var seen = new HashSet<int>();
         for (int i = 0; i < Slots.Count; i++)
         {
@@ -52,7 +74,7 @@ public sealed record PlayerSave(string Name, int SelectedSlot, IReadOnlyList<Sav
             if (!Inventory.IsValidSlot(entry.Slot)) throw Fail($"{ctx}: slot {entry.Slot} inválido");
             if (!seen.Add(entry.Slot)) throw Fail($"{ctx}: slot {entry.Slot} repetido");
             if (!registry.TryGetItemId(entry.Item ?? "", out var itemId))
-                throw Fail($"{ctx}: item '{entry.Item}' não existe mais nos dados do jogo");
+                throw new SaveIncompatibleException($"{PlayerFile.Extension}: {ctx}: item '{entry.Item}' não existe mais nos dados do jogo");
             int max = registry.Item(itemId).MaxStack;
             if (entry.Count < 1 || entry.Count > max)
                 throw Fail($"{ctx}: quantidade {entry.Count} fora de 1..{max}");
@@ -65,7 +87,7 @@ public sealed record PlayerSave(string Name, int SelectedSlot, IReadOnlyList<Sav
     {
         var inventory = sim.GetInventory(playerId)
                         ?? throw new ArgumentException($"Jogador {playerId} não existe", nameof(playerId));
-        return new PlayerSave(name, sim.GetSelectedSlot(playerId), ToSlots(inventory, sim.Registry));
+        return new PlayerSave(ValidateName(name), sim.GetSelectedSlot(playerId), ToSlots(inventory, sim.Registry));
     }
 
     /// <summary>Cria o jogador na simulação com este inventário (sem itens iniciais). Os nomes já foram validados na leitura.</summary>
