@@ -45,6 +45,12 @@ public class WorldGeneratorTests
         new(TestData.Registry(), TestData.WorldGenConfig(), passes);
 
     [Fact]
+    public void DuplicatePassNames_Throw()
+    {
+        Assert.Throws<ArgumentException>(() => Generator(new ScatterPass("a", 1), new ScatterPass("a", 2), new FixedSpawnPass()));
+    }
+
+    [Fact]
     public void Generate_RunsPassesAndReturnsSpawn()
     {
         var gen = Generator(new ScatterPass("a", 1), new FixedSpawnPass());

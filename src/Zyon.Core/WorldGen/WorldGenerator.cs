@@ -26,7 +26,13 @@ public sealed class WorldGenerator
     {
         this.registry = registry;
         this.config = config;
-        Passes = passes;
+        Passes = passes.ToArray();
+        var seen = new HashSet<string>();
+        foreach (var pass in Passes)
+        {
+            if (!seen.Add(pass.Name))
+                throw new ArgumentException($"Nome de passe duplicado: '{pass.Name}'", nameof(passes));
+        }
         materials = WorldGenMaterials.Resolve(config, registry);
     }
 
