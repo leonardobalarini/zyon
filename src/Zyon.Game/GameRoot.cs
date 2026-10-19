@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using Godot;
 using Zyon.Client;
 using Zyon.Core.Data;
@@ -22,6 +24,12 @@ public partial class GameRoot : Node2D
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
     private SmokeTest? smoke;
+    private DebugOverlay debugOverlay = null!;
+    private readonly FrameStats frameStats = new();
+    // Só a partir do 60º quadro: no smoke test separa a montagem inicial do regime normal.
+    private readonly FrameStats steadyStats = new();
+    private int framesProcessed;
+    private int lastGcCount;
 
     public override void _Ready()
     {
@@ -81,6 +89,8 @@ public partial class GameRoot : Node2D
             hotbar = new Hotbar();
             AddChild(hotbar);
             hotbar.Init(newSession.World, visuals, playerId);
+            debugOverlay = new DebugOverlay();
+            AddChild(debugOverlay);
             controller = new PlayerController();
             AddChild(controller);
             controller.Init(newSession);
@@ -99,7 +109,18 @@ public partial class GameRoot : Node2D
             newSession.Dispose();
             throw;
         }
+        lastGcCount = System.GC.CollectionCount(0);
         session = newSession;
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (session is null || @event is not InputEventKey { Pressed: true, Echo: false } key) return;
+        if (key.PhysicalKeycode == Key.F3)
+        {
+            debugOverlay.Toggle();
+            GetViewport().SetInputAsHandled();
+        }
     }
 
     public override void _Process(double delta)
@@ -107,8 +128,11 @@ public partial class GameRoot : Node2D
         if (session is null) return;
         try
         {
+            long frameStart = Stopwatch.GetTimestamp();
+            long tickBefore = session.World.Tick;
             controller.Poll(GetGlobalMousePosition());
             session.Update(delta);
+            long updateEnd = Stopwatch.GetTimestamp();
             foreach (var gameEvent in session.DrainEvents())
             {
                 worldRenderer.OnEvent(gameEvent);
@@ -121,6 +145,8 @@ public partial class GameRoot : Node2D
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
+            long frameEnd = Stopwatch.GetTimestamp();
+            RecordFrame(delta, frameStart, updateEnd, frameEnd, session.World.Tick - tickBefore);
             if (smoke is not null)
             {
                 smoke.Step();
@@ -128,6 +154,7 @@ public partial class GameRoot : Node2D
                 {
                     if (smoke.Failure is null)
                     {
+                        PrintSmokeStats();
                         GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}");
                         GetTree().Quit(0);
                     }
@@ -144,6 +171,36 @@ public partial class GameRoot : Node2D
             GD.PrintErr($"SMOKE FAIL: {ex}");
             GetTree().Quit(1);
         }
+    }
+
+    private void RecordFrame(double delta, long frameStart, long updateEnd, long frameEnd, long ticks)
+    {
+        // Contagem da geração 0 inclui as coletas das gerações 1 e 2; mede desde o quadro anterior.
+        int gcCount = System.GC.CollectionCount(0);
+        var sample = new FrameSample(delta,
+            Stopwatch.GetElapsedTime(frameStart, frameEnd).TotalMilliseconds,
+            Stopwatch.GetElapsedTime(frameStart, updateEnd).TotalMilliseconds,
+            Stopwatch.GetElapsedTime(updateEnd, frameEnd).TotalMilliseconds,
+            worldRenderer.RebuildsLastUpdate, gcCount - lastGcCount);
+        lastGcCount = gcCount;
+        frameStats.Add(sample);
+        if (++framesProcessed > 60) steadyStats.Add(sample);
+        debugOverlay.Refresh(delta, frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
+            worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
+            camera.PositionSmoothingEnabled ? $"suave {camera.PositionSmoothingSpeed:0}" : "direta",
+            DisplayServer.WindowGetVsyncMode().ToString()));
+    }
+
+    private void PrintSmokeStats()
+    {
+        static string Line(FrameSummary s) => string.Format(CultureInfo.InvariantCulture,
+            "{0} quadros, delta med {1:0.00} máx {2:0.00} ms, _Process med {3:0.000} máx {4:0.000} ms, " +
+            "sessão med {5:0.000} máx {6:0.000} ms, render med {7:0.000} máx {8:0.000} ms, " +
+            "remontagens {9} (máx {10}/quadro), GC {11}",
+            s.Frames, s.FrameAvgMs, s.FrameMaxMs, s.ProcessAvgMs, s.ProcessMaxMs, s.UpdateAvgMs, s.UpdateMaxMs,
+            s.RenderAvgMs, s.RenderMaxMs, s.Rebuilds, s.MaxRebuildsPerFrame, s.GcCollections);
+        GD.Print($"SMOKE STATS total: {Line(frameStats.Overall)}");
+        GD.Print($"SMOKE STATS após 60 quadros: {Line(steadyStats.Overall)}");
     }
 
     public override void _ExitTree() => session?.Dispose();

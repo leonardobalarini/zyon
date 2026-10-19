@@ -30,6 +30,9 @@ public partial class WorldRenderer : Node2D
 
     public int ActiveChunkCount => active.Count;
 
+    /// <summary>Chunks montados ou remontados na última chamada de <see cref="UpdateVisible"/>.</summary>
+    public int RebuildsLastUpdate { get; private set; }
+
     public void Init(IWorldView worldView, ClientVisuals visuals)
     {
         view = worldView;
@@ -53,6 +56,7 @@ public partial class WorldRenderer : Node2D
         var range = ChunkVisibility.Range(visiblePixels.Position.X, visiblePixels.Position.Y,
             visiblePixels.Size.X, visiblePixels.Size.Y, MarginChunks, chunksX, chunksY);
 
+        RebuildsLastUpdate = 0;
         leaving.Clear();
         foreach (var key in active.Keys)
             if (!range.Contains(key.Item1, key.Item2)) leaving.Add(key);
@@ -93,6 +97,7 @@ public partial class WorldRenderer : Node2D
 
     private void Rebuild(ChunkNode node, int cx, int cy)
     {
+        RebuildsLastUpdate++;
         ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Walls, wallLayout, scratch);
         node.SetWalls(scratch);
         ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Blocks, blockLayout, scratch);
