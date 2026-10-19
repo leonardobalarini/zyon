@@ -20,7 +20,21 @@ public sealed class SaveFilesTests : IDisposable
     private static string ReadText(Stream s)
     {
         string text = new StreamReader(s).ReadToEnd();
-        return text == "corrompido" ? throw new DataException("teste: conteúdo corrompido") : text;
+        return text switch
+        {
+            "corrompido" => throw new DataException("teste: conteúdo corrompido"),
+            "incompativel" => throw new SaveIncompatibleException("teste: feito por uma versão mais nova"),
+            _ => text,
+        };
+    }
+
+    private string CorruptPath => SavePath + SaveFiles.CorruptSuffix;
+
+    private void Seed(string main, string backup)
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(SavePath, main);
+        File.WriteAllText(SavePath + SaveFiles.BackupSuffix, backup);
     }
 
     [Fact]
@@ -103,5 +117,72 @@ public sealed class SaveFilesTests : IDisposable
 
         Assert.IsAssignableFrom<IOException>(ex.InnerException);
         Assert.Null(ex.BackupError);
+    }
+
+    [Fact]
+    public void FallbackThenTwoSaves_KeepsAGoodBackup()
+    {
+        Seed("corrompido", "good1");
+
+        var result = SaveFiles.ReadWithBackup(SavePath, ReadText);
+        Assert.Equal("good1", result.Value);
+        Assert.True(result.FromBackup);
+        Assert.Equal(CorruptPath, result.QuarantinedPath);
+
+        SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "good2"));
+        SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "good3"));
+
+        Assert.Equal("good3", File.ReadAllText(SavePath));
+        Assert.Equal("good2", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
+        Assert.Equal("corrompido", File.ReadAllText(CorruptPath));
+    }
+
+    [Fact]
+    public void IncompatibleSave_DoesNotFallBack()
+    {
+        Seed("incompativel", "good1");
+
+        Assert.Throws<SaveIncompatibleException>(() => SaveFiles.ReadWithBackup(SavePath, ReadText));
+
+        Assert.Equal("incompativel", File.ReadAllText(SavePath));
+        Assert.Equal("good1", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
+        Assert.False(File.Exists(CorruptPath));
+    }
+
+    [Fact]
+    public void LockedFile_DoesNotFallBack()
+    {
+        Seed("good2", "good1");
+        bool backupRead = false;
+
+        using (new FileStream(SavePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var ex = Assert.Throws<SaveLoadException>(() => SaveFiles.ReadWithBackup(SavePath, s =>
+            {
+                backupRead = true;
+                return ReadText(s);
+            }));
+            Assert.Null(ex.BackupError);
+            Assert.IsAssignableFrom<IOException>(ex.InnerException);
+        }
+
+        Assert.False(backupRead);
+        Assert.Equal("good2", File.ReadAllText(SavePath));
+        Assert.Equal("good1", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
+        Assert.False(File.Exists(CorruptPath));
+    }
+
+    [Fact]
+    public void StaleReadOnlyTemp_DoesNotBlockSaving()
+    {
+        Directory.CreateDirectory(dir);
+        string temp = SavePath + SaveFiles.TempSuffix;
+        File.WriteAllText(temp, "lixo de uma gravação interrompida");
+        File.SetAttributes(temp, FileAttributes.ReadOnly);
+
+        SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "v1"));
+
+        Assert.Equal("v1", File.ReadAllText(SavePath));
+        Assert.False(File.Exists(temp));
     }
 }
