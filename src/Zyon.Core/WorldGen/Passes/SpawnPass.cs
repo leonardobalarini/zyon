@@ -54,9 +54,15 @@ internal sealed class SpawnPass : IWorldGenPass
         for (int x = x0; x < x0 + flat; x++)
         {
             for (int y = 0; y < s; y++)   // limpa tudo acima, sem deixar saliência
+            {
                 world.SetBlock(x, y, 0);
+                world.SetWall(x, y, 0);
+            }
+            world.SetWall(x, s, 0);       // a superfície é a linha s: sem parede em y <= s
             for (int y = s; y < Math.Max(ctx.Surface[x], s + 1); y++)
                 world.SetBlock(x, y, dirt);
+            for (int y = s + 1; y < ctx.Surface[x]; y++)   // linhas preenchidas ganham parede de terra
+                world.SetWall(x, y, ctx.Materials.DirtWall);
             if (world.GetBlock(x, s) == 0)
                 world.SetBlock(x, s, dirt);
             ctx.Surface[x] = s;

@@ -296,7 +296,10 @@ public class WorldGenPassTests
         {
             ctx.Surface[x] = 100 + (x % 2) * 10;   // degraus de 10 linhas, maiores que ClearanceRows
             for (int y = ctx.Surface[x]; y < Height; y++)
+            {
                 ctx.World.SetBlock(x, y, dirt);
+                ctx.World.SetWall(x, y, ctx.Materials.DirtWall);   // como o WallsPass: parede sob o terreno
+            }
         }
 
         WorldGenerator.RunPass(ctx, new SpawnPass());
@@ -311,6 +314,11 @@ public class WorldGenPassTests
             while (ctx.World.GetBlock(x, firstSolid) == 0) firstSolid++;
             Assert.Equal(feetY, firstSolid);
             Assert.Equal(firstSolid, ctx.Surface[x]);
+
+            for (int y = 0; y <= feetY; y++)
+                Assert.Equal(0, ctx.World.GetWall(x, y));          // sem parede no ar livre
+            for (int y = feetY + 1; y < Height; y++)
+                Assert.NotEqual(0, ctx.World.GetWall(x, y));       // sólido preenchido tem parede
         }
     }
 }
