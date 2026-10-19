@@ -17,6 +17,8 @@ public partial class GameRoot : Node2D
     private WorldRenderer worldRenderer = null!;
     private GameCamera camera = null!;
     private int playerId;
+    private EntityRenderer entityRenderer = null!;
+    private PlayerController controller = null!;
 
     public override void _Ready()
     {
@@ -54,6 +56,12 @@ public partial class GameRoot : Node2D
         worldRenderer = new WorldRenderer();
         AddChild(worldRenderer);
         worldRenderer.Init(session.World, visuals);
+        entityRenderer = new EntityRenderer();
+        AddChild(entityRenderer);
+        entityRenderer.Init(session.World, visuals);
+        controller = new PlayerController();
+        AddChild(controller);
+        controller.Init(session);
         camera = new GameCamera();
         AddChild(camera);
         camera.Init(options.Width, options.Height);
@@ -69,11 +77,13 @@ public partial class GameRoot : Node2D
         if (session is null) return;
         try
         {
+            controller.Poll(GetGlobalMousePosition());
             session.Update(delta);
             foreach (var gameEvent in session.DrainEvents())
                 worldRenderer.OnEvent(gameEvent);
             if (session.World.TryGetEntityView(playerId, out var me))
                 camera.Follow(RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot());
+            entityRenderer.Refresh(session.InterpolationAlpha);
             worldRenderer.UpdateVisible(camera.VisiblePixels());
             if (options.SmokeTest && ++frame >= options.SmokeFrames)
             {
