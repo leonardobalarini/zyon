@@ -54,7 +54,7 @@ public class WorldSaveTests
             [new SavedDroppedItem("mithril", 1, new Vector2(30.5f, 39.625f), 0, 0)],
             new Dictionary<string, Vector2>());
 
-        var ex = Assert.Throws<DataException>(() => save.CreateSimulation(r));
+        var ex = Assert.Throws<SaveIncompatibleException>(() => save.CreateSimulation(r));
         Assert.Contains("mithril", ex.Message);
     }
 

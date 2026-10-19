@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Buffers.Binary;
 using System.IO.Compression;
 using System.Numerics;
 using System.Text;
@@ -9,11 +10,14 @@ namespace Zyon.Core.Persistence;
 
 /// <summary>
 /// Formato .zworld. Sem compressão: magic "ZYONWLD", versão do formato (int32), tamanho do payload descomprimido
-/// (int64) e seu hash FNV-1a 64 (uint64). Em seguida o payload comprimido com Brotli: versão do gerador, seed,
+/// (int64) e o hash FNV-1a 64 (uint64) de versão + tamanho + payload. Em seguida o payload comprimido com Brotli: versão do gerador, seed,
 /// impressão digital da config, largura, altura, spawn, tick, paleta de blocos e de paredes (só os ids presentes),
 /// chunks em RLE, itens caídos e posições dos jogadores.
 /// A leitura só lança DataException (arquivo corrompido/inválido) ou SaveIncompatibleException (íntegro, mas não
 /// utilizável por esta versão do jogo); nunca carrega conteúdo que não bata com o hash.
+/// Versão mais nova: o layout dela é desconhecido, então o hash não pode ser verificado. Só uma versão plausível
+/// (até FormatVersion + MaxPlausibleVersionJump) é tratada como "feito por uma versão mais nova"
+/// (SaveIncompatibleException); um número absurdo é bit trocado no cabeçalho, ou seja, corrupção (DataException).
 /// </summary>
 public static class WorldFile
 {
@@ -22,6 +26,8 @@ public static class WorldFile
     public const int MaxWidth = 16384;
     public const int MaxHeight = 8192;
     public const long MaxPayloadBytes = 512L * 1024 * 1024;
+    /// <summary>Quantas versões de formato à frente ainda contam como "save de um jogo mais novo" e não como corrupção.</summary>
+    public const int MaxPlausibleVersionJump = 100;
     private const int MaxItems = 1_000_000;
     private const int MaxPlayers = 10_000;
 
@@ -39,7 +45,7 @@ public static class WorldFile
         {
             header.Write(FormatVersion);
             header.Write((long)bytes.Length);
-            header.Write(Fnv1a64(bytes));
+            header.Write(ContentHash(FormatVersion, bytes.Length, bytes));
         }
         using (var brotli = new BrotliStream(stream, CompressionLevel.Fastest, leaveOpen: true))
             brotli.Write(bytes);
@@ -114,6 +120,8 @@ public static class WorldFile
 
         using var header = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
         int version = header.ReadInt32();
+        if (version > FormatVersion + MaxPlausibleVersionJump)
+            throw Corrupt($"versão de formato {version} implausível");
         if (version > FormatVersion)
             throw Incompatible($"feito por uma versão mais nova do jogo (formato {version}, suportado até {FormatVersion})");
         if (version < 1)
@@ -126,7 +134,7 @@ public static class WorldFile
             throw Corrupt($"tamanho do conteúdo inválido ({payloadLength} bytes)");
 
         var payload = Decompress(stream, (int)payloadLength);
-        if (Fnv1a64(payload) != expectedHash)
+        if (ContentHash(version, payloadLength, payload) != expectedHash)
             throw Corrupt("o conteúdo não confere com o hash gravado");
 
         using var r = new BinaryReader(new MemoryStream(payload, writable: false), Encoding.UTF8);
@@ -200,6 +208,13 @@ public static class WorldFile
         var wallRemap = ReadPalette(r, name =>
             registry.TryGetWallId(name, out var id) ? id : throw Incompatible($"parede '{name}' do save não existe mais nos dados do jogo"));
 
+        // Cada chunk tem ao menos uma sequência RLE (4 bytes) por camada, e ainda vêm as contagens de itens e jogadores.
+        // Rejeita antes de alocar o TileWorld, que é proporcional às dimensões declaradas.
+        long chunkCount = (long)((width + Chunk.Size - 1) / Chunk.Size) * ((height + Chunk.Size - 1) / Chunk.Size);
+        long minimumRemaining = chunkCount * 2 * 4 + 4 + 4;
+        if (r.BaseStream.Length - r.BaseStream.Position < minimumRemaining)
+            throw Corrupt($"conteúdo pequeno demais para um mundo {width}×{height}");
+
         var tiles = new TileWorld(width, height);
         foreach (var chunk in tiles.Chunks)
         {
@@ -212,7 +227,19 @@ public static class WorldFile
         if (itemCount < 0 || itemCount > MaxItems) throw Corrupt($"contagem de itens inválida ({itemCount})");
         var items = new List<SavedDroppedItem>();
         for (int i = 0; i < itemCount; i++)
-            items.Add(new SavedDroppedItem(r.ReadString(), r.ReadInt32(), new Vector2(r.ReadSingle(), r.ReadSingle()), r.ReadInt32(), r.ReadInt32()));
+        {
+            var item = new SavedDroppedItem(r.ReadString(), r.ReadInt32(), new Vector2(r.ReadSingle(), r.ReadSingle()), r.ReadInt32(), r.ReadInt32());
+            if (!registry.TryGetItemId(item.Item, out var itemId))
+                throw Incompatible($"item caído '{item.Item}' do save não existe mais nos dados do jogo");
+            int max = registry.Item(itemId).MaxStack;
+            if (item.Count < 1 || item.Count > max)
+                throw Corrupt($"item caído '{item.Item}' com quantidade {item.Count} fora de 1..{max}");
+            if (item.AgeTicks < 0 || item.PickupDelayTicks < 0)
+                throw Corrupt($"item caído '{item.Item}' com contador de ticks negativo");
+            if (!float.IsFinite(item.Position.X) || !float.IsFinite(item.Position.Y))
+                throw Corrupt($"item caído '{item.Item}' com posição inválida");
+            items.Add(item);
+        }
 
         int playerCount = r.ReadInt32();
         if (playerCount < 0 || playerCount > MaxPlayers) throw Corrupt($"contagem de jogadores inválida ({playerCount})");
@@ -304,10 +331,17 @@ public static class WorldFile
         }
     }
 
-    /// <summary>FNV-1a 64 bits do payload descomprimido.</summary>
-    private static ulong Fnv1a64(ReadOnlySpan<byte> data)
+    /// <summary>FNV-1a 64 de versão (int32 LE) + tamanho do payload (int64 LE) + payload descomprimido.</summary>
+    private static ulong ContentHash(int version, long payloadLength, ReadOnlySpan<byte> payload)
     {
-        ulong hash = 14695981039346656037UL;
+        Span<byte> header = stackalloc byte[12];
+        BinaryPrimitives.WriteInt32LittleEndian(header, version);
+        BinaryPrimitives.WriteInt64LittleEndian(header[4..], payloadLength);
+        return Fnv1a64(payload, Fnv1a64(header, 14695981039346656037UL));
+    }
+
+    private static ulong Fnv1a64(ReadOnlySpan<byte> data, ulong hash)
+    {
         foreach (byte b in data)
         {
             hash ^= b;

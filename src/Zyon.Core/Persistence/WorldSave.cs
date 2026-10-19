@@ -68,10 +68,11 @@ public sealed class WorldSave(
         try
         {
             sim.RestoreTick(Tick);
+            // WorldFile.Read já valida tudo isto; repetido aqui porque um WorldSave pode ser montado à mão.
             foreach (var item in DroppedItems)
             {
                 if (!registry.TryGetItemId(item.Item, out var id))
-                    throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' não existe mais nos dados do jogo");
+                    throw new SaveIncompatibleException($"{WorldFile.Extension}: item caído '{item.Item}' não existe mais nos dados do jogo");
                 int max = registry.Item(id).MaxStack;
                 if (item.Count < 1 || item.Count > max)
                     throw new DataException($"{WorldFile.Extension}: item caído '{item.Item}' com quantidade {item.Count} fora de 1..{max}");

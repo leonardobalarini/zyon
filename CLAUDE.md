@@ -12,7 +12,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - `tests/Zyon.Core.Tests` — xUnit.
 - `data/` — definições JSON (blocos, paredes, itens, física, jogador). Conteúdo novo entra aqui, nunca hardcoded.
 - `src/Zyon.Core/WorldGen` — geração de mundo: `WorldGenerator` roda passes (`terrain`, `layers`, `caves`, `ores`, `walls`, `spawn`); parâmetros em `data/worldgen.json`; FastNoiseLite vendorizada em `WorldGen/ThirdParty` (ver `THIRD_PARTY_NOTICES.md`, não editar).
-- `src/Zyon.Core/Persistence` — saves: `WorldSave`/`WorldFile` (`.zworld`, binário: magic + versão + tamanho e hash FNV-1a do payload sem compressão, payload em Brotli com paleta de nomes e RLE; leitura só lança `DataException` (corrompido) ou `SaveIncompatibleException` (íntegro mas inutilizável por esta versão)) e `PlayerSave`/`PlayerFile` (`.zplayer`, JSON). `SaveFiles` grava atomicamente (`.tmp` → troca, anterior vira `.bak`) e lê com fallback para o `.bak` só em corrupção (o principal ruim vai para `.corrupt`; com `FromBackup` avise o jogador). Save incompatível ou arquivo em uso nunca caem para o `.bak`.
+- `src/Zyon.Core/Persistence` — saves: `WorldSave`/`WorldFile` (`.zworld`, binário: magic + versão + tamanho e hash FNV-1a (de versão + tamanho + payload) sem compressão, payload em Brotli com paleta de nomes e RLE; leitura só lança `DataException` (corrompido) ou `SaveIncompatibleException` (íntegro mas inutilizável por esta versão)) e `PlayerSave`/`PlayerFile` (`.zplayer`, JSON). `SaveFiles` grava atomicamente (`.tmp` → troca, anterior vira `.bak`) e lê com fallback para o `.bak` só em corrupção (o principal ruim vai para `.corrupt`; com `FromBackup` avise o jogador). Save incompatível ou arquivo em uso nunca caem para o `.bak`.
 
 ## Regras invioláveis
 

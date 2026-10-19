@@ -185,13 +185,14 @@ public class WorldFileTests(ITestOutputHelper output)
     /// <summary>Monta um .zworld com um payload arbitrário (hash correto), como faria um arquivo hostil.</summary>
     private static byte[] Pack(byte[] payload)
     {
+        byte[] hashed = [.. BitConverter.GetBytes(WorldFile.FormatVersion), .. BitConverter.GetBytes((long)payload.Length), .. payload];
         using var ms = new MemoryStream();
         ms.Write("ZYONWLD"u8);
         using (var w = new BinaryWriter(ms, Encoding.UTF8, leaveOpen: true))
         {
             w.Write(WorldFile.FormatVersion);
             w.Write((long)payload.Length);
-            w.Write(Fnv1a64(payload));
+            w.Write(Fnv1a64(hashed));
         }
         using (var brotli = new BrotliStream(ms, CompressionLevel.Fastest, leaveOpen: true))
             brotli.Write(payload);
@@ -265,8 +266,9 @@ public class WorldFileTests(ITestOutputHelper output)
             }
             catch (SaveIncompatibleException)
             {
-                Assert.True(bytes.Length >= 11 && BitConverter.ToInt32(bytes, 7) > WorldFile.FormatVersion,
-                    $"mutação {i}: SaveIncompatibleException sem a versão ter sido alterada");
+                int version = bytes.Length >= 11 ? BitConverter.ToInt32(bytes, 7) : 0;
+                Assert.True(version > WorldFile.FormatVersion && version <= WorldFile.FormatVersion + WorldFile.MaxPlausibleVersionJump,
+                    $"mutação {i}: SaveIncompatibleException sem a versão virar uma versão mais nova plausível ({version})");
                 incompatible++;
             }
         }
@@ -425,5 +427,88 @@ public class WorldFileTests(ITestOutputHelper output)
 
         var ex = Assert.Throws<DataException>(() => Read(Write(save, r), r));
         Assert.Contains("Leo", ex.Message);
+    }
+    [Fact]
+    public void ImplausibleVersion_IsCorruption()
+    {
+        var r = TestData.Registry();
+        var bytes = Write(EmptySmall(r), r);
+        bytes[10] ^= 0x40; // bit trocado no byte mais alto da versão
+
+        var ex = Assert.Throws<DataException>(() => Read(bytes, r));
+        Assert.Contains("corrompido", ex.Message);
+    }
+
+    [Fact]
+    public void HeaderFields_AreCoveredByHash()
+    {
+        var r = TestData.Registry();
+        var payload = Unpack(Write(EmptySmall(r), r));
+        var bytes = Pack(payload);
+        // Hash calculado só sobre o payload (sem versão e tamanho) não deve mais ser aceito.
+        BitConverter.GetBytes(Fnv1a64(payload)).CopyTo(bytes, 19);
+
+        var ex = Assert.Throws<DataException>(() => Read(bytes, r));
+        Assert.Contains("hash", ex.Message);
+    }
+
+    [Fact]
+    public void HostileHeader_MaxDimensionsWithTinyPayload_FailsFast()
+    {
+        using var payload = new MemoryStream();
+        using (var w = new BinaryWriter(payload, Encoding.UTF8, leaveOpen: true))
+        {
+            w.Write(1);
+            w.Write(3);
+            w.Write(0UL);
+            w.Write(WorldFile.MaxWidth);
+            w.Write(WorldFile.MaxHeight);
+            w.Write(1f);
+            w.Write(1f);
+            w.Write(0L);
+            w.Write(0); // paleta de blocos vazia
+            w.Write(0); // paleta de paredes vazia
+            w.Write(0); // nenhum dado de chunk
+        }
+        byte[] bytes = Pack(payload.ToArray());
+        var r = TestData.Registry();
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        var ex = Assert.Throws<DataException>(() => Read(bytes, r));
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Contains("corrompido", ex.Message);
+        Assert.True(allocated < 16 * 1024 * 1024, $"alocou {allocated} bytes para rejeitar o cabeçalho");
+    }
+
+    private static WorldSave WithItem(Registry r, SavedDroppedItem item) =>
+        new(Info, TestWorlds.Flat(r, 64, 64, 40), 0, [item], new Dictionary<string, Vector2>());
+
+    [Fact]
+    public void RemovedDroppedItem_ThrowsIncompatible()
+    {
+        var r = TestData.Registry();
+        var withoutOreB = TestData.RegistryWithEdits(
+            b => TestData.RemoveById(b, "ore_b"),
+            i => TestData.RemoveById(i, "ore_b"));
+        var bytes = Write(WithItem(r, new SavedDroppedItem("ore_b", 1, new Vector2(3f, 3f), 0, 0)), r);
+
+        var ex = Assert.Throws<SaveIncompatibleException>(() => Read(bytes, withoutOreB));
+        Assert.Contains(".zworld", ex.Message);
+        Assert.Contains("ore_b", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(1000, 0, 0)]
+    [InlineData(1, -1, 0)]
+    [InlineData(1, 0, -5)]
+    public void InvalidDroppedItem_IsCorruption(int count, int age, int pickupDelay)
+    {
+        var r = TestData.Registry();
+        var bytes = Write(WithItem(r, new SavedDroppedItem("dirt", count, new Vector2(3f, 3f), age, pickupDelay)), r);
+
+        var ex = Assert.Throws<DataException>(() => Read(bytes, r));
+        Assert.Contains("dirt", ex.Message);
     }
 }
