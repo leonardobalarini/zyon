@@ -175,7 +175,7 @@ public sealed class SaveFilesTests : IDisposable
     [Fact]
     public void StaleReadOnlyTemp_DoesNotBlockSaving()
     {
-        Directory.CreateDirectory(dir);
+        SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "v0"));
         string temp = SavePath + SaveFiles.TempSuffix;
         File.WriteAllText(temp, "lixo de uma gravação interrompida");
         File.SetAttributes(temp, FileAttributes.ReadOnly);
@@ -183,6 +183,57 @@ public sealed class SaveFilesTests : IDisposable
         SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "v1"));
 
         Assert.Equal("v1", File.ReadAllText(SavePath));
+        Assert.Equal("v0", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
         Assert.False(File.Exists(temp));
+        Assert.False(File.Exists(temp + SaveFiles.OrphanSuffix));
+    }
+
+    private string TempPath => SavePath + SaveFiles.TempSuffix;
+
+    [Fact]
+    public void MissingMain_ValidTemp_RecoversTemp()
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(TempPath, "good2");
+        File.WriteAllText(SavePath + SaveFiles.BackupSuffix, "good1");
+
+        var result = SaveFiles.ReadWithBackup(SavePath, ReadText);
+
+        Assert.Equal("good2", result.Value);
+        Assert.False(result.FromBackup);
+        Assert.True(result.RecoveredFromTemp);
+        Assert.Equal("good2", File.ReadAllText(SavePath));
+        Assert.False(File.Exists(TempPath));
+        Assert.Equal("good1", File.ReadAllText(SavePath + SaveFiles.BackupSuffix));
+    }
+
+    [Fact]
+    public void MissingMain_CorruptTemp_FallsBackToBackup()
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(TempPath, "corrompido");
+        File.WriteAllText(SavePath + SaveFiles.BackupSuffix, "good1");
+
+        var result = SaveFiles.ReadWithBackup(SavePath, ReadText);
+
+        Assert.Equal("good1", result.Value);
+        Assert.True(result.FromBackup);
+        Assert.False(result.RecoveredFromTemp);
+        Assert.Equal("corrompido", File.ReadAllText(TempPath));
+        Assert.False(File.Exists(SavePath));
+    }
+
+    [Fact]
+    public void WriteWithMissingMain_KeepsExistingTempAsOrphan()
+    {
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(TempPath, "talvez o save mais novo");
+        File.SetAttributes(TempPath, FileAttributes.ReadOnly);
+
+        SaveFiles.WriteAtomic(SavePath, s => WriteText(s, "v1"));
+
+        Assert.Equal("v1", File.ReadAllText(SavePath));
+        Assert.False(File.Exists(TempPath));
+        Assert.Equal("talvez o save mais novo", File.ReadAllText(TempPath + SaveFiles.OrphanSuffix));
     }
 }

@@ -6,9 +6,10 @@ namespace Zyon.Core.Persistence;
 /// Resultado de <see cref="SaveFiles.ReadWithBackup{T}"/>. Quando <see cref="FromBackup"/> é verdadeiro o save
 /// principal estava corrompido e o progresso voltou ao backup: quem chama DEVE avisar o jogador.
 /// <see cref="QuarantinedPath"/> é para onde o principal corrompido foi movido (null se não havia o que mover ou se a
-/// movimentação falhou).
+/// movimentação falhou). <see cref="RecoveredFromTemp"/> indica que o principal não existia e o "arquivo.tmp" de uma
+/// gravação interrompida no meio da troca foi lido e promovido a principal (é o save mais novo; não há perda).
 /// </summary>
-public readonly record struct LoadResult<T>(T Value, bool FromBackup, string? QuarantinedPath = null);
+public readonly record struct LoadResult<T>(T Value, bool FromBackup, string? QuarantinedPath = null, bool RecoveredFromTemp = false);
 
 /// <summary>Não foi possível carregar o save (e, se for o caso, nem o backup). Nenhum arquivo foi alterado.</summary>
 public sealed class SaveLoadException : Exception
@@ -40,6 +41,7 @@ public static class SaveFiles
     public const string TempSuffix = ".tmp";
     public const string BackupSuffix = ".bak";
     public const string CorruptSuffix = ".corrupt";
+    public const string OrphanSuffix = ".orphan";
 
     private const int MaxAttempts = 3;
     private const int RetryDelayMs = 100;
@@ -52,7 +54,7 @@ public static class SaveFiles
             Directory.CreateDirectory(directory);
 
         string temp = path + TempSuffix;
-        DeleteStaleTemp(temp);
+        ClearStaleTemp(path, temp);
         try
         {
             using var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -79,6 +81,8 @@ public static class SaveFiles
     /// movido para "arquivo.corrupt", para que o próximo save não o transforme no .bak (o que apagaria o backup bom).
     /// Save incompatível (SaveIncompatibleException) propaga sem tocar no backup. Arquivo em uso/sem permissão é
     /// tentado de novo algumas vezes e então vira SaveLoadException, também sem usar o backup.
+    /// Se o principal não existe mas há um "arquivo.tmp" legível (crash entre gravar o .tmp e trocar), ele é promovido
+    /// a principal antes de se pensar no .bak; um .tmp ilegível fica onde está.
     /// Se principal e backup falharem, lança SaveLoadException sem alterar nada.
     /// </summary>
     public static LoadResult<T> ReadWithBackup<T>(string path, Func<Stream, T> read)
@@ -96,6 +100,9 @@ public static class SaveFiles
         {
             throw SaveLoadException.Inaccessible(path, ex);
         }
+
+        if (primaryError is FileNotFoundException && TryRecoverTemp(path, read, out var recovered))
+            return new LoadResult<T>(recovered, FromBackup: false, RecoveredFromTemp: true);
 
         string backup = path + BackupSuffix;
         if (!File.Exists(backup))
@@ -153,12 +160,48 @@ public static class SaveFiles
         }
     }
 
-    private static void DeleteStaleTemp(string temp)
+    /// <summary>
+    /// Tira do caminho um .tmp de uma gravação anterior. Com o principal presente ele é lixo e é apagado; sem o principal
+    /// ele pode ser a cópia mais nova (crash no meio da troca), então é preservado como "arquivo.tmp.orphan".
+    /// </summary>
+    private static void ClearStaleTemp(string path, string temp)
     {
         if (!File.Exists(temp))
             return;
         File.SetAttributes(temp, File.GetAttributes(temp) & ~FileAttributes.ReadOnly);
-        File.Delete(temp);
+        if (File.Exists(path))
+            File.Delete(temp);
+        else
+            File.Move(temp, temp + OrphanSuffix, overwrite: true);
+    }
+
+    private static bool TryRecoverTemp<T>(string path, Func<Stream, T> read, out T value)
+    {
+        value = default!;
+        string temp = path + TempSuffix;
+        if (!File.Exists(temp))
+            return false;
+        try
+        {
+            value = ReadFile(temp, read);
+        }
+        catch (Exception ex) when (ex is DataException or IOException or UnauthorizedAccessException or SaveIncompatibleException)
+        {
+            return false;
+        }
+
+        try
+        {
+            File.Move(temp, path);
+        }
+        catch (IOException)
+        {
+            // O conteúdo já foi lido; a próxima gravação preserva o .tmp como órfão.
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        return true;
     }
 
     private static void Retry(Action action)
