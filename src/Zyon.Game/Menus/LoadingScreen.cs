@@ -65,7 +65,10 @@ public partial class LoadingScreen : Control
         if (progress.Latest is { } p && !cancel.IsCancellationRequested)
         {
             bar.Value = p.Fraction;
-            label.Text = $"Gerando: {(PassNames.TryGetValue(p.Pass, out var name) ? name : p.Pass)}";
+            // Depois do último passe ainda há gravação do mundo novo e montagem da simulação.
+            label.Text = p.Fraction >= 0.999f
+                ? "Preparando o mundo..."
+                : $"Gerando: {(PassNames.TryGetValue(p.Pass, out var name) ? name : p.Pass)}";
         }
         if (!work.IsCompleted) return;
 

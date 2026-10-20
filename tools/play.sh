@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Compila e abre o jogo no menu inicial. Argumentos extras vão para o jogo: tools/play.sh --dev entra direto num
-# mundo de teste descartável; tools/play.sh --world NOME --player NOME entra direto num mundo salvo.
+# Compila e abre o jogo no menu inicial. Argumentos extras vão para o jogo: tools/play.sh --dev --size small --seed 42
+# entra direto num mundo de teste descartável (--size/--seed só valem para mundos criados assim); --world NOME --player NOME entra
+# direto num mundo salvo.
 set -euo pipefail
 GODOT="${GODOT:-/d/Projetos/Ferramentas/Godot/Godot_v4.7.2-stable_mono_win64.exe}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

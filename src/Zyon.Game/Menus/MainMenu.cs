@@ -63,6 +63,11 @@ public partial class MainMenu : Control
         BuildUi();
         ready = true;
         Refresh();
+        if (GameFlow.MenuMessage is { } message)
+        {
+            status.Text = message;
+            GameFlow.MenuMessage = null;
+        }
     }
 
     private void BuildUi()
@@ -160,11 +165,21 @@ public partial class MainMenu : Control
             : (seed.Text.Length > 0 ? StableSeed(seed.Text) : System.Environment.TickCount);
         try
         {
-            GameFlow.Library.WorldPath(worldName.Text);   // valida o nome antes de gerar
+            // Valida o nome antes de gerar (WorldExistsIgnoringCase valida também).
+            if (GameFlow.Library.WorldExistsIgnoringCase(worldName.Text))
+            {
+                status.Text = "Já existe um mundo com esse nome.";
+                return;
+            }
         }
         catch (DataException ex)
         {
             status.Text = ex.Message;
+            return;
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            status.Text = $"Não foi possível ler a pasta de saves: {ex.Message}";
             return;
         }
         Start(new LaunchRequest(player, warnings, worldName.Text, true, width, height, seedValue));

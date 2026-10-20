@@ -29,6 +29,9 @@ public static class GameFlow
     /// <summary>Pedido do menu para a tela de carregamento.</summary>
     public static LaunchRequest? PendingRequest { get; set; }
 
+    /// <summary>Mensagem para o menu mostrar ao abrir (ex.: o jogo não pôde ser montado).</summary>
+    public static string? MenuMessage { get; set; }
+
     /// <summary>Jogo pronto, da tela de carregamento para a cena de jogo.</summary>
     public static LoadedGame? PendingGame { get; set; }
 

@@ -48,6 +48,10 @@ public partial class GameRoot : Node2D
     private bool exitToMenu;
     private ulong exitRequestFrame;
     private bool exitSavePending;
+    // "Sair sem salvar": _ExitTree não espera a fila de gravação de novo.
+    private bool leftWithoutSaving;
+    // Autosave enfileirado: "Jogo salvo." só quando CompletedSaves chegar a este valor (gravação concluída).
+    private int? autosaveToastAt;
 
     public override void _Ready()
     {
@@ -71,6 +75,14 @@ public partial class GameRoot : Node2D
             // Sem isto uma falha na montagem deixaria o jogo aberto sem nunca chamar Quit.
             GD.PrintErr($"SMOKE FAIL: {ex}");
             GetTree().Quit(1);
+        }
+        catch (System.Exception ex)
+        {
+            // Jogo normal: nada de cena vazia que não fecha — volta ao menu e mostra o erro lá.
+            GD.PushError($"Falha ao montar o jogo: {ex}");
+            GetTree().AutoAcceptQuit = true;
+            GameFlow.MenuMessage = $"Não foi possível abrir o jogo: {ErrorMessages.Describe(ex)}";
+            GameFlow.GoTo(this, Scenes.MainMenu);
         }
     }
 
@@ -100,7 +112,7 @@ public partial class GameRoot : Node2D
             hotbar.Init(newSession.World, visuals, playerId);
             inventory = new InventoryPanel();
             AddChild(inventory);
-            inventory.Init(newSession, visuals);
+            inventory.Init(newSession, visuals, hotbar);
             debugOverlay = new DebugOverlay();
             AddChild(debugOverlay);
             controller = new PlayerController();
@@ -207,13 +219,23 @@ public partial class GameRoot : Node2D
             long updateEnd = Stopwatch.GetTimestamp();
             if (autosave.Update(delta) && !exiting)
             {
+                int before = saver.CompletedSaves;
                 string? problem = SaveNow(waitSeconds: 0);
-                toast.Show(problem is null ? "Jogo salvo." : $"Não foi possível salvar: {problem}", problem is null ? 2 : 8);
+                if (problem is null) autosaveToastAt = before + 1;
+                else toast.Show($"Não foi possível salvar: {problem}", 8);
+            }
+            if (autosaveToastAt is { } target && saver.CompletedSaves >= target)
+            {
+                autosaveToastAt = null;
+                if (!exiting) toast.Show("Jogo salvo.", 2);
             }
             if (saver.LastError is { } saveError && saveError != lastReportedSaveError)
             {
                 lastReportedSaveError = saveError;
-                toast.Show($"Não foi possível salvar: {ErrorMessages.Describe(saveError)}", 8);
+                autosaveToastAt = null;
+                // Com o aviso de falha aberto o erro já está na tela.
+                if (!saveFailedDialog.Visible)
+                    toast.Show($"Não foi possível salvar: {ErrorMessages.Describe(saveError)}", 8);
             }
             foreach (var gameEvent in session.DrainEvents())
             {
@@ -354,9 +376,8 @@ public partial class GameRoot : Node2D
         toast.Clear();
         if (problem is not null)
         {
-            saveFailedDialog.DialogText =
-                $"O jogo pode não ter sido salvo por completo.\n{problem}\n\nTentar de novo, ou sair mesmo assim (o que não foi salvo se perde)?";
-            saveFailedDialog.PopupCentered();
+            saveFailedDialog.DialogText = $"O jogo pode não ter sido salvo por completo.\n{problem}";
+            saveFailedDialog.PopupCentered(new Vector2I(560, 0));
             return;
         }
         Leave();
@@ -399,7 +420,17 @@ public partial class GameRoot : Node2D
 
     private AcceptDialog BuildSaveFailedDialog()
     {
-        var dialog = new AcceptDialog { Title = "Falha ao salvar", OkButtonText = "Tentar de novo", Exclusive = true };
+        var dialog = new AcceptDialog
+        {
+            Title = "Falha ao salvar",
+            OkButtonText = "Tentar de novo",
+            Exclusive = true,
+            DialogAutowrap = true,
+            // Cabe na tela de 640×360; o texto quebra em linhas (caminhos longos inclusive).
+            Size = new Vector2I(560, 160),
+            MaxSize = new Vector2I(600, 340),
+            Theme = new Theme { DefaultFontSize = 10 },
+        };
         dialog.AddButton("Sair sem salvar", right: true, action: "leave");
         dialog.AddCancelButton("Voltar ao jogo");
         dialog.Confirmed += ScheduleExitSave;
@@ -407,6 +438,7 @@ public partial class GameRoot : Node2D
         {
             if (action != "leave") return;
             dialog.Hide();
+            leftWithoutSaving = true;
             Leave();
         };
         dialog.Canceled += () =>
@@ -432,8 +464,10 @@ public partial class GameRoot : Node2D
 
     public override void _ExitTree()
     {
-        // O saver espera a fila de gravação antes de a simulação ser descartada.
-        saver?.Dispose();
+        // O saver espera a fila de gravação antes de a simulação ser descartada (as gravações só usam bytes já
+        // serializados). Se o jogador escolheu sair sem salvar, não espera de novo.
+        if (leftWithoutSaving) saver?.Flush(TimeSpan.Zero);
+        else saver?.Dispose();
         session?.Dispose();
     }
 }

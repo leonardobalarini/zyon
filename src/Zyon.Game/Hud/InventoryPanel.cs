@@ -5,20 +5,25 @@ using Zyon.Core.Sim;
 
 namespace Zyon.Game.Hud;
 
-/// <summary>Inventário completo (5 linhas × 10; a primeira linha é a hotbar). Abre e fecha com E; Esc também fecha.</summary>
+/// <summary>
+/// Inventário completo (5 linhas × 10; a primeira linha é a hotbar). Abre e fecha com E; Esc também fecha.
+/// Arrastar para outro slot move; soltar sobre a hotbar move para aquele slot; soltar fora de tudo joga no chão.
+/// </summary>
 public partial class InventoryPanel : CanvasLayer
 {
     private readonly InventorySlot[] slots = new InventorySlot[Inventory.Slots];
     private PanelContainer panel = null!;
     private IGameSession session = null!;
     private ClientVisuals visuals = null!;
+    private Hotbar hotbar = null!;
 
     public bool IsOpen => panel.Visible;
 
-    public void Init(IGameSession gameSession, ClientVisuals clientVisuals)
+    public void Init(IGameSession gameSession, ClientVisuals clientVisuals, Hotbar gameHotbar)
     {
         session = gameSession;
         visuals = clientVisuals;
+        hotbar = gameHotbar;
         Layer = 5;
         panel = new PanelContainer { Position = new Vector2(8, 8), Visible = false };
         var grid = new GridContainer { Columns = Inventory.HotbarSize };
@@ -28,7 +33,7 @@ public partial class InventoryPanel : CanvasLayer
         for (int i = 0; i < Inventory.Slots; i++)
         {
             var slot = new InventorySlot();
-            slot.Init(i, Move, Drop, IsMouseInside);
+            slot.Init(i, Move, OnDragFailed);
             slots[i] = slot;
             grid.AddChild(slot);
         }
@@ -50,7 +55,17 @@ public partial class InventoryPanel : CanvasLayer
 
     private void Move(int from, int to) => session.Send(new MoveInventoryItem(session.LocalPlayerId, from, to));
 
-    private void Drop(int slot) => session.Send(new DropItem(session.LocalPlayerId, slot));
-
-    private bool IsMouseInside() => panel.GetGlobalRect().HasPoint(panel.GetViewport().GetMousePosition());
+    private void OnDragFailed(int slot)
+    {
+        // Inventário fechado durante o arrasto: cancela.
+        if (!panel.Visible) return;
+        var mouse = panel.GetViewport().GetMousePosition();
+        if (panel.GetGlobalRect().HasPoint(mouse)) return;   // entre slots ou na borda do painel: nada
+        if (hotbar.SlotAtScreen(mouse) is { } target)
+        {
+            if (target != slot) Move(slot, target);
+            return;
+        }
+        session.Send(new DropItem(session.LocalPlayerId, slot));
+    }
 }

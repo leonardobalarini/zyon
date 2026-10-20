@@ -13,19 +13,18 @@ public partial class InventorySlot : Panel
     private ColorRect icon = null!;
     private Label count = null!;
     private Action<int, int> move = null!;
-    private Action<int> dropOutside = null!;
-    private Func<bool> mouseInsidePanel = null!;
+    private Action<int> dragFailed = null!;
     private bool dragging;
     private ItemStack shown = new(ushort.MaxValue, -1);
 
     public int Slot { get; private set; }
 
-    public void Init(int slot, Action<int, int> onMove, Action<int> onDropOutside, Func<bool> isMouseInsidePanel)
+    /// <param name="onDragFailed">Arrasto deste slot terminou sem cair em outro slot do painel (o painel decide).</param>
+    public void Init(int slot, Action<int, int> onMove, Action<int> onDragFailed)
     {
         Slot = slot;
         move = onMove;
-        dropOutside = onDropOutside;
-        mouseInsidePanel = isMouseInsidePanel;
+        dragFailed = onDragFailed;
         CustomMinimumSize = new Vector2(SlotSize, SlotSize);
         icon = new ColorRect { Position = new Vector2(5, 5), Size = new Vector2(SlotSize - 10, SlotSize - 10), MouseFilter = MouseFilterEnum.Ignore };
         count = new Label { Position = new Vector2(1, SlotSize - 12), MouseFilter = MouseFilterEnum.Ignore };
@@ -63,8 +62,6 @@ public partial class InventorySlot : Panel
     {
         if (what != NotificationDragEnd || !dragging) return;
         dragging = false;
-        // Soltou fora de qualquer slot e fora do painel: joga a pilha no chão.
-        if (!GetViewport().GuiIsDragSuccessful() && !mouseInsidePanel())
-            dropOutside(Slot);
+        if (!GetViewport().GuiIsDragSuccessful()) dragFailed(Slot);
     }
 }
