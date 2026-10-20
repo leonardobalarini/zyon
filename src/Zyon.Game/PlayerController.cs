@@ -33,8 +33,9 @@ public partial class PlayerController : Node
         }
         float move = (Input.IsPhysicalKeyPressed(Key.D) ? 1f : 0f) - (Input.IsPhysicalKeyPressed(Key.A) ? 1f : 0f);
         bool jump = Input.IsPhysicalKeyPressed(Key.Space);
-        // Clique sobre um controle da interface não minera nem coloca no mundo.
-        bool primary = Input.IsMouseButtonPressed(MouseButton.Left) && GetViewport().GuiGetHoveredControl() is null;
+        // Clique sobre um controle da interface (ou arrastando um item do inventário) não minera nem coloca no mundo.
+        var viewport = GetViewport();
+        bool primary = Input.IsMouseButtonPressed(MouseButton.Left) && viewport.GuiGetHoveredControl() is null && !viewport.GuiIsDragging();
         var (tx, ty) = RenderMath.TileAtPixel(mouseWorldPixels.ToNumerics());
         session.SetInput(new PlayerInput(move, jump, primary, tx, ty));
     }

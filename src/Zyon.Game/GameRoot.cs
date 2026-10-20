@@ -23,6 +23,7 @@ public partial class GameRoot : Node2D
     private PlayerController controller = null!;
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
+    private InventoryPanel inventory = null!;
     private SmokeTest? smoke;
     private ProfileWalk? profile;
     // Início do quadro anterior (Stopwatch): o intervalo medido mostra se o delta do motor difere do relógio.
@@ -97,6 +98,9 @@ public partial class GameRoot : Node2D
             hotbar = new Hotbar();
             AddChild(hotbar);
             hotbar.Init(newSession.World, visuals, playerId);
+            inventory = new InventoryPanel();
+            AddChild(inventory);
+            inventory.Init(newSession, visuals);
             debugOverlay = new DebugOverlay();
             AddChild(debugOverlay);
             controller = new PlayerController();
@@ -142,9 +146,15 @@ public partial class GameRoot : Node2D
         if (session is null || @event is not InputEventKey { Pressed: true, Echo: false } key) return;
         switch (key.PhysicalKeycode)
         {
+            case Key.E:
+                if (exiting || pause.IsOpen) break;
+                inventory.Toggle();
+                break;
             case Key.Escape:
                 if (exiting) break;
-                if (pause.IsOpen)
+                if (inventory.IsOpen)
+                    inventory.Close();
+                else if (pause.IsOpen)
                 {
                     pause.Close();
                     controller.Enabled = true;
@@ -221,6 +231,7 @@ public partial class GameRoot : Node2D
             entityRenderer.Refresh(session.InterpolationAlpha);
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
+            inventory.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
             long frameEnd = Stopwatch.GetTimestamp();
             RecordFrame(delta, measured, frameStart, updateEnd, frameEnd, (int)(session.World.Tick - tickBefore));
@@ -326,6 +337,7 @@ public partial class GameRoot : Node2D
         exitToMenu = toMenu;
         controller.Enabled = false;
         pause.Close();
+        inventory.Close();
         ScheduleExitSave();
     }
 
