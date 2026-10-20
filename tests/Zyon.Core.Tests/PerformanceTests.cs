@@ -7,6 +7,7 @@ using Zyon.Core.Tiles;
 
 namespace Zyon.Core.Tests;
 
+[Collection(PerformanceCollection.Name)]
 public class PerformanceTests(ITestOutputHelper output)
 {
     [Fact]
