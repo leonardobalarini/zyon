@@ -24,4 +24,14 @@ public class AutosaveTimerTests
         t.Reset();
         Assert.False(t.Update(0.5));
     }
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(-1.0)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void Constructor_RejectsInvalidIntervals(double interval)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new AutosaveTimer(interval));
+    }
 }

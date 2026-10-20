@@ -52,4 +52,16 @@ public sealed class SaveFilesListingTests : IDisposable
 
         Assert.Equal(new[] { "outro.zworld" }, Directory.GetFiles(dir).Select(Path.GetFileName));
     }
+
+    [Fact]
+    public void List_SkipsNamesThatWouldNotValidateIdentically()
+    {
+        Touch(".zworld");
+        Touch("CON.zworld");
+        Touch(new string('a', 30) + ".zworld");
+        Touch(" espaco.zworld");
+        Touch("ok.zworld");
+
+        Assert.Equal(new[] { "ok" }, SaveFiles.List(dir, ".zworld"));
+    }
 }

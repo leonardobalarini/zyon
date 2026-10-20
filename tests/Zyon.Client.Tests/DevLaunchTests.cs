@@ -44,4 +44,17 @@ public sealed class DevLaunchTests : IDisposable
         Assert.False(second.CreateNew);
         Assert.Equal("Ana", second.Player.Name);
     }
+
+    [Fact]
+    public void NamedWorld_ExistenceCheckIgnoresCase()
+    {
+        var lib = new SaveLibrary(root);
+        var r = TestData.Registry();
+        Directory.CreateDirectory(lib.WorldsDir);
+        File.WriteAllText(Path.Combine(lib.WorldsDir, "Casa.zworld"), "existe");
+
+        var req = DevLaunch.Build(lib, r, LaunchOptions.Parse(["--world", "casa", "--player", "Ana"]));
+
+        Assert.False(req.CreateNew);
+    }
 }

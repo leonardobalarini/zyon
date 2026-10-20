@@ -30,9 +30,12 @@ public static class DevLaunch
 
         string worldName = options.World ?? DefaultWorld;
         bool throwaway = options.Dev || options.SmokeTest;
+        if (throwaway)
+            foreach (string existing in library.Worlds().Where(w => string.Equals(w, worldName, StringComparison.OrdinalIgnoreCase)).ToList())
+                SaveFiles.Delete(library.WorldPath(existing));
         if (throwaway && library.WorldExists(worldName))
             SaveFiles.Delete(library.WorldPath(worldName));
-        bool create = !library.WorldExists(worldName);
+        bool create = !library.WorldExistsIgnoringCase(worldName);
         return new LaunchRequest(player, warnings, worldName, create, options.Width, options.Height,
             options.Seed ?? Environment.TickCount);
     }

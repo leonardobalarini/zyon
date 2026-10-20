@@ -46,9 +46,9 @@ public class LaunchOptionsTests
     [Fact]
     public void Parses_MenuSkippingOptions()
     {
-        var o = LaunchOptions.Parse(["--dev", "--world", "Teste", "--player", "Ana", "--saves-dir", "C:/tmp/s", "--autosave-seconds", "2.5"]);
+        var o = LaunchOptions.Parse(["--world", "Teste", "--player", "Ana", "--saves-dir", "C:/tmp/s", "--autosave-seconds", "2.5"]);
 
-        Assert.True(o.Dev);
+        Assert.False(o.Dev);
         Assert.Equal("Teste", o.World);
         Assert.Equal("Ana", o.Player);
         Assert.Equal("C:/tmp/s", o.SavesDir);
@@ -88,5 +88,16 @@ public class LaunchOptionsTests
     public void InvalidArguments_Throw(string flag, string value)
     {
         Assert.Throws<ArgumentException>(() => LaunchOptions.Parse([flag, value]));
+    }
+
+    [Theory]
+    [InlineData("--dev")]
+    [InlineData("--smoke-test")]
+    [InlineData("--profile-walk")]
+    public void ThrowawayModes_RejectNamedWorld(string mode)
+    {
+        var ex = Assert.Throws<ArgumentException>(() => LaunchOptions.Parse([mode, "--world", "Casa"]));
+        Assert.Contains("--world não combina com modos descartáveis", ex.Message);
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--world", "Casa", mode]));
     }
 }

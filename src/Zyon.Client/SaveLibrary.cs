@@ -22,6 +22,10 @@ public sealed class SaveLibrary(string root)
 
     public bool WorldExists(string name) => SaveFiles.Exists(WorldPath(name));
 
+    /// <summary>Como <see cref="WorldExists"/>, mas também acha o mundo se só a caixa (maiúsculas) do nome difere.</summary>
+    public bool WorldExistsIgnoringCase(string name) =>
+        WorldExists(name) || Worlds().Contains(SaveNames.Validate(name, "nome do mundo", WorldFile.Extension), StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Cria e grava um personagem novo. Nome já usado (ignorando maiúsculas) lança DataException.</summary>
     public PlayerSave CreatePlayer(string name, Registry registry)
     {

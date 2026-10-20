@@ -86,6 +86,8 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
 
         if (smoke && profile)
             throw new ArgumentException("--smoke-test e --profile-walk não podem ser usados juntos");
+        if (world is not null && (dev || smoke || profile))
+            throw new ArgumentException("--world não combina com modos descartáveis (--dev, --smoke-test, --profile-walk)");
         return new LaunchOptions(width, height, seed, smoke, frames, smoothing, profile, dev, world, player, savesDir, autosave);
     }
 }

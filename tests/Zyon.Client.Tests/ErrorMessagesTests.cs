@@ -40,4 +40,23 @@ public class ErrorMessagesTests
 
         Assert.Contains("formato 9", ErrorMessages.Describe(new AggregateException(inner)));
     }
+
+    [Fact]
+    public void IoAndPermission_ExplainDiskProblems()
+    {
+        var io = ErrorMessages.Describe(new IOException("sem espaço"));
+        Assert.Contains("ler ou gravar no disco", io);
+        Assert.Contains("Detalhe: sem espaço", io);
+        Assert.DoesNotContain("inesperado", io);
+        Assert.Contains("permissão", ErrorMessages.Describe(new UnauthorizedAccessException("negado")));
+    }
+
+    [Theory]
+    [InlineData(".zworld: nome do mundo ('name') vazio", "nome do mundo vazio")]
+    [InlineData(".zplayer: nome do personagem ('name') com mais de 24 caracteres", "nome do personagem com mais de 24 caracteres")]
+    [InlineData(".zworld: sem prefixo conhecido", "sem prefixo conhecido")]
+    public void DataException_IsFriendly(string raw, string expected)
+    {
+        Assert.Equal(expected, ErrorMessages.Describe(new DataException(raw)));
+    }
 }

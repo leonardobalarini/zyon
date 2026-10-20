@@ -77,11 +77,24 @@ public static class SaveFiles
             foreach (string file in Directory.EnumerateFiles(directory, "*" + ending))
             {
                 string fileName = Path.GetFileName(file);
-                if (fileName.EndsWith(ending, StringComparison.OrdinalIgnoreCase))
-                    names.Add(fileName[..^ending.Length]);
+                if (!fileName.EndsWith(ending, StringComparison.OrdinalIgnoreCase)) continue;
+                string name = fileName[..^ending.Length];
+                if (IsValidSaveName(name)) names.Add(name);
             }
         }
         return names.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool IsValidSaveName(string name)
+    {
+        try
+        {
+            return SaveNames.Validate(name, "nome", "") == name;
+        }
+        catch (DataException)
+        {
+            return false;
+        }
     }
 
     private const int MaxAttempts = 3;
