@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Compila e abre o jogo. Argumentos extras vão para o jogo (ex.: tools/play.sh --size small --seed 42).
+# Compila e abre o jogo no menu inicial. Argumentos extras vão para o jogo: tools/play.sh --dev entra direto num
+# mundo de teste descartável; tools/play.sh --world NOME --player NOME entra direto num mundo salvo.
 set -euo pipefail
 GODOT="${GODOT:-/d/Projetos/Ferramentas/Godot/Godot_v4.7.2-stable_mono_win64.exe}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -8,5 +9,8 @@ dotnet build "$GAME/Zyon.Game.csproj" -nologo -v q
 if [ ! -d "$GAME/.godot/imported" ]; then
   "${GODOT%.exe}_console.exe" --headless --path "$GAME" --import > /dev/null 2>&1 || true
 fi
-if [ "$#" -eq 0 ]; then set -- --size dev; fi
-"$GODOT" --path "$GAME" -- "$@"
+if [ "$#" -eq 0 ]; then
+  "$GODOT" --path "$GAME"
+else
+  "$GODOT" --path "$GAME" -- "$@"
+fi

@@ -2,10 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Godot;
 using Zyon.Client;
-using Zyon.Core.Data;
-using Zyon.Core.Persistence;
 using Zyon.Core.Sim;
-using Zyon.Core.WorldGen;
 using Zyon.Game.Hud;
 using Zyon.Game.Rendering;
 
@@ -16,6 +13,7 @@ public partial class GameRoot : Node2D
 {
     private IGameSession? session;
     private LaunchOptions options = null!;
+    private LoadedGame game = null!;
     private WorldRenderer worldRenderer = null!;
     private GameCamera camera = null!;
     private int playerId;
@@ -39,18 +37,16 @@ public partial class GameRoot : Node2D
 
     public override void _Ready()
     {
-        string[] args = OS.GetCmdlineUserArgs();
-        bool smokeRequested = System.Array.IndexOf(args, "--smoke-test") >= 0 || System.Array.IndexOf(args, "--profile-walk") >= 0;
-        try
+        var pending = GameFlow.PendingGame;
+        GameFlow.PendingGame = null;
+        if (pending is null)
         {
-            options = LaunchOptions.Parse(args);
-        }
-        catch (System.ArgumentException ex)
-        {
-            GD.PrintErr(smokeRequested ? $"SMOKE FAIL: argumentos inválidos: {ex.Message}" : $"Argumentos inválidos: {ex.Message}");
-            GetTree().Quit(smokeRequested ? 1 : 2);
+            // Cena aberta diretamente (sem passar pelo carregamento): o menu inicializa tudo e mostra erros.
+            GameFlow.GoTo(this, Scenes.MainMenu);
             return;
         }
+        game = pending;
+        options = GameFlow.Options;
 
         try
         {
@@ -67,21 +63,14 @@ public partial class GameRoot : Node2D
     /// <summary>Monta tudo; a sessão só é publicada no campo no fim, então _Process nunca a vê pela metade.</summary>
     private void Start()
     {
-        string dataDir = DataPaths.Resolve();
-        var registry = RegistryLoader.LoadFromDirectory(dataDir);
-        var visuals = ClientVisuals.LoadFromDirectory(dataDir, registry);
-        int seed = options.Seed ?? System.Environment.TickCount;
-        var generated = new WorldGenerator(registry, WorldGenConfigLoader.LoadFromDirectory(dataDir))
-            .Generate(options.Width, options.Height, seed);
-        var world = WorldSave.FromGenerated(generated);
-        var sim = world.CreateSimulation(registry, new GodotLog());
-        int player = PlayerSave.New("Dev", registry).SpawnInto(sim, world.PlayerPosition("Dev", registry.Physics));
-        playerId = player;
-        var newSession = new LocalSession(sim, player);
+        var visuals = GameFlow.Visuals;
+        var sim = game.Simulation;
+        playerId = game.PlayerId;
+        var newSession = new LocalSession(sim, playerId);
         try
         {
             RenderingServer.SetDefaultClearColor(visuals.Sky.ToGodot());
-            GD.Print($"Zyon: mundo {options.Width}×{options.Height}, seed {seed}");
+            GD.Print($"Zyon: mundo '{System.IO.Path.GetFileNameWithoutExtension(game.WorldPath)}' {sim.Width}×{sim.Height}, seed {game.Info.Seed}, personagem '{game.PlayerName}'");
 
             worldRenderer = new WorldRenderer();
             AddChild(worldRenderer);
@@ -102,7 +91,7 @@ public partial class GameRoot : Node2D
             controller.Init(newSession);
             camera = new GameCamera();
             AddChild(camera);
-            camera.Init(options.Width, options.Height, options.CameraSmoothing);
+            camera.Init(sim.Width, sim.Height, options.CameraSmoothing);
             if (newSession.World.TryGetEntityView(playerId, out var start))
             {
                 camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());

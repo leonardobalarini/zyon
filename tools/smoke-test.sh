@@ -11,8 +11,13 @@ dotnet build "$GAME/Zyon.Game.csproj" -nologo -v q || exit 1
 if [ ! -d "$GAME/.godot/imported" ]; then
   "$GODOT" --headless --path "$GAME" --import > /dev/null 2>&1
 fi
+# Saves numa pasta temporária: o smoke test nunca toca nos saves do jogador.
+SAVES="$(mktemp -d)"
+trap 'rm -rf "$SAVES"' EXIT
+# O Godot é um programa Windows: no Git Bash precisa do caminho no formato C:/...
+SAVES_ARG="$(cygpath -m "$SAVES" 2>/dev/null || echo "$SAVES")"
 # timeout: uma exceção que impeça o jogo de chamar Quit não pode travar o script.
-out="$(timeout "${SMOKE_TIMEOUT:-300}" "$GODOT" --headless --path "$GAME" -- --smoke-test --frames "$FRAMES" --size dev --seed 1 2>&1)"
+out="$(timeout "${SMOKE_TIMEOUT:-300}" "$GODOT" --headless --path "$GAME" -- --smoke-test --frames "$FRAMES" --size dev --seed 1 --saves-dir "$SAVES_ARG" 2>&1)"
 code=$?
 echo "$out" | tail -n 25
 if [ "$code" -ne 0 ] || ! echo "$out" | grep -q "SMOKE OK"; then

@@ -8,5 +8,4 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not (Test-Path (Join-Path $game '.godot\imported'))) {
     & $console --headless --path $game --import *> $null
 }
-$gameArgs = if ($args.Count -gt 0) { $args } else { @('--size', 'dev') }
-& $godot --path $game -- @gameArgs
+if ($args.Count -gt 0) { & $godot --path $game -- @args } else { & $godot --path $game }
