@@ -104,4 +104,56 @@ public sealed class GameSaverTests : IDisposable
             File.SetAttributes(game.WorldPath, FileAttributes.Normal);
         }
     }
+
+    [Fact]
+    public void UnexpectedWriteFailure_IsReportedAsUnexpected_AndNextSaveRecovers()
+    {
+        var (_, game) = NewGame();
+        using var saver = new GameSaver(game.Simulation.Registry, game);
+        using var sim = game.Simulation;
+        var original = saver.WriteFile;
+        saver.WriteFile = (_, _) => throw new InvalidOperationException("bug");
+
+        saver.Save(sim);
+        Assert.True(saver.Flush(TimeSpan.FromSeconds(10)));
+
+        Assert.IsType<InvalidOperationException>(saver.LastError);
+        Assert.IsType<InvalidOperationException>(saver.UnexpectedError);
+        Assert.Equal(0, saver.CompletedSaves);
+
+        saver.WriteFile = original;
+        saver.Save(sim);
+        Assert.True(saver.Flush(TimeSpan.FromSeconds(10)));
+        Assert.Null(saver.LastError);
+        Assert.Equal(1, saver.CompletedSaves);
+        Assert.IsType<InvalidOperationException>(saver.UnexpectedError);
+    }
+
+    [Fact]
+    public void IoFailure_IsNotUnexpected()
+    {
+        var (_, game) = NewGame();
+        using var saver = new GameSaver(game.Simulation.Registry, game);
+        using var sim = game.Simulation;
+        saver.WriteFile = (_, _) => throw new IOException("disk");
+        saver.Save(sim);
+        saver.Flush(TimeSpan.FromSeconds(10));
+        Assert.IsType<IOException>(saver.LastError);
+        Assert.Null(saver.UnexpectedError);
+    }
+
+    [Fact]
+    public void Flush_AndDispose_NeverThrow_AndSaveAfterDisposeThrows()
+    {
+        var (_, game) = NewGame();
+        var saver = new GameSaver(game.Simulation.Registry, game);
+        using var sim = game.Simulation;
+        saver.WriteFile = (_, _) => throw new InvalidOperationException("bug");
+        saver.Save(sim);
+
+        Assert.True(saver.Flush(TimeSpan.FromSeconds(10)));
+        saver.Dispose();
+        saver.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => saver.Save(sim));
+    }
 }
