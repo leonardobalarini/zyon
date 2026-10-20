@@ -1,20 +1,21 @@
 namespace Zyon.Core.Sim;
 
 /// <summary>
-/// Roda a Simulation no mesmo processo, com acumulador de tempo para tick fixo.
+/// Roda a Simulation no mesmo processo, em ticks fixos contados por um <see cref="FrameClock"/> (arredonda deltas
+/// próximos de múltiplos do tick para que um monitor de 60 Hz rode sempre 1 tick por quadro).
 /// Assume a posse da Simulation (Dispose a descarta). Quadros mais lentos que 1/12 s rodam em câmera lenta,
 /// pois MaxTicksPerUpdate limita os ticks por chamada e o excedente é descartado.
 /// </summary>
-public sealed class LocalSession(Simulation simulation, int localPlayerId) : IGameSession
+public sealed class LocalSession(Simulation simulation, int localPlayerId,
+    double snapToleranceSeconds = FrameClock.DefaultSnapToleranceSeconds) : IGameSession
 {
     public const int MaxTicksPerUpdate = 5;
-    private const double TickSeconds = 1.0 / Simulation.TicksPerSecond;
 
-    private double accumulator;
+    private readonly FrameClock clock = new(1.0 / Simulation.TicksPerSecond, MaxTicksPerUpdate, snapToleranceSeconds);
 
     public int LocalPlayerId { get; } = localPlayerId;
     public IWorldView World => simulation;
-    public float InterpolationAlpha { get; private set; }
+    public float InterpolationAlpha => clock.Alpha;
 
     public void SetInput(PlayerInput input) => simulation.SetInput(LocalPlayerId, input);
 
@@ -22,20 +23,9 @@ public sealed class LocalSession(Simulation simulation, int localPlayerId) : IGa
 
     public void Update(double deltaSeconds)
     {
-        if (!(deltaSeconds > 0))
-            return;
-
-        accumulator += deltaSeconds;
-        int ticks = 0;
-        while (accumulator >= TickSeconds && ticks < MaxTicksPerUpdate)
-        {
+        int ticks = clock.Advance(deltaSeconds);
+        for (int i = 0; i < ticks; i++)
             simulation.Step();
-            accumulator -= TickSeconds;
-            ticks++;
-        }
-        if (accumulator >= TickSeconds)
-            accumulator = 0;
-        InterpolationAlpha = Math.Clamp((float)(accumulator / TickSeconds), 0f, 0.99999994f);
     }
 
     public IReadOnlyList<IGameEvent> DrainEvents() => simulation.DrainEvents();

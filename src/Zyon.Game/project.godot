@@ -6,6 +6,7 @@ config/name="Zyon"
 run/main_scene="res://scenes/Game.tscn"
 config/features=PackedStringArray("4.7", "C#")
 config/icon="res://icon.svg"
+run/delta_smoothing=false
 
 [display]
 
@@ -19,6 +20,10 @@ window/stretch/scale_mode="integer"
 [dotnet]
 
 project/assembly_name="Zyon.Game"
+
+[physics]
+
+common/physics_jitter_fix=0.0
 
 [rendering]
 

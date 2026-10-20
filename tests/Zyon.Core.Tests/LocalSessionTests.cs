@@ -15,11 +15,12 @@ public class LocalSessionTests
     {
         var (session, _) = Create();
         using var _s = session;
+        Assert.Equal(0.5f, session.InterpolationAlpha, 3);   // a fase começa no meio do tick (FrameClock)
 
-        session.Update(3.5 / Simulation.TicksPerSecond);
+        session.Update(3.25 / Simulation.TicksPerSecond);
 
         Assert.Equal(3, session.World.Tick);
-        Assert.Equal(0.5f, session.InterpolationAlpha, 3);
+        Assert.Equal(0.75f, session.InterpolationAlpha, 3);
     }
 
     [Fact]
@@ -78,5 +79,39 @@ public class LocalSessionTests
         Assert.Equal(2, session.World.Tick);
         Assert.True(float.IsFinite(session.InterpolationAlpha));
         Assert.InRange(session.InterpolationAlpha, 0f, 0.99999994f);
+    }
+
+    /// <summary>Roda os deltas e devolve quantos quadros rodaram 0, 1, 2 e 3+ ticks.</summary>
+    private static int[] TicksPerFrame(LocalSession session, IEnumerable<double> deltas)
+    {
+        var counts = new int[4];
+        foreach (double delta in deltas)
+        {
+            long before = session.World.Tick;
+            session.Update(delta);
+            counts[Math.Min(3, (int)(session.World.Tick - before))]++;
+        }
+        return counts;
+    }
+
+    /// <summary>Deltas de um monitor de <paramref name="hz"/> Hz com ruído uniforme de ±<paramref name="jitterMs"/> ms.</summary>
+    private static IEnumerable<double> Display(double hz, double jitterMs, int frames, int seed = 1)
+    {
+        var random = new Random(seed);
+        for (int i = 0; i < frames; i++)
+            yield return 1.0 / hz + (random.NextDouble() * 2 - 1) * jitterMs / 1000;
+    }
+
+    [Theory]
+    [InlineData(60.0)]
+    [InlineData(59.94)]
+    public void Update_JitteryVsyncNear60Hz_RunsExactlyOneTickEveryFrame(double hz)
+    {
+        var (session, _) = Create();
+        using var _s = session;
+
+        var counts = TicksPerFrame(session, Display(hz, jitterMs: 0.3, frames: 10_000));
+
+        Assert.Equal([0, 10_000, 0, 0], counts);
     }
 }
