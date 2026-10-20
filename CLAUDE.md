@@ -48,7 +48,8 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Testes: `dotnet test`
 - Desempenho (só vale em Release): `dotnet test -c Release --filter Category=Performance` (já compila em Release; não usar `--no-build` sem um `dotnet build -c Release` prévio)
 - Godot (portátil): `/d/Projetos/Ferramentas/Godot/Godot_v4.7.2-stable_mono_win64_console.exe` (variável `GODOT` sobrescreve).
-- Jogar: `"$GODOT" --path src/Zyon.Game -- --size dev` (opções: `--size dev|small|medium|large`, `--seed N`).
-- Smoke test do jogo (headless): `tools/smoke-test.sh [frames]` (padrão 600; o roteiro de mineração precisa de uns 300) — rode sempre que mexer em `src/Zyon.Game`.
+- Jogar: `"$GODOT" --path src/Zyon.Game -- --size dev` (opções: `--size dev|small|medium|large`, `--seed N`, `--camera-smoothing V` — 0 = câmera direta, o padrão; 10 era o antigo).
+- No jogo: F3 mostra/esconde a sobreposição de depuração (FPS, tempos de quadro, custo da sessão/render, chunks, GC, alpha); F4 liga/desliga a suavização da câmera; F5 liga/desliga o VSync. O projeto usa `swapchain_image_count=2` (buffer duplo, menos latência com VSync).
+- Smoke test do jogo (headless): `tools/smoke-test.sh [frames]` (padrão 600; o roteiro de mineração precisa de uns 300) — rode sempre que mexer em `src/Zyon.Game`. Imprime `SMOKE STATS` (tempos de `_Process`, atraso da câmera) para comparar desempenho em headless.
 
 Toda mudança termina com `dotnet test` passando.

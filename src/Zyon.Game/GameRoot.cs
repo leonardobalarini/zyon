@@ -30,6 +30,9 @@ public partial class GameRoot : Node2D
     private readonly FrameStats steadyStats = new();
     private int framesProcessed;
     private int lastGcCount;
+    // Distância (pixels do mundo) entre o centro da tela e o jogador no início do quadro: atraso visual da câmera.
+    private float cameraLagMax;
+    private Vector2 lastCameraTarget;
 
     public override void _Ready()
     {
@@ -96,7 +99,7 @@ public partial class GameRoot : Node2D
             controller.Init(newSession);
             camera = new GameCamera();
             AddChild(camera);
-            camera.Init(options.Width, options.Height);
+            camera.Init(options.Width, options.Height, options.CameraSmoothing);
             if (newSession.World.TryGetEntityView(playerId, out var start))
             {
                 camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
@@ -116,11 +119,25 @@ public partial class GameRoot : Node2D
     public override void _UnhandledInput(InputEvent @event)
     {
         if (session is null || @event is not InputEventKey { Pressed: true, Echo: false } key) return;
-        if (key.PhysicalKeycode == Key.F3)
+        switch (key.PhysicalKeycode)
         {
-            debugOverlay.Toggle();
-            GetViewport().SetInputAsHandled();
+            case Key.F3:
+                debugOverlay.Toggle();
+                break;
+            case Key.F4:
+                camera.ToggleSmoothing();
+                GD.Print($"Câmera: {camera.ModeDescription}");
+                break;
+            case Key.F5:
+                var vsync = DisplayServer.WindowGetVsyncMode() == DisplayServer.VSyncMode.Disabled
+                    ? DisplayServer.VSyncMode.Enabled : DisplayServer.VSyncMode.Disabled;
+                DisplayServer.WindowSetVsyncMode(vsync);
+                GD.Print($"VSync: {DisplayServer.WindowGetVsyncMode()}");
+                break;
+            default:
+                return;
         }
+        GetViewport().SetInputAsHandled();
     }
 
     public override void _Process(double delta)
@@ -130,6 +147,8 @@ public partial class GameRoot : Node2D
         {
             long frameStart = Stopwatch.GetTimestamp();
             long tickBefore = session.World.Tick;
+            if (framesProcessed > 0)
+                cameraLagMax = Mathf.Max(cameraLagMax, camera.GetScreenCenterPosition().DistanceTo(lastCameraTarget));
             controller.Poll(GetGlobalMousePosition());
             session.Update(delta);
             long updateEnd = Stopwatch.GetTimestamp();
@@ -139,8 +158,13 @@ public partial class GameRoot : Node2D
                 overlay.OnEvent(gameEvent);
                 smoke?.OnEvent(gameEvent);
             }
+            // A câmera segue a mesma posição interpolada que o jogador desenhado: com a posição do tick atual
+            // (até 1 tick à frente) o mundo rolaria em degraus de 60 Hz e o jogador tremeria em relação à tela.
             if (session.World.TryGetEntityView(playerId, out var me))
-                camera.Follow(RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot());
+            {
+                lastCameraTarget = RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot();
+                camera.Follow(lastCameraTarget);
+            }
             entityRenderer.Refresh(session.InterpolationAlpha);
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
@@ -185,10 +209,10 @@ public partial class GameRoot : Node2D
         lastGcCount = gcCount;
         frameStats.Add(sample);
         if (++framesProcessed > 60) steadyStats.Add(sample);
-        debugOverlay.Refresh(delta, frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
-            worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
-            camera.PositionSmoothingEnabled ? $"suave {camera.PositionSmoothingSpeed:0}" : "direta",
-            DisplayServer.WindowGetVsyncMode().ToString()));
+        if (debugOverlay.ShouldRefresh(delta))
+            debugOverlay.Refresh(frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
+                worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
+                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString()));
     }
 
     private void PrintSmokeStats()
@@ -201,6 +225,13 @@ public partial class GameRoot : Node2D
             s.RenderAvgMs, s.RenderMaxMs, s.Rebuilds, s.MaxRebuildsPerFrame, s.GcCollections);
         GD.Print($"SMOKE STATS total: {Line(frameStats.Overall)}");
         GD.Print($"SMOKE STATS após 60 quadros: {Line(steadyStats.Overall)}");
+        GD.Print(string.Format(CultureInfo.InvariantCulture,
+            "SMOKE STATS câmera: {0}, atraso máx {1:0.0} px do mundo ({2:0.00} tiles)",
+            camera.ModeDescription, cameraLagMax, cameraLagMax / RenderMath.PixelsPerTile));
+        GD.Print("SMOKE STATS apresentação: swapchain_image_count " +
+            ProjectSettings.GetSetting("rendering/rendering_device/vsync/swapchain_image_count") +
+            ", frame_queue_size " + ProjectSettings.GetSetting("rendering/rendering_device/vsync/frame_queue_size") +
+            ", vsync_mode " + ProjectSettings.GetSetting("display/window/vsync/vsync_mode"));
     }
 
     public override void _ExitTree() => session?.Dispose();

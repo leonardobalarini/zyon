@@ -3,8 +3,11 @@ using Zyon.Core.WorldGen;
 
 namespace Zyon.Client;
 
-/// <summary>Argumentos do jogo (depois de "--" na linha de comando do executável do jogo).</summary>
-public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames)
+/// <summary>
+/// Argumentos do jogo (depois de "--" na linha de comando do executável do jogo). <see cref="CameraSmoothing"/>
+/// é a velocidade da suavização da câmera (0 = segue o jogador sem atraso, o padrão).
+/// </summary>
+public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames, float CameraSmoothing = 0f)
 {
     public static readonly (int Width, int Height) DevSize = (1050, 300);
 
@@ -14,6 +17,7 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
         int? seed = null;
         bool smoke = false;
         int frames = 600;
+        float smoothing = 0f;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -41,11 +45,15 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
                     frames = int.TryParse(Next(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int f) && f > 0
                         ? f : throw new ArgumentException("--frames precisa de um inteiro > 0");
                     break;
+                case "--camera-smoothing":
+                    smoothing = float.TryParse(Next(), NumberStyles.Float, CultureInfo.InvariantCulture, out float c) && float.IsFinite(c) && c >= 0
+                        ? c : throw new ArgumentException("--camera-smoothing precisa de um número >= 0 (0 = sem suavização)");
+                    break;
                 default:
                     throw new ArgumentException($"argumento desconhecido '{args[i]}'");
             }
         }
 
-        return new LaunchOptions(width, height, seed, smoke, frames);
+        return new LaunchOptions(width, height, seed, smoke, frames, smoothing);
     }
 }

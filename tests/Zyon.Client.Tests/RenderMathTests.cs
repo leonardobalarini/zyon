@@ -30,4 +30,13 @@ public class RenderMathTests
         Assert.Equal(new Vector2(1f, 9f), RenderMath.Interpolate(prev, cur, 0.25f));
         Assert.Equal(cur, RenderMath.Interpolate(prev, cur, 1f));
     }
+
+    [Theory]
+    [InlineData(10.4f, 20.6f, 10f, 21f)]
+    [InlineData(10.5f, 20.5f, 11f, 21f)]
+    [InlineData(7f, 3f, 7f, 3f)]
+    public void SnapToPixel_RoundsToWholePixelsHalfUp(float x, float y, float sx, float sy)
+    {
+        Assert.Equal(new Vector2(sx, sy), RenderMath.SnapToPixel(new Vector2(x, y)));
+    }
 }

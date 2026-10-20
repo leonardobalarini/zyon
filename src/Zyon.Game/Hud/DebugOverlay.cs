@@ -32,13 +32,21 @@ public partial class DebugOverlay : CanvasLayer
 
     public void Toggle() => Visible = !Visible;
 
-    /// <summary>Atualiza o texto (no máximo 10×/s, para não alocar uma string por quadro).</summary>
-    public void Refresh(double delta, FrameStats stats, in DebugInfo info)
+    /// <summary>
+    /// Se o texto deve ser refeito neste quadro: só visível e no máximo 10×/s, para a própria sobreposição não
+    /// alocar strings a cada quadro (o que apareceria como coletas de lixo nas medidas).
+    /// </summary>
+    public bool ShouldRefresh(double delta)
     {
-        if (!Visible) return;
+        if (!Visible) return false;
         sinceText += delta;
-        if (sinceText < TextRefreshSeconds) return;
+        if (sinceText < TextRefreshSeconds) return false;
         sinceText = 0;
+        return true;
+    }
+
+    public void Refresh(FrameStats stats, in DebugInfo info)
+    {
 
         var w = stats.Window;
         label.Text = string.Format(CultureInfo.InvariantCulture,
@@ -47,7 +55,7 @@ public partial class DebugOverlay : CanvasLayer
             "sessão med {5:0.00} máx {6:0.00} ms | render med {7:0.00} máx {8:0.00} ms\n" +
             "chunks {9} | remontados: quadro {10}, 1 s {11} (máx {12}/quadro)\n" +
             "GC 1 s {13} | alpha {14:0.00} | ticks no quadro {15}\n" +
-            "câmera: {16} | vsync: {17}",
+            "câmera: {16} (F4) | vsync: {17} (F5)",
             w.Fps, w.FrameAvgMs, w.FrameMaxMs,
             w.ProcessAvgMs, w.ProcessMaxMs,
             w.UpdateAvgMs, w.UpdateMaxMs, w.RenderAvgMs, w.RenderMaxMs,
