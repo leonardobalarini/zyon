@@ -31,6 +31,18 @@ public class LaunchOptionsTests
         Assert.Equal(120, o.SmokeFrames);
     }
 
+    [Fact]
+    public void Parses_ProfileWalk_AndRejectsItWithSmokeTest()
+    {
+        var o = LaunchOptions.Parse(["--profile-walk", "--frames", "3600"]);
+
+        Assert.True(o.ProfileWalk);
+        Assert.False(o.SmokeTest);
+        Assert.Equal(3600, o.SmokeFrames);
+        Assert.False(LaunchOptions.Parse([]).ProfileWalk);
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--profile-walk", "--smoke-test"]));
+    }
+
     [Theory]
     [InlineData("--size", "huge")]
     [InlineData("--seed", "abc")]

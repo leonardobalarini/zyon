@@ -33,6 +33,9 @@ public partial class WorldRenderer : Node2D
     /// <summary>Chunks montados ou remontados na última chamada de <see cref="UpdateVisible"/>.</summary>
     public int RebuildsLastUpdate { get; private set; }
 
+    /// <summary>Quantos de <see cref="RebuildsLastUpdate"/> foram chunks que entraram na faixa visível.</summary>
+    public int NewChunksLastUpdate { get; private set; }
+
     public void Init(IWorldView worldView, ClientVisuals visuals)
     {
         view = worldView;
@@ -57,6 +60,7 @@ public partial class WorldRenderer : Node2D
             visiblePixels.Size.X, visiblePixels.Size.Y, MarginChunks, chunksX, chunksY);
 
         RebuildsLastUpdate = 0;
+        NewChunksLastUpdate = 0;
         leaving.Clear();
         foreach (var key in active.Keys)
             if (!range.Contains(key.Item1, key.Item2)) leaving.Add(key);
@@ -76,6 +80,7 @@ public partial class WorldRenderer : Node2D
             node.Position = new Vector2(cx * ChunkVisibility.ChunkPixels, cy * ChunkVisibility.ChunkPixels);
             node.Visible = true;
             Rebuild(node, cx, cy);
+            NewChunksLastUpdate++;
             active[(cx, cy)] = node;
         }
 

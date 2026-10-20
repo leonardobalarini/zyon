@@ -24,6 +24,9 @@ public partial class GameRoot : Node2D
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
     private SmokeTest? smoke;
+    private ProfileWalk? profile;
+    // Início do quadro anterior (Stopwatch): o intervalo medido mostra se o delta do motor difere do relógio.
+    private long lastFrameStart;
     private DebugOverlay debugOverlay = null!;
     private readonly FrameStats frameStats = new();
     // Só a partir do 60º quadro: no smoke test separa a montagem inicial do regime normal.
@@ -37,7 +40,7 @@ public partial class GameRoot : Node2D
     public override void _Ready()
     {
         string[] args = OS.GetCmdlineUserArgs();
-        bool smokeRequested = System.Array.IndexOf(args, "--smoke-test") >= 0;
+        bool smokeRequested = System.Array.IndexOf(args, "--smoke-test") >= 0 || System.Array.IndexOf(args, "--profile-walk") >= 0;
         try
         {
             options = LaunchOptions.Parse(args);
@@ -53,7 +56,7 @@ public partial class GameRoot : Node2D
         {
             Start();
         }
-        catch (System.Exception ex) when (options.SmokeTest)
+        catch (System.Exception ex) when (options.SmokeTest || options.ProfileWalk)
         {
             // Sem isto uma falha na montagem deixaria o jogo aberto sem nunca chamar Quit.
             GD.PrintErr($"SMOKE FAIL: {ex}");
@@ -106,6 +109,11 @@ public partial class GameRoot : Node2D
                 camera.ResetSmoothing();
             }
             if (options.SmokeTest) smoke = new SmokeTest(newSession, controller, options.SmokeFrames);
+            if (options.ProfileWalk)
+            {
+                profile = new ProfileWalk(newSession, controller, options.SmokeFrames);
+                GD.Print("PROFILE ambiente: " + TimingEnvironment());
+            }
         }
         catch
         {
@@ -146,6 +154,8 @@ public partial class GameRoot : Node2D
         try
         {
             long frameStart = Stopwatch.GetTimestamp();
+            double measured = lastFrameStart == 0 ? 0 : Stopwatch.GetElapsedTime(lastFrameStart, frameStart).TotalSeconds;
+            lastFrameStart = frameStart;
             long tickBefore = session.World.Tick;
             if (framesProcessed > 0)
                 cameraLagMax = Mathf.Max(cameraLagMax, camera.GetScreenCenterPosition().DistanceTo(lastCameraTarget));
@@ -170,7 +180,16 @@ public partial class GameRoot : Node2D
             hotbar.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
             long frameEnd = Stopwatch.GetTimestamp();
-            RecordFrame(delta, frameStart, updateEnd, frameEnd, session.World.Tick - tickBefore);
+            RecordFrame(delta, measured, frameStart, updateEnd, frameEnd, (int)(session.World.Tick - tickBefore));
+            if (profile is not null)
+            {
+                profile.Step();
+                if (profile.Finished)
+                {
+                    profile.PrintReport("user://profile-walk.csv");
+                    GetTree().Quit(0);
+                }
+            }
             if (smoke is not null)
             {
                 smoke.Step();
@@ -190,14 +209,14 @@ public partial class GameRoot : Node2D
                 }
             }
         }
-        catch (System.Exception ex) when (options.SmokeTest)
+        catch (System.Exception ex) when (options.SmokeTest || options.ProfileWalk)
         {
             GD.PrintErr($"SMOKE FAIL: {ex}");
             GetTree().Quit(1);
         }
     }
 
-    private void RecordFrame(double delta, long frameStart, long updateEnd, long frameEnd, long ticks)
+    private void RecordFrame(double delta, double measured, long frameStart, long updateEnd, long frameEnd, int ticks)
     {
         // Contagem da geração 0 inclui as coletas das gerações 1 e 2; mede desde o quadro anterior.
         int gcCount = System.GC.CollectionCount(0);
@@ -205,24 +224,37 @@ public partial class GameRoot : Node2D
             Stopwatch.GetElapsedTime(frameStart, frameEnd).TotalMilliseconds,
             Stopwatch.GetElapsedTime(frameStart, updateEnd).TotalMilliseconds,
             Stopwatch.GetElapsedTime(updateEnd, frameEnd).TotalMilliseconds,
-            worldRenderer.RebuildsLastUpdate, gcCount - lastGcCount);
+            worldRenderer.RebuildsLastUpdate, gcCount - lastGcCount,
+            ticks, measured, worldRenderer.NewChunksLastUpdate);
         lastGcCount = gcCount;
-        frameStats.Add(sample);
+        bool hitch = frameStats.Add(sample);
         if (++framesProcessed > 60) steadyStats.Add(sample);
+        profile?.Record(sample, session!.InterpolationAlpha);
+        // Só com a sobreposição visível, para não poluir o console.
+        if (hitch && debugOverlay.Visible)
+            GD.Print(DebugOverlay.HitchText(frameStats.LastHitch!.Value, frameStats.FrameCount));
         if (debugOverlay.ShouldRefresh(delta))
             debugOverlay.Refresh(frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
                 worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
                 camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString()));
     }
 
+    /// <summary>Configuração de tempo do motor que afeta o delta entregue a _Process.</summary>
+    private static string TimingEnvironment() =>
+        $"vsync {DisplayServer.WindowGetVsyncMode()}, delta_smoothing {OS.DeltaSmoothing}, " +
+        $"max_fps {Engine.MaxFps}, physics_ticks {Engine.PhysicsTicksPerSecond}, " +
+        $"physics_jitter_fix {Engine.PhysicsJitterFix.ToString(CultureInfo.InvariantCulture)}, " +
+        $"refresh {DisplayServer.ScreenGetRefreshRate().ToString(CultureInfo.InvariantCulture)}";
+
     private void PrintSmokeStats()
     {
         static string Line(FrameSummary s) => string.Format(CultureInfo.InvariantCulture,
             "{0} quadros, delta med {1:0.00} máx {2:0.00} ms, _Process med {3:0.000} máx {4:0.000} ms, " +
             "sessão med {5:0.000} máx {6:0.000} ms, render med {7:0.000} máx {8:0.000} ms, " +
-            "remontagens {9} (máx {10}/quadro), GC {11}",
+            "remontagens {9} (máx {10}/quadro), GC {11}, quadros com 0 ticks {12}, com 2+ ticks {13}",
             s.Frames, s.FrameAvgMs, s.FrameMaxMs, s.ProcessAvgMs, s.ProcessMaxMs, s.UpdateAvgMs, s.UpdateMaxMs,
-            s.RenderAvgMs, s.RenderMaxMs, s.Rebuilds, s.MaxRebuildsPerFrame, s.GcCollections);
+            s.RenderAvgMs, s.RenderMaxMs, s.Rebuilds, s.MaxRebuildsPerFrame, s.GcCollections,
+            s.ZeroTickFrames, s.MultiTickFrames);
         GD.Print($"SMOKE STATS total: {Line(frameStats.Overall)}");
         GD.Print($"SMOKE STATS após 60 quadros: {Line(steadyStats.Overall)}");
         GD.Print(string.Format(CultureInfo.InvariantCulture,

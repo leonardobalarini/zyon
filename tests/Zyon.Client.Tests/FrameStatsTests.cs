@@ -90,6 +90,61 @@ public class FrameStatsTests
     }
 
     [Fact]
+    public void Window_CountsZeroAndMultiTickFrames_AndMaxMeasuredInterval()
+    {
+        var stats = new FrameStats(windowSeconds: 1.0);
+
+        for (int i = 0; i < 56; i++) stats.Add(Frame(1.0 / 60) with { MeasuredSeconds = 1.0 / 60 });
+        stats.Add(Frame(1.0 / 60) with { Ticks = 0, MeasuredSeconds = 0.012 });
+        stats.Add(Frame(1.0 / 60) with { Ticks = 2, MeasuredSeconds = 0.021 });
+        stats.Add(Frame(1.0 / 60) with { Ticks = 3, MeasuredSeconds = 0.040 });
+        stats.Add(Frame(1.0 / 60) with { Ticks = 0 });
+
+        var w = stats.Window;
+        Assert.Equal(60, w.Frames);
+        Assert.Equal(2, w.ZeroTickFrames);
+        Assert.Equal(2, w.MultiTickFrames);
+        Assert.Equal(40.0, w.MeasuredMaxMs, 6);
+    }
+
+    [Fact]
+    public void Add_ReportsHitches_AndKeepsTheLastOne()
+    {
+        var stats = new FrameStats();
+
+        Assert.Null(stats.LastHitch);
+        Assert.False(stats.Add(Frame(1.0 / 60)));
+        Assert.True(stats.Add(Frame(0.033, processMs: 9, rebuilds: 4, gc: 1) with { Ticks = 2, NewChunks = 3 }));
+        Assert.False(stats.Add(Frame(1.0 / 60) with { Ticks = 0 }));
+
+        var hitch = Assert.NotNull(stats.LastHitch);
+        Assert.Equal(2, hitch.Frame);
+        Assert.Equal(2, hitch.Sample.Ticks);
+        Assert.Equal(9.0, hitch.Sample.ProcessMs);
+        Assert.Equal(3, hitch.Sample.NewChunks);
+        Assert.Equal(3, stats.FrameCount);
+    }
+
+    [Fact]
+    public void ProfileReport_SeparatesTicksAndSpikesByCause()
+    {
+        var frames = new List<FrameSample>
+        {
+            Frame(1.0 / 60, processMs: 1) with { MeasuredSeconds = 1.0 / 60 },
+            Frame(1.0 / 60, processMs: 10, rebuilds: 4) with { NewChunks = 4, MeasuredSeconds = 1.0 / 60 },
+            Frame(1.0 / 30, processMs: 12, gc: 1) with { Ticks = 2, MeasuredSeconds = 1.0 / 60 },
+            Frame(1.0 / 60, processMs: 1) with { Ticks = 0, MeasuredSeconds = 1.0 / 60 },
+        };
+
+        var lines = FrameProfileReport.Describe(frames);
+
+        Assert.Contains(lines, l => l.StartsWith("4 quadros | ticks por quadro: 0 → 1, 1 → 2, 2 → 1, 3+ → 0 | delta ≠ intervalo medido (>2 ms) em 1"));
+        Assert.Contains(lines, l => l.StartsWith("picos > 8 ms: 2 (com chunk novo 1, com GC 1, sem nenhum dos dois 0)"));
+        Assert.Contains(lines, l => l.StartsWith("quadros com 2+ ticks: 1 (delta > 25 ms 1, intervalo medido > 25 ms 0, com pico > 8 ms 1)"));
+        Assert.Equal(["nenhum quadro"], FrameProfileReport.Describe([]));
+    }
+
+    [Fact]
     public void Constructor_RejectsNonPositiveWindow()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new FrameStats(0));

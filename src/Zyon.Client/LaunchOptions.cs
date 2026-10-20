@@ -5,9 +5,12 @@ namespace Zyon.Client;
 
 /// <summary>
 /// Argumentos do jogo (depois de "--" na linha de comando do executável do jogo). <see cref="CameraSmoothing"/>
-/// é a velocidade da suavização da câmera (0 = segue o jogador sem atraso, o padrão).
+/// é a velocidade da suavização da câmera (0 = segue o jogador sem atraso, o padrão). <see cref="ProfileWalk"/>
+/// anda pelo mundo por <see cref="SmokeFrames"/> quadros gravando cada quadro e imprime um relatório (diagnóstico
+/// de soluços); não pode ser combinado com o smoke test.
 /// </summary>
-public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames, float CameraSmoothing = 0f)
+public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames, float CameraSmoothing = 0f,
+    bool ProfileWalk = false)
 {
     public static readonly (int Width, int Height) DevSize = (1050, 300);
 
@@ -18,6 +21,7 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
         bool smoke = false;
         int frames = 600;
         float smoothing = 0f;
+        bool profile = false;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -41,6 +45,9 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
                 case "--smoke-test":
                     smoke = true;
                     break;
+                case "--profile-walk":
+                    profile = true;
+                    break;
                 case "--frames":
                     frames = int.TryParse(Next(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int f) && f > 0
                         ? f : throw new ArgumentException("--frames precisa de um inteiro > 0");
@@ -54,6 +61,8 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
             }
         }
 
-        return new LaunchOptions(width, height, seed, smoke, frames, smoothing);
+        if (smoke && profile)
+            throw new ArgumentException("--smoke-test e --profile-walk não podem ser usados juntos");
+        return new LaunchOptions(width, height, seed, smoke, frames, smoothing, profile);
     }
 }
