@@ -10,8 +10,12 @@ namespace Zyon.Client;
 /// de soluços); não pode ser combinado com o smoke test.
 /// </summary>
 public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeTest, int SmokeFrames, float CameraSmoothing = 0f,
-    bool ProfileWalk = false)
+    bool ProfileWalk = false, bool Dev = false, string? World = null, string? Player = null, string? SavesDir = null,
+    double AutosaveSeconds = 300)
 {
+    /// <summary>Pula o menu e entra direto no jogo (desenvolvimento, smoke test e profile-walk).</summary>
+    public bool SkipMenu => SmokeTest || ProfileWalk || Dev || World is not null || Player is not null;
+
     public static readonly (int Width, int Height) DevSize = (1050, 300);
 
     public static LaunchOptions Parse(IReadOnlyList<string> args)
@@ -22,6 +26,9 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
         int frames = 600;
         float smoothing = 0f;
         bool profile = false;
+        bool dev = false;
+        string? world = null, player = null, savesDir = null;
+        double autosave = 300;
 
         for (int i = 0; i < args.Count; i++)
         {
@@ -56,6 +63,22 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
                     smoothing = float.TryParse(Next(), NumberStyles.Float, CultureInfo.InvariantCulture, out float c) && float.IsFinite(c) && c >= 0
                         ? c : throw new ArgumentException("--camera-smoothing precisa de um número >= 0 (0 = sem suavização)");
                     break;
+                case "--dev":
+                    dev = true;
+                    break;
+                case "--world":
+                    world = Next();
+                    break;
+                case "--player":
+                    player = Next();
+                    break;
+                case "--saves-dir":
+                    savesDir = Next();
+                    break;
+                case "--autosave-seconds":
+                    autosave = double.TryParse(Next(), NumberStyles.Float, CultureInfo.InvariantCulture, out double a) && a > 0
+                        ? a : throw new ArgumentException("--autosave-seconds precisa de um número > 0");
+                    break;
                 default:
                     throw new ArgumentException($"argumento desconhecido '{args[i]}'");
             }
@@ -63,6 +86,6 @@ public sealed record LaunchOptions(int Width, int Height, int? Seed, bool SmokeT
 
         if (smoke && profile)
             throw new ArgumentException("--smoke-test e --profile-walk não podem ser usados juntos");
-        return new LaunchOptions(width, height, seed, smoke, frames, smoothing, profile);
+        return new LaunchOptions(width, height, seed, smoke, frames, smoothing, profile, dev, world, player, savesDir, autosave);
     }
 }
