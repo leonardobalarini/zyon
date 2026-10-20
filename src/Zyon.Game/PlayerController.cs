@@ -14,10 +14,18 @@ public partial class PlayerController : Node
 
     public PlayerInput? ScriptedInput { get; set; }
 
+    /// <summary>Falso com o menu de pausa aberto: o jogador fica parado e as teclas de jogo são ignoradas.</summary>
+    public bool Enabled { get; set; } = true;
+
     public void Init(IGameSession gameSession) => session = gameSession;
 
     public void Poll(Vector2 mouseWorldPixels)
     {
+        if (!Enabled)
+        {
+            session.SetInput(new PlayerInput(0f, false, false, 0, 0));
+            return;
+        }
         if (ScriptedInput is { } scripted)
         {
             session.SetInput(scripted);
@@ -33,6 +41,7 @@ public partial class PlayerController : Node
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (!Enabled) return;
         int id = session.LocalPlayerId;
         int selected = session.World.GetSelectedSlot(id);
         switch (@event)

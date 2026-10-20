@@ -1,9 +1,11 @@
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using Godot;
 using Zyon.Client;
 using Zyon.Core.Sim;
 using Zyon.Game.Hud;
+using Zyon.Game.Menus;
 using Zyon.Game.Rendering;
 
 namespace Zyon.Game;
@@ -34,6 +36,17 @@ public partial class GameRoot : Node2D
     // Distância (pixels do mundo) entre o centro da tela e o jogador no início do quadro: atraso visual da câmera.
     private float cameraLagMax;
     private Vector2 lastCameraTarget;
+    private GameSaver saver = null!;
+    private AutosaveTimer autosave = null!;
+    private PauseMenu pause = null!;
+    private Toast toast = null!;
+    private AcceptDialog saveFailedDialog = null!;
+    private Exception? lastReportedSaveError;
+    // Saída pedida (menu ou fechar): o save roda só depois de um quadro desenhado com "Salvando...".
+    private bool exiting;
+    private bool exitToMenu;
+    private ulong exitRequestFrame;
+    private bool exitSavePending;
 
     public override void _Ready()
     {
@@ -97,6 +110,17 @@ public partial class GameRoot : Node2D
                 camera.Follow(RenderMath.ToPixels(start.Position).ToGodot());
                 camera.ResetSmoothing();
             }
+            saver = new GameSaver(GameFlow.Registry, game);
+            autosave = new AutosaveTimer(options.AutosaveSeconds);
+            toast = new Toast();
+            AddChild(toast);
+            toast.Init();
+            pause = new PauseMenu();
+            AddChild(pause);
+            pause.Init(() => controller.Enabled = true, () => RequestExit(toMenu: true), () => RequestExit(toMenu: false));
+            saveFailedDialog = BuildSaveFailedDialog();
+            GetTree().AutoAcceptQuit = false;
+            if (game.Warnings.Count > 0) toast.Show(string.Join("\n", game.Warnings), 10);
             if (options.SmokeTest) smoke = new SmokeTest(newSession, controller, options.SmokeFrames);
             if (options.ProfileWalk)
             {
@@ -118,6 +142,19 @@ public partial class GameRoot : Node2D
         if (session is null || @event is not InputEventKey { Pressed: true, Echo: false } key) return;
         switch (key.PhysicalKeycode)
         {
+            case Key.Escape:
+                if (exiting) break;
+                if (pause.IsOpen)
+                {
+                    pause.Close();
+                    controller.Enabled = true;
+                }
+                else
+                {
+                    controller.Enabled = false;
+                    pause.Open();
+                }
+                break;
             case Key.F3:
                 debugOverlay.Toggle();
                 break;
@@ -145,12 +182,29 @@ public partial class GameRoot : Node2D
             long frameStart = Stopwatch.GetTimestamp();
             double measured = lastFrameStart == 0 ? 0 : Stopwatch.GetElapsedTime(lastFrameStart, frameStart).TotalSeconds;
             lastFrameStart = frameStart;
+            // Um quadro inteiro (com "Salvando..." na tela) depois do pedido de saída: salva entre Updates.
+            if (exitSavePending && Engine.GetProcessFrames() >= exitRequestFrame + 2)
+            {
+                exitSavePending = false;
+                FinishExit();
+                if (session is null) return;
+            }
             long tickBefore = session.World.Tick;
             if (framesProcessed > 0)
                 cameraLagMax = Mathf.Max(cameraLagMax, camera.GetScreenCenterPosition().DistanceTo(lastCameraTarget));
             controller.Poll(GetGlobalMousePosition());
             session.Update(delta);
             long updateEnd = Stopwatch.GetTimestamp();
+            if (autosave.Update(delta) && !exiting)
+            {
+                string? problem = SaveNow(waitSeconds: 0);
+                toast.Show(problem is null ? "Jogo salvo." : $"Não foi possível salvar: {problem}", problem is null ? 2 : 8);
+            }
+            if (saver.LastError is { } saveError && saveError != lastReportedSaveError)
+            {
+                lastReportedSaveError = saveError;
+                toast.Show($"Não foi possível salvar: {ErrorMessages.Describe(saveError)}", 8);
+            }
             foreach (var gameEvent in session.DrainEvents())
             {
                 worldRenderer.OnEvent(gameEvent);
@@ -186,8 +240,9 @@ public partial class GameRoot : Node2D
                 {
                     if (smoke.Failure is null)
                     {
+                        VerifySmokeSave();
                         PrintSmokeStats();
-                        GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}");
+                        GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}, save ok");
                         GetTree().Quit(0);
                     }
                     else
@@ -255,5 +310,118 @@ public partial class GameRoot : Node2D
             ", vsync_mode " + ProjectSettings.GetSetting("display/window/vsync/vsync_mode"));
     }
 
-    public override void _ExitTree() => session?.Dispose();
+    public override void _Notification(int what)
+    {
+        if (what != NotificationWMCloseRequest) return;
+        // Fechar de novo com o aviso de falha aberto: sai sem salvar.
+        if (saveFailedDialog is not null && saveFailedDialog.Visible) GetTree().Quit();
+        else RequestExit(toMenu: false);
+    }
+
+    /// <summary>Mostra "Salvando..." e agenda o save para depois de um quadro desenhado (ver _Process).</summary>
+    private void RequestExit(bool toMenu)
+    {
+        if (exiting || session is null) return;
+        exiting = true;
+        exitToMenu = toMenu;
+        controller.Enabled = false;
+        pause.Close();
+        ScheduleExitSave();
+    }
+
+    private void ScheduleExitSave()
+    {
+        toast.Show("Salvando...", 3600);
+        exitRequestFrame = Engine.GetProcessFrames();
+        exitSavePending = true;
+    }
+
+    private void FinishExit()
+    {
+        string? problem = SaveNow(waitSeconds: 10);
+        toast.Clear();
+        if (problem is not null)
+        {
+            saveFailedDialog.DialogText =
+                $"O jogo pode não ter sido salvo por completo.\n{problem}\n\nTentar de novo, ou sair mesmo assim (o que não foi salvo se perde)?";
+            saveFailedDialog.PopupCentered();
+            return;
+        }
+        Leave();
+    }
+
+    private void Leave()
+    {
+        if (exitToMenu)
+        {
+            session?.Dispose();
+            session = null;
+            GameFlow.GoTo(this, Scenes.MainMenu);
+        }
+        else
+        {
+            GetTree().Quit();
+        }
+    }
+
+    /// <summary>
+    /// Captura e enfileira mundo + personagem; com waitSeconds &gt; 0 espera a gravação em disco.
+    /// Devolve null se deu certo, ou a explicação para o jogador.
+    /// </summary>
+    private string? SaveNow(double waitSeconds)
+    {
+        try
+        {
+            saver.Save(game.Simulation);
+        }
+        catch (Exception ex)
+        {
+            // Erro na captura/serialização (bug ou dados inválidos): registra inteiro e avisa, sem derrubar o jogo.
+            GD.PushError($"Falha ao salvar: {ex}");
+            return ErrorMessages.Describe(ex);
+        }
+        if (waitSeconds <= 0) return null;
+        if (!saver.Flush(TimeSpan.FromSeconds(waitSeconds))) return "A gravação em disco não terminou a tempo.";
+        return saver.LastError is { } error ? ErrorMessages.Describe(error) : null;
+    }
+
+    private AcceptDialog BuildSaveFailedDialog()
+    {
+        var dialog = new AcceptDialog { Title = "Falha ao salvar", OkButtonText = "Tentar de novo", Exclusive = true };
+        dialog.AddButton("Sair sem salvar", right: true, action: "leave");
+        dialog.AddCancelButton("Voltar ao jogo");
+        dialog.Confirmed += ScheduleExitSave;
+        dialog.CustomAction += action =>
+        {
+            if (action != "leave") return;
+            dialog.Hide();
+            Leave();
+        };
+        dialog.Canceled += () =>
+        {
+            exiting = false;
+            controller.Enabled = true;
+        };
+        AddChild(dialog);
+        return dialog;
+    }
+
+    /// <summary>Smoke test: salva, espera o disco e confere que o mundo relido é igual ao mundo em jogo.</summary>
+    private void VerifySmokeSave()
+    {
+        saver.Save(game.Simulation);
+        if (!saver.Flush(TimeSpan.FromSeconds(10)) || saver.LastError is not null)
+            throw new InvalidOperationException($"save falhou: {saver.LastError?.Message ?? "tempo esgotado"}");
+        var reloaded = Zyon.Core.Persistence.SaveFiles.ReadWithBackup(game.WorldPath,
+            s => Zyon.Core.Persistence.WorldFile.Read(s, GameFlow.Registry)).Value;
+        if (Zyon.Core.Tiles.TileWorldHash.Compute(reloaded.Tiles) != Zyon.Core.Tiles.TileWorldHash.Compute(game.Simulation.Tiles))
+            throw new InvalidOperationException("o mundo salvo difere do mundo em jogo");
+    }
+
+    public override void _ExitTree()
+    {
+        // O saver espera a fila de gravação antes de a simulação ser descartada.
+        saver?.Dispose();
+        session?.Dispose();
+    }
 }
