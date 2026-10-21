@@ -43,6 +43,40 @@ public class LaunchOptionsTests
         Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--profile-walk", "--smoke-test"]));
     }
 
+    [Fact]
+    public void Parses_MenuSkippingOptions()
+    {
+        var o = LaunchOptions.Parse(["--world", "Teste", "--player", "Ana", "--saves-dir", "C:/tmp/s", "--autosave-seconds", "2.5"]);
+
+        Assert.False(o.Dev);
+        Assert.Equal("Teste", o.World);
+        Assert.Equal("Ana", o.Player);
+        Assert.Equal("C:/tmp/s", o.SavesDir);
+        Assert.Equal(2.5, o.AutosaveSeconds);
+        Assert.True(o.SkipMenu);
+    }
+
+    [Fact]
+    public void NoArguments_ShowsMenu_WithFiveMinuteAutosave()
+    {
+        var o = LaunchOptions.Parse([]);
+
+        Assert.False(o.SkipMenu);
+        Assert.Equal(300.0, o.AutosaveSeconds);
+    }
+
+    [Fact]
+    public void SmokeTest_SkipsMenu()
+    {
+        Assert.True(LaunchOptions.Parse(["--smoke-test"]).SkipMenu);
+    }
+
+    [Fact]
+    public void ProfileWalk_SkipsMenu()
+    {
+        Assert.True(LaunchOptions.Parse(["--profile-walk"]).SkipMenu);
+    }
+
     [Theory]
     [InlineData("--size", "huge")]
     [InlineData("--seed", "abc")]
@@ -54,5 +88,16 @@ public class LaunchOptionsTests
     public void InvalidArguments_Throw(string flag, string value)
     {
         Assert.Throws<ArgumentException>(() => LaunchOptions.Parse([flag, value]));
+    }
+
+    [Theory]
+    [InlineData("--dev")]
+    [InlineData("--smoke-test")]
+    [InlineData("--profile-walk")]
+    public void ThrowawayModes_RejectNamedWorld(string mode)
+    {
+        var ex = Assert.Throws<ArgumentException>(() => LaunchOptions.Parse([mode, "--world", "Casa"]));
+        Assert.Contains("--world não combina com modos descartáveis", ex.Message);
+        Assert.Throws<ArgumentException>(() => LaunchOptions.Parse(["--world", "Casa", mode]));
     }
 }

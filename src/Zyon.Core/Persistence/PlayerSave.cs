@@ -22,41 +22,14 @@ public sealed record PlayerSave(string Name, int SelectedSlot, IReadOnlyList<Sav
         return new PlayerSave(ValidateName(name), 0, ToSlots(inventory, registry));
     }
 
-    public const int MaxNameLength = 24;
-
-    private static readonly string[] DeviceSuffixes = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "¹", "²", "³"]; // ¹ ² ³ também são dispositivos no Windows
-
-    private static readonly string[] ReservedNames =
-        ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", .. DeviceSuffixes.Select(s => "COM" + s), .. DeviceSuffixes.Select(s => "LPT" + s)];
+    public const int MaxNameLength = SaveNames.MaxLength;
 
     /// <summary>
     /// Valida o nome do personagem (usado como nome de arquivo) e devolve-o normalizado (NFC) e sem espaços nas pontas.
     /// Use sempre o valor devolvido.
     /// </summary>
-    public static string ValidateName(string name)
-    {
-        string trimmed;
-        try
-        {
-            trimmed = (name ?? "").Normalize(NormalizationForm.FormC).Trim();
-        }
-        catch (ArgumentException)
-        {
-            throw Fail("nome do personagem ('name') contém caracteres inválidos");
-        }
-        if (trimmed.Length == 0) throw Fail("nome do personagem ('name') vazio");
-        if (trimmed.Length > MaxNameLength) throw Fail($"nome do personagem ('name') com mais de {MaxNameLength} caracteres");
-        if (trimmed.Any(char.IsControl)) throw Fail("nome do personagem ('name') contém caracteres de controle");
-        if (trimmed.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.Format))
-            throw Fail("nome do personagem ('name') contém caracteres invisíveis de formatação");
-        if (trimmed.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || trimmed.IndexOfAny("/\\:*?\"<>|".ToCharArray()) >= 0)
-            throw Fail("nome do personagem ('name') contém caracteres inválidos");
-        if (trimmed.EndsWith('.')) throw Fail("nome do personagem ('name') não pode terminar com ponto");
-        string stem = trimmed.Split('.')[0].TrimEnd();
-        if (ReservedNames.Contains(stem, StringComparer.OrdinalIgnoreCase))
-            throw Fail($"nome do personagem ('name') '{trimmed}' é reservado pelo sistema");
-        return trimmed;
-    }
+    public static string ValidateName(string name) =>
+        SaveNames.Validate(name, "nome do personagem", PlayerFile.Extension);
 
     /// <summary>
     /// Valida slot selecionado (na hotbar), slots (válidos e únicos), itens (existentes) e quantidades (1..MaxStack)

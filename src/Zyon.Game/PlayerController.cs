@@ -14,10 +14,18 @@ public partial class PlayerController : Node
 
     public PlayerInput? ScriptedInput { get; set; }
 
+    /// <summary>Falso com o menu de pausa aberto: o jogador fica parado e as teclas de jogo são ignoradas.</summary>
+    public bool Enabled { get; set; } = true;
+
     public void Init(IGameSession gameSession) => session = gameSession;
 
     public void Poll(Vector2 mouseWorldPixels)
     {
+        if (!Enabled)
+        {
+            session.SetInput(new PlayerInput(0f, false, false, 0, 0));
+            return;
+        }
         if (ScriptedInput is { } scripted)
         {
             session.SetInput(scripted);
@@ -25,14 +33,16 @@ public partial class PlayerController : Node
         }
         float move = (Input.IsPhysicalKeyPressed(Key.D) ? 1f : 0f) - (Input.IsPhysicalKeyPressed(Key.A) ? 1f : 0f);
         bool jump = Input.IsPhysicalKeyPressed(Key.Space);
-        // Clique sobre um controle da interface não minera nem coloca no mundo.
-        bool primary = Input.IsMouseButtonPressed(MouseButton.Left) && GetViewport().GuiGetHoveredControl() is null;
+        // Clique sobre um controle da interface (ou arrastando um item do inventário) não minera nem coloca no mundo.
+        var viewport = GetViewport();
+        bool primary = Input.IsMouseButtonPressed(MouseButton.Left) && viewport.GuiGetHoveredControl() is null && !viewport.GuiIsDragging();
         var (tx, ty) = RenderMath.TileAtPixel(mouseWorldPixels.ToNumerics());
         session.SetInput(new PlayerInput(move, jump, primary, tx, ty));
     }
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (!Enabled) return;
         int id = session.LocalPlayerId;
         int selected = session.World.GetSelectedSlot(id);
         switch (@event)

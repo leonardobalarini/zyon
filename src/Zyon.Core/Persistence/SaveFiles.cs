@@ -49,6 +49,54 @@ public static class SaveFiles
     public const string CorruptSuffix = ".corrupt";
     public const string OrphanSuffix = ".orphan";
 
+    /// <summary>Existe algo carregável para este save (principal, .tmp de recuperação ou .bak)?</summary>
+    public static bool Exists(string path) =>
+        File.Exists(path) || File.Exists(path + TempSuffix) || File.Exists(path + BackupSuffix);
+
+    /// <summary>Apaga o save e todos os arquivos laterais (.tmp, .bak, .corrupt, .tmp.orphan).</summary>
+    public static void Delete(string path)
+    {
+        foreach (string suffix in new[] { "", TempSuffix, BackupSuffix, CorruptSuffix, TempSuffix + OrphanSuffix })
+        {
+            string file = path + suffix;
+            if (File.Exists(file)) File.Delete(file);
+        }
+    }
+
+    /// <summary>
+    /// Nomes (sem extensão) dos saves carregáveis da pasta — principal, .tmp ou .bak — em ordem alfabética
+    /// sem diferenciar maiúsculas. Arquivos só em quarentena (.corrupt) ou órfãos não aparecem.
+    /// </summary>
+    public static IReadOnlyList<string> List(string directory, string extension)
+    {
+        if (!Directory.Exists(directory)) return [];
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string suffix in new[] { "", TempSuffix, BackupSuffix })
+        {
+            string ending = extension + suffix;
+            foreach (string file in Directory.EnumerateFiles(directory, "*" + ending))
+            {
+                string fileName = Path.GetFileName(file);
+                if (!fileName.EndsWith(ending, StringComparison.OrdinalIgnoreCase)) continue;
+                string name = fileName[..^ending.Length];
+                if (IsValidSaveName(name)) names.Add(name);
+            }
+        }
+        return names.Order(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool IsValidSaveName(string name)
+    {
+        try
+        {
+            return SaveNames.Validate(name, "nome", "") == name;
+        }
+        catch (DataException)
+        {
+            return false;
+        }
+    }
+
     private const int MaxAttempts = 3;
     private const int RetryDelayMs = 100;
 

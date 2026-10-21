@@ -6,6 +6,7 @@ using Zyon.Core.WorldGen;
 
 namespace Zyon.Core.Tests;
 
+[Collection(PerformanceCollection.Name)]
 public class PersistencePerformanceTests(ITestOutputHelper output)
 {
     [Fact]

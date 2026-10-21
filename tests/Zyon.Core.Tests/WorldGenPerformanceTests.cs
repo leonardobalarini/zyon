@@ -5,6 +5,7 @@ using Zyon.Core.WorldGen;
 
 namespace Zyon.Core.Tests;
 
+[Collection(PerformanceCollection.Name)]
 public class WorldGenPerformanceTests(ITestOutputHelper output)
 {
     [Fact]

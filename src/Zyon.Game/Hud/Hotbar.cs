@@ -42,6 +42,14 @@ public partial class Hotbar : CanvasLayer
         }
     }
 
+    /// <summary>Slot da hotbar sob o ponto (coordenadas da tela/viewport), ou null.</summary>
+    public int? SlotAtScreen(Vector2 position)
+    {
+        for (int i = 0; i < backs.Length; i++)
+            if (backs[i].GetGlobalRect().HasPoint(position)) return i;
+        return null;
+    }
+
     public void Refresh()
     {
         var inventory = view.GetInventory(playerId);
