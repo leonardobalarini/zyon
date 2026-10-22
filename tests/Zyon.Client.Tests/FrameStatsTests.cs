@@ -41,6 +41,21 @@ public class FrameStatsTests
     }
 
     [Fact]
+    public void Window_SumsLightRecomputesAndKeepsTheSlowestOne()
+    {
+        var stats = new FrameStats(windowSeconds: 1.0);
+
+        for (int i = 0; i < 7; i++) stats.Add(Frame(0.1));
+        stats.Add(Frame(0.1) with { LightRecomputes = 1, LightMs = 0.4 });
+        // Sem recálculo neste quadro: o tempo antigo da luz não conta.
+        stats.Add(Frame(0.1) with { LightMs = 9 });
+        stats.Add(Frame(0.1) with { LightRecomputes = 1, LightMs = 0.7 });
+
+        Assert.Equal(2, stats.Window.LightRecomputes);
+        Assert.Equal(0.7, stats.Window.LightMaxMs, 6);
+    }
+
+    [Fact]
     public void Window_ResetsAfterPublishing()
     {
         var stats = new FrameStats(windowSeconds: 0.5);
