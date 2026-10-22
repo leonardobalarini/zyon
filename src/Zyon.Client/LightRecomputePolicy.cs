@@ -11,6 +11,12 @@ public sealed class LightRecomputePolicy(int margin)
 {
     public const float SkyThreshold = 0.01f;
 
+    /// <summary>
+    /// Folga além da margem na região calculada: a câmera anda alguns tiles antes de a região precisar ser
+    /// recalculada, então pequenos movimentos não disparam recálculo.
+    /// </summary>
+    public const int RegionSlack = 8;
+
     private bool computedOnce;
     private bool dirty;
     private TileRect region;

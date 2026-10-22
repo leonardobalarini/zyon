@@ -26,6 +26,8 @@ public partial class GameRoot : Node2D
     private Hotbar hotbar = null!;
     private InventoryPanel inventory = null!;
     private SmokeTest? smoke;
+    // Smoke test: recálculos da luz quando a tocha apareceu no mundo (antes do UpdateLight do mesmo quadro).
+    private long? recomputesAtTorch;
     private ProfileWalk? profile;
     // Início do quadro anterior (Stopwatch): o intervalo medido mostra se o delta do motor difere do relógio.
     private long lastFrameStart;
@@ -249,6 +251,9 @@ public partial class GameRoot : Node2D
                 lightOverlay.OnEvent(gameEvent);
                 overlay.OnEvent(gameEvent);
                 smoke?.OnEvent(gameEvent);
+                if (smoke is not null && recomputesAtTorch is null && gameEvent is TileChanged placed
+                    && placed.Block == GameFlow.Registry.BlockId("torch"))
+                    recomputesAtTorch = lightOverlay.TotalRecomputes;
             }
             // A câmera segue a mesma posição interpolada que o jogador desenhado: com a posição do tick atual
             // (até 1 tick à frente) o mundo rolaria em degraus de 60 Hz e o jogador tremeria em relação à tela.
@@ -470,12 +475,31 @@ public partial class GameRoot : Node2D
         var (x, y) = smoke!.TorchTile;
         if (session!.World.GetBlock(x, y) != GameFlow.Registry.BlockId("torch"))
             throw new InvalidOperationException("a tocha não foi colocada");
-        if (frameStats.Overall.LightRecomputes == 0)
-            throw new InvalidOperationException("a luz nunca foi recalculada");
+        if (recomputesAtTorch is not { } before || lightOverlay.TotalRecomputes <= before)
+            throw new InvalidOperationException("a luz não foi recalculada depois de a tocha ser colocada");
         lightOverlay.UpdateLight(camera.VisiblePixels());
         float lit = lightOverlay.LevelAt(x, y);
         if (lit < 0.99f)
             throw new InvalidOperationException($"o tile da tocha deveria estar iluminado (nível {lit})");
+        // De dia a tocha do roteiro fica na superfície e os vizinhos de ar já recebem luz plena do céu: a propagação
+        // é conferida num cálculo à parte, sem céu nem halo (noite), sobre o mesmo mundo.
+        var night = new Zyon.Core.Lighting.LightMap();
+        var nightEngine = new Zyon.Core.Lighting.LightEngine(GameFlow.Lighting);
+        nightEngine.Compute(session.World, new Zyon.Core.Lighting.TileRect(x - 24, y - 24, x + 24, y + 24)
+            .ClampTo(session.World.Width, session.World.Height), 0f, [], night);
+        if (night.Get(x, y) < 0.99f)
+            throw new InvalidOperationException($"à noite o tile da tocha deveria estar iluminado (nível {night.Get(x, y)})");
+        string neighbours = "";
+        bool propagated = false;
+        foreach (var (nx, ny) in new[] { (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
+        {
+            float level = night.Get(nx, ny);
+            neighbours += string.Create(CultureInfo.InvariantCulture, $" ({nx},{ny}) bloco {session.World.GetBlock(nx, ny)} parede {session.World.GetWall(nx, ny)} nível {level:0.000}");
+            propagated |= level is >= 0.93f and <= 0.95f;
+        }
+        GD.Print("SMOKE luz vizinhos (noite):" + neighbours);
+        if (!propagated)
+            throw new InvalidOperationException($"a luz da tocha não se propagou a um vizinho de ar:{neighbours}");
     }
 
     /// <summary>Smoke test: salva, espera o disco e confere que o mundo relido é igual ao mundo em jogo.</summary>

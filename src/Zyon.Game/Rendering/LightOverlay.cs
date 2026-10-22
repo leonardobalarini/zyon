@@ -16,9 +16,6 @@ namespace Zyon.Game.Rendering;
 /// </summary>
 public partial class LightOverlay : Node2D
 {
-    // Folga além da margem: a câmera anda alguns tiles antes de a região precisar ser recalculada.
-    private const int Slack = 8;
-
     private readonly LightMap map = new();
     private readonly List<LightEmitter> extra = new(1);
     private readonly Sprite2D sprite = new();
@@ -33,6 +30,8 @@ public partial class LightOverlay : Node2D
     private ImageTexture? texture;
 
     public int RecomputesLastUpdate { get; private set; }
+    /// <summary>Recálculos desde o início (o smoke test confere que a luz foi refeita depois da tocha).</summary>
+    public long TotalRecomputes { get; private set; }
     public double LastComputeMs { get; private set; }
     public float SkyFactor { get; private set; }
 
@@ -75,7 +74,7 @@ public partial class LightOverlay : Node2D
         if (!policy.ShouldRecompute(visible, playerTile, SkyFactor)) return;
 
         // A política recebe a região sem recorte: perto da borda do mundo ela continua "contendo" a área visível.
-        var unclamped = visible.Expand(config.RegionMargin + Slack);
+        var unclamped = visible.Expand(config.RegionMargin + LightRecomputePolicy.RegionSlack);
         extra.Clear();
         extra.Add(new LightEmitter(playerTile.X, playerTile.Y, config.PlayerHaloLevel));
         long start = Stopwatch.GetTimestamp();
@@ -84,6 +83,7 @@ public partial class LightOverlay : Node2D
         Upload();
         LastComputeMs = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
         RecomputesLastUpdate = 1;
+        TotalRecomputes++;
     }
 
     /// <summary>Envia o mapa (já recortado ao mundo) para a textura, reaproveitando buffer, imagem e textura.</summary>

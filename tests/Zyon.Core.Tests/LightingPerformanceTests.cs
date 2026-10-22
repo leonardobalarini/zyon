@@ -9,6 +9,10 @@ namespace Zyon.Core.Tests;
 [Collection(PerformanceCollection.Name)]
 public class LightingPerformanceTests(ITestOutputHelper output)
 {
+    // Mesmo valor de Zyon.Client.LightRecomputePolicy.RegionSlack (o Core não referencia o Client): o jogo calcula
+    // a área visível + regionMargin + essa folga.
+    private const int RegionSlack = 8;
+
     [Fact]
     [Trait("Category", "Performance")]
     public void VisibleRegion_ComputesUnderOneMillisecond()
@@ -22,7 +26,7 @@ public class LightingPerformanceTests(ITestOutputHelper output)
             if (generated.Tiles.GetBlock(fx + i, fy + 6) == 0) generated.Tiles.SetBlock(fx + i, fy + 6, torch);
         using var view = new Simulation(registry, generated.Tiles);
         var visible = new TileRect(fx - 20, fy - 11, fx + 19, fy + 11);   // 40×23 tiles = 640×360 px
-        var region = visible.Expand(config.RegionMargin).ClampTo(view.Width, view.Height);
+        var region = visible.Expand(config.RegionMargin + RegionSlack).ClampTo(view.Width, view.Height);
         var engine = new LightEngine(config);
         var map = new LightMap();
 
