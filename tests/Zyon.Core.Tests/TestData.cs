@@ -10,7 +10,7 @@ internal static class TestData
 
     public static Registry Registry() => RegistryLoader.LoadFromDirectory(DataDir);
 
-    /// <summary>Registry real, mas só com a picareta inicial (os testes de inventário assumem o slot 1 livre).</summary>
+    /// <summary>Registry real, mas só com a picareta inicial (os testes de inventário assumem o slot 1 livre). O SimHarness usa este por padrão.</summary>
     public static Registry RegistryPickaxeOnly()
     {
         string Read(string file) => File.ReadAllText(Path.Combine(DataDir, file));

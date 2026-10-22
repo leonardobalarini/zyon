@@ -38,6 +38,7 @@ public class PlayerFileTests
 
         Assert.Equal(0, save.SelectedSlot);
         Assert.Contains(new SavedSlot(0, "basic_pickaxe", 1), save.Slots);
+        Assert.Contains(new SavedSlot(1, "torch", 30), save.Slots);
     }
 
     [Fact]
