@@ -22,7 +22,7 @@ public sealed class ChunkMeshData
 
 public static class ChunkMeshBuilder
 {
-    /// <summary>Um quad por tile não vazio da camada. Paredes escondidas atrás de blocos são puladas.</summary>
+    /// <summary>Um quad por tile não vazio da camada. Paredes escondidas atrás de blocos sólidos são puladas.</summary>
     public static void Build(IWorldView view, int chunkX, int chunkY, TileLayer layer, TileAtlasLayout atlas, ChunkMeshData output)
     {
         output.Clear();
