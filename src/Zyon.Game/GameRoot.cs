@@ -21,6 +21,7 @@ public partial class GameRoot : Node2D
     private int playerId;
     private EntityRenderer entityRenderer = null!;
     private PlayerController controller = null!;
+    private LightOverlay lightOverlay = null!;
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
     private InventoryPanel inventory = null!;
@@ -104,6 +105,11 @@ public partial class GameRoot : Node2D
             entityRenderer = new EntityRenderer();
             AddChild(entityRenderer);
             entityRenderer.Init(newSession.World, visuals);
+            // Luz depois do mundo e das entidades (multiplica os dois) e antes do WorldOverlay: o destaque do tile
+            // mirado e as rachaduras não escurecem. HUD e menus são CanvasLayers e ficam fora do multiply.
+            lightOverlay = new LightOverlay();
+            AddChild(lightOverlay);
+            lightOverlay.Init(newSession.World, GameFlow.Lighting, playerId);
             overlay = new WorldOverlay();
             AddChild(overlay);
             overlay.Init(newSession.World, playerId);
@@ -240,6 +246,7 @@ public partial class GameRoot : Node2D
             foreach (var gameEvent in session.DrainEvents())
             {
                 worldRenderer.OnEvent(gameEvent);
+                lightOverlay.OnEvent(gameEvent);
                 overlay.OnEvent(gameEvent);
                 smoke?.OnEvent(gameEvent);
             }
@@ -255,6 +262,7 @@ public partial class GameRoot : Node2D
             hotbar.Refresh();
             inventory.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
+            lightOverlay.UpdateLight(camera.VisiblePixels());
             long frameEnd = Stopwatch.GetTimestamp();
             RecordFrame(delta, measured, frameStart, updateEnd, frameEnd, (int)(session.World.Tick - tickBefore));
             if (profile is not null)
@@ -313,7 +321,8 @@ public partial class GameRoot : Node2D
         if (debugOverlay.ShouldRefresh(delta))
             debugOverlay.Refresh(frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
                 worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
-                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString()));
+                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString(),
+                lightOverlay.RecomputesLastUpdate, lightOverlay.LastComputeMs, lightOverlay.SkyFactor));
     }
 
     /// <summary>Configuração de tempo do motor que afeta o delta entregue a _Process.</summary>

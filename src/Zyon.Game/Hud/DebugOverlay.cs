@@ -7,7 +7,7 @@ namespace Zyon.Game.Hud;
 /// <summary>
 /// Sobreposição de depuração (F3): FPS e tempos de quadro da última janela de 1 s, custo da simulação e dos
 /// renderizadores, chunks, coletas de lixo, o alpha de interpolação, quantos quadros rodaram 0 ou 2+ ticks no
-/// último segundo e o último "soluço" (quadro com 2+ ticks) com suas medidas. Não captura o mouse.
+/// último segundo e o último "soluço" (quadro com 2+ ticks) com suas medidas, e o custo da luz. Não captura o mouse.
 /// </summary>
 public partial class DebugOverlay : CanvasLayer
 {
@@ -68,6 +68,7 @@ public partial class DebugOverlay : CanvasLayer
             "GC 1 s {13} | alpha {14:0.00} | ticks no quadro {15}\n" +
             "1 s: quadros com 0 ticks {18}, com 2+ ticks {19} | delta máx {2:0.00} ms, medido máx {20:0.00} ms\n" +
             "{21}\n" +
+            "luz: {22} recálculo(s), {23:0.000} ms, céu {24:0.00}\n" +
             "câmera: {16} (F4) | vsync: {17} (F5)",
             w.Fps, w.FrameAvgMs, w.FrameMaxMs,
             w.ProcessAvgMs, w.ProcessMaxMs,
@@ -76,11 +77,12 @@ public partial class DebugOverlay : CanvasLayer
             w.GcCollections, info.InterpolationAlpha, info.TicksThisFrame,
             info.CameraMode, info.VsyncMode,
             w.ZeroTickFrames, w.MultiTickFrames, w.MeasuredMaxMs,
-            stats.LastHitch is { } h ? HitchText(h, stats.FrameCount) : "soluço: nenhum quadro com 2+ ticks");
+            stats.LastHitch is { } h ? HitchText(h, stats.FrameCount) : "soluço: nenhum quadro com 2+ ticks",
+            info.LightRecomputes, info.LightMs, info.SkyFactor);
     }
 }
 
 /// <summary>Estado instantâneo mostrado pela sobreposição de depuração.</summary>
 public readonly record struct DebugInfo(
     int ActiveChunks, int RebuildsThisFrame, float InterpolationAlpha, long TicksThisFrame,
-    string CameraMode, string VsyncMode);
+    string CameraMode, string VsyncMode, int LightRecomputes, double LightMs, float SkyFactor);
