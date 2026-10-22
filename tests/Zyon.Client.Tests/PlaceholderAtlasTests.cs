@@ -57,4 +57,19 @@ public class PlaceholderAtlasTests
 
         Assert.Equal(0, rgba[3]);
     }
+
+    [Fact]
+    public void NonSolidMaterial_IsASmallStick_TransparentAround()
+    {
+        var layout = new TileAtlasLayout(2, 3);
+        var rgba = PlaceholderAtlas.BuildRgba(layout, [null, Brown], [false, false]);
+        var (x, y) = layout.CellOrigin(1, 0, 0);
+
+        int Alpha(int px, int py) => rgba[((y + py) * layout.WidthPx + x + px) * 4 + 3];
+
+        Assert.Equal(0, Alpha(0, 0));
+        Assert.Equal(0, Alpha(2, 12));
+        Assert.Equal(255, Alpha(7, 10));
+        Assert.Equal(255, Alpha(8, 4));
+    }
 }

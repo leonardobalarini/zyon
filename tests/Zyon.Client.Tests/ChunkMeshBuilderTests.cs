@@ -71,6 +71,21 @@ public class ChunkMeshBuilderTests
     }
 
     [Fact]
+    public void WallBehindNonSolidBlock_IsDrawn()
+    {
+        var r = TestData.Registry();
+        var w = new TileWorld(64, 64);
+        w.SetWall(5, 5, 1);
+        w.SetBlock(5, 5, r.BlockId("torch"));
+        using var view = TestData.View(w);
+        var data = new ChunkMeshData();
+
+        ChunkMeshBuilder.Build(view, 0, 0, TileLayer.Walls, Atlas, data);
+
+        Assert.Equal(1, data.QuadCount);
+    }
+
+    [Fact]
     public void Build_ReusesTheOutputBuffers()
     {
         var w = new TileWorld(64, 64);

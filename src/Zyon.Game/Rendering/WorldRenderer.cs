@@ -44,7 +44,7 @@ public partial class WorldRenderer : Node2D
         dirty = new DirtyChunkTracker(chunksX, chunksY);
         blockLayout = new TileAtlasLayout(view.Registry.Blocks.Count, Variations);
         wallLayout = new TileAtlasLayout(view.Registry.Walls.Count, Variations);
-        blockAtlas = BuildAtlas(blockLayout, visuals.BlockColors);
+        blockAtlas = BuildAtlas(blockLayout, visuals.BlockColors, view.Registry.Blocks.Select(b => b.Solid).ToList());
         wallAtlas = BuildAtlas(wallLayout, visuals.WallColors);
     }
 
@@ -109,9 +109,9 @@ public partial class WorldRenderer : Node2D
         node.SetBlocks(scratch);
     }
 
-    private static Texture2D BuildAtlas(TileAtlasLayout layout, IReadOnlyList<Rgb?> colors)
+    private static Texture2D BuildAtlas(TileAtlasLayout layout, IReadOnlyList<Rgb?> colors, IReadOnlyList<bool>? solid = null)
     {
-        byte[] rgba = PlaceholderAtlas.BuildRgba(layout, colors);
+        byte[] rgba = PlaceholderAtlas.BuildRgba(layout, colors, solid);
         var image = Image.CreateFromData(layout.WidthPx, layout.HeightPx, false, Image.Format.Rgba8, rgba);
         return ImageTexture.CreateFromImage(image);
     }

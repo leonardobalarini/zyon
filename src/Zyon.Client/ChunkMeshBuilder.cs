@@ -36,7 +36,7 @@ public static class ChunkMeshBuilder
             if (x >= view.Width || y >= view.Height) continue;
             ushort id = layer == TileLayer.Blocks ? view.GetBlock(x, y) : view.GetWall(x, y);
             if (id == 0) continue;
-            if (layer == TileLayer.Walls && view.GetBlock(x, y) != 0) continue;
+            if (layer == TileLayer.Walls && view.Registry.Block(view.GetBlock(x, y)).Solid) continue;
 
             int mask = AutoTile.Mask(view, x, y, layer);
             var uv = atlas.Uv(id, mask, AutoTile.Variation(x, y, atlas.Variations));
