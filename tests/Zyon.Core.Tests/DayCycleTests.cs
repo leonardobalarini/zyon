@@ -47,4 +47,57 @@ public class DayCycleTests
             previous = current;
         }
     }
+
+    private static long TickAt(double hour) =>
+        (long)Math.Round((hour - 0.30 + 1) % 1 * Cycle.TicksPerDay);
+
+    private static double Half => TestData.LightingConfig().TwilightFraction / 2;
+
+    [Theory]
+    [InlineData(0.25)]
+    [InlineData(0.75)]
+    public void Dawn_And_Dusk_AreAtTheMidpoint(double hour)
+    {
+        Assert.Equal((1f + 0.15f) / 2, Cycle.SkyFactor(TickAt(hour)), 3);
+    }
+
+    [Fact]
+    public void RampWidth_MatchesTwilightFraction()
+    {
+        Assert.Equal(1f, Cycle.SkyFactor(TickAt(0.25 + Half)), 3);
+        Assert.Equal(1f, Cycle.SkyFactor(TickAt(0.75 - Half)), 3);
+        Assert.Equal(0.15f, Cycle.SkyFactor(TickAt(0.25 - Half - 0.002)), 3);
+        Assert.Equal(0.15f, Cycle.SkyFactor(TickAt(0.75 + Half + 0.002)), 3);
+    }
+
+    [Fact]
+    public void Dawn_NeverDecreases_Dusk_NeverIncreases()
+    {
+        float prev = Cycle.SkyFactor(TickAt(0.2));
+        for (long t = TickAt(0.2) + 1; t <= TickAt(0.3); t++)
+        {
+            float cur = Cycle.SkyFactor(t);
+            Assert.True(cur >= prev - 1e-6f, $"amanhecer decresceu no tick {t}");
+            prev = cur;
+        }
+
+        prev = Cycle.SkyFactor(TickAt(0.7));
+        for (long t = TickAt(0.7) + 1; t <= TickAt(0.8); t++)
+        {
+            float cur = Cycle.SkyFactor(t);
+            Assert.True(cur <= prev + 1e-6f, $"anoitecer cresceu no tick {t}");
+            prev = cur;
+        }
+    }
+
+    [Fact]
+    public void TimeOfDay_StaysInRange_ForNegativeAndHugeTicks()
+    {
+        long d = Cycle.TicksPerDay;
+        foreach (long tick in new[] { -1L, -d, 10L * 365 * d + 5 })
+        {
+            double t = Cycle.TimeOfDay(tick);
+            Assert.InRange(t, 0.0, 1.0 - 1e-12);
+        }
+    }
 }

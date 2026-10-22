@@ -16,8 +16,8 @@ public sealed class DayCycle(LightingConfig config)
     /// <summary>Hora em [0, 1): 0 = meia-noite, 0,5 = meio-dia.</summary>
     public double TimeOfDay(long tick)
     {
-        double t = (tick / (double)TicksPerDay + config.StartTimeOfDay) % 1.0;
-        return t < 0 ? t + 1 : t;
+        long r = ((tick % TicksPerDay) + TicksPerDay) % TicksPerDay;
+        return (r / (double)TicksPerDay + config.StartTimeOfDay) % 1.0;
     }
 
     /// <summary>Intensidade da luz do céu: NightSkyLevel à noite, 1 de dia.</summary>

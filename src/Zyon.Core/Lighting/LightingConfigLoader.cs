@@ -34,9 +34,10 @@ public static class LightingConfigLoader
 
         Require(c.AirAttenuation > 0 && c.AirAttenuation <= 1, "'airAttenuation' deve estar em (0, 1]");
         Require(c.SolidAttenuation > 0 && c.SolidAttenuation <= 1, "'solidAttenuation' deve estar em (0, 1]");
-        Require(c.DayLengthSeconds > 0 && double.IsFinite(c.DayLengthSeconds), "'dayLengthSeconds' deve ser > 0");
+        Require(c.DayLengthSeconds >= 1 && c.DayLengthSeconds <= 1e7, "'dayLengthSeconds' deve estar em [1, 10000000]");
         Require(c.StartTimeOfDay >= 0 && c.StartTimeOfDay < 1, "'startTimeOfDay' deve estar em [0, 1)");
         Require(c.NightSkyLevel >= 0 && c.NightSkyLevel <= 1, "'nightSkyLevel' deve estar em [0, 1]");
+        // O limite de 0,25 evita que as rampas do amanhecer e do anoitecer se sobreponham.
         Require(c.TwilightFraction > 0 && c.TwilightFraction <= 0.25, "'twilightFraction' deve estar em (0, 0,25]");
         Require(c.PlayerHaloLevel >= 0 && c.PlayerHaloLevel <= 1, "'playerHaloLevel' deve estar em [0, 1]");
         Require(c.RegionMargin >= 0 && c.RegionMargin <= 256, "'regionMargin' deve estar entre 0 e 256");
