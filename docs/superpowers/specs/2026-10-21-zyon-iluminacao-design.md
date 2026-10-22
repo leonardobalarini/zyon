@@ -39,7 +39,7 @@ O nível final de cada tile é o máximo entre sua própria emissão/céu e `viz
 ### Ciclo de dia e noite
 
 - **Hora do dia** em [0, 1) derivada do `Tick` da simulação: `hora = (Tick / ticksPorDia + horaInicial) mod 1`. Como o `Tick` já vai no save do mundo, o formato de save **não muda**.
-- Duração do dia: 24 minutos reais (86 400 ticks a 60 Hz). Um mundo novo começa de manhã (`horaInicial` = 0,25).
+- Duração do dia: 24 minutos reais (86 400 ticks a 60 Hz). Um mundo novo começa de manhã, já com o dia claro (`horaInicial` = 0,30).
 - **Fator do céu:** 1,0 durante o dia, 0,15 durante a noite (luar). Amanhecer (por volta de 0,25) e anoitecer (por volta de 0,75) fazem transição suave (smoothstep) com duração de 1/24 do dia (~1 minuto real).
 
 ## 3. Dados
@@ -48,11 +48,11 @@ O nível final de cada tile é o máximo entre sua própria emissão/céu e `viz
   - `airAttenuation` 0,06
   - `solidAttenuation` 0,25
   - `dayLengthSeconds` 1440
-  - `startTimeOfDay` 0,25
+  - `startTimeOfDay` 0,30
   - `nightSkyLevel` 0,15
   - `twilightFraction` 1/24
   - `playerHaloLevel` 0,3
-  - `regionMargin` 16
+  - `regionMargin` 18 (maior que o alcance de uma tocha, 1/0,06 ≈ 16,7 tiles)
   - Todos os níveis em [0, 1], atenuações em (0, 1], duração > 0.
 - **`data/blocks.json`:**
   - novo bloco `torch`: `solid: false`, `hardness: 0`, `light: 1.0`, solta o item `torch`;
