@@ -25,6 +25,8 @@ public class LightingConfigTests
     [InlineData("""{"twilightFraction": 0.5}""", "twilightFraction")]
     [InlineData("""{"playerHaloLevel": -1}""", "playerHaloLevel")]
     [InlineData("""{"regionMargin": -1}""", "regionMargin")]
+    [InlineData("""{"airAttenuation": 0.01}""", "airAttenuation")]
+    [InlineData("""{"airAttenuation": 0.05, "regionMargin": 18}""", "regionMargin")]
     [InlineData("""{"dayLengthSeconds": 0.001}""", "dayLengthSeconds")]
     [InlineData("""{"airAtenuation": 0.1}""", "lighting.json")]
     [InlineData("""{""", "lighting.json")]
@@ -39,7 +41,7 @@ public class LightingConfigTests
     [Fact]
     public void EdgeValues_AreAccepted()
     {
-        var c = LightingConfigLoader.Load("""{"airAttenuation":1,"solidAttenuation":1,"startTimeOfDay":0,"nightSkyLevel":0,"twilightFraction":0.25,"playerHaloLevel":1,"regionMargin":0}""");
+        var c = LightingConfigLoader.Load("""{"airAttenuation":1,"solidAttenuation":1,"startTimeOfDay":0,"nightSkyLevel":0,"twilightFraction":0.25,"playerHaloLevel":1,"regionMargin":1}""");
 
         Assert.Equal(0.25, c.TwilightFraction);
     }

@@ -151,4 +151,87 @@ public class LightEngineTests
         Assert.Equal(0f, map.Get(-1, 5));
         Assert.Equal(0f, map.Get(64, 5));
     }
+
+    [Fact]
+    public void Staircase_AgainstSweepOrder_NeedsMoreThanOneRound()
+    {
+        var w = new TileWorld(64, 64);
+        for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+        {
+            w.SetBlock(x, y, Dirt);
+            w.SetWall(x, y, Wall);
+        }
+        int cx = 40, cy = 10;
+        w.SetBlock(cx, cy, Torch);
+        // Caminho de ar: desce 2, esquerda 2, repetido (12 passos). Esquerda só propaga na varredura de linhas da rodada seguinte.
+        for (int i = 0; i < 12; i++)
+        {
+            if ((i / 2) % 2 == 0) cy++; else cx--;
+            w.SetBlock(cx, cy, 0);
+        }
+
+        using var view = new Simulation(R, w);
+        var engine = new LightEngine(Config);
+        var map = new LightMap();
+        engine.Compute(view, new TileRect(0, 0, 63, 63), 1f, [], map);
+
+        Assert.Equal(1f - 12 * 0.06f, map.Get(cx, cy), 4);
+        Assert.True(engine.LastRounds > 1, $"rodadas: {engine.LastRounds}");
+    }
+
+    [Fact]
+    public void SkyBelowACeiling_IsNotSeeded_WhenRegionStartsBelowIt()
+    {
+        var w = new TileWorld(64, 64);
+        for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+            if (y < 25 || x != 32) w.SetBlock(x, y, Dirt);   // teto sólido; coluna de ar em x = 32 sem paredes
+
+        using var view = new Simulation(R, w);
+        var engine = new LightEngine(Config);
+        var map = new LightMap();
+        engine.Compute(view, new TileRect(0, 25, 63, 40), 1f, [], map);
+
+        Assert.Equal(0f, map.Get(32, 30), 5);
+    }
+
+    [Fact]
+    public void ReusedMap_DoesNotKeepOldLight()
+    {
+        var lit = Ground();
+        lit.SetBlock(30, 30, Torch);
+        using var litView = new Simulation(R, lit);
+        var engine = new LightEngine(Config);
+        var map = new LightMap();
+        engine.Compute(litView, new TileRect(0, 20, 63, 63), 1f, [], map);
+        Assert.Equal(1f, map.Get(30, 30), 5);
+
+        using var darkView = new Simulation(R, Ground());
+        engine.Compute(darkView, new TileRect(25, 25, 35, 35), 1f, [], map);
+
+        for (int y = 25; y <= 35; y++)
+        for (int x = 25; x <= 35; x++)
+            Assert.Equal(0f, map.Get(x, y));
+    }
+
+    [Fact]
+    public void RegionPartlyOutsideTheWorld_IsClamped()
+    {
+        var w = Ground();
+        w.SetBlock(5, 30, 0);
+        w.SetBlock(8, 29, Torch);
+        using var view = new Simulation(R, w);
+        var engine = new LightEngine(Config);
+        var whole = new LightMap();
+        var part = new LightMap();
+
+        engine.Compute(view, new TileRect(0, 0, 63, 63), 1f, [], whole);
+        engine.Compute(view, new TileRect(-10, -10, 20, 20), 1f, [], part);
+
+        Assert.Equal(new TileRect(0, 0, 20, 20), part.Region);
+        for (int y = 0; y <= 20; y++)
+        for (int x = 0; x <= 20; x++)
+            Assert.Equal(whole.Get(x, y), part.Get(x, y), 4);
+    }
 }

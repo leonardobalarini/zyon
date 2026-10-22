@@ -32,7 +32,7 @@ public static class LightingConfigLoader
             if (!ok) throw new DataException($"{FileName}: {message}");
         }
 
-        Require(c.AirAttenuation > 0 && c.AirAttenuation <= 1, "'airAttenuation' deve estar em (0, 1]");
+        Require(c.AirAttenuation >= LightingConfig.MinAirAttenuation && c.AirAttenuation <= 1, "'airAttenuation' deve estar em [0,02, 1]");
         Require(c.SolidAttenuation > 0 && c.SolidAttenuation <= 1, "'solidAttenuation' deve estar em (0, 1]");
         Require(c.DayLengthSeconds >= 1 && c.DayLengthSeconds <= 1e7, "'dayLengthSeconds' deve estar em [1, 10000000]");
         Require(c.StartTimeOfDay >= 0 && c.StartTimeOfDay < 1, "'startTimeOfDay' deve estar em [0, 1)");
@@ -41,6 +41,7 @@ public static class LightingConfigLoader
         Require(c.TwilightFraction > 0 && c.TwilightFraction <= 0.25, "'twilightFraction' deve estar em (0, 0,25]");
         Require(c.PlayerHaloLevel >= 0 && c.PlayerHaloLevel <= 1, "'playerHaloLevel' deve estar em [0, 1]");
         Require(c.RegionMargin >= 0 && c.RegionMargin <= 256, "'regionMargin' deve estar entre 0 e 256");
+        Require(c.RegionMargin >= c.LightRangeTiles, $"'regionMargin' deve ser ≥ alcance da luz ({c.LightRangeTiles} tiles)");
         return c;
     }
 }

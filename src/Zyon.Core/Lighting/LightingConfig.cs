@@ -20,4 +20,10 @@ public sealed class LightingConfig
 
     /// <summary>Tiles calculados além da área visível em cada lado (maior que o alcance de uma luz 1,0).</summary>
     public int RegionMargin { get; init; } = 18;
+
+    /// <summary>Menor atenuação aceita para o ar: limita o número de rodadas da propagação.</summary>
+    public const float MinAirAttenuation = 0.02f;
+
+    /// <summary>Alcance, em tiles, de uma luz 1,0 atravessando só ar.</summary>
+    public int LightRangeTiles => (int)MathF.Ceiling(1f / AirAttenuation);
 }

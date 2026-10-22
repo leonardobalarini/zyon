@@ -9,11 +9,21 @@ namespace Zyon.Core.Lighting;
 /// </summary>
 public sealed class LightEngine(LightingConfig config)
 {
-    private const int MaxRounds = 64;
+    /// <summary>
+    /// Teto de rodadas derivado da config. Uma luz 1,0 percorre no máximo ceil(1/atenuação) tiles; cada rodada
+    /// (4 varreduras) avança o caminho de pior caso em pelo menos 2 tiles, então ~ceil(1/att)/2 rodadas bastam
+    /// (mais uma para confirmar a estabilização). O teto usa ceil(1/att) + 4: margem folgada.
+    /// </summary>
+    private readonly int maxRounds = (int)Math.Ceiling(1.0 / Math.Min(config.AirAttenuation, config.SolidAttenuation)) + 4;
     private float[] attenuation = [];
 
     public int LastRounds { get; private set; }
 
+    /// <summary>
+    /// Calcula a luz de <paramref name="region"/>. Emissores extras fora da região são ignorados (passe só os que
+    /// estão dentro). A região é recortada ao mundo: <c>output.Region</c> é a região efetiva, então quem usa o
+    /// resultado deve se posicionar por <c>map.Region</c>.
+    /// </summary>
     public void Compute(IWorldView view, TileRect region, float skyFactor, IReadOnlyList<LightEmitter> extra, LightMap output)
     {
         region = region.ClampTo(view.Width, view.Height);
@@ -45,8 +55,9 @@ public sealed class LightEngine(LightingConfig config)
             if (block.Light > light[i]) light[i] = block.Light;
         }
 
-        foreach (var e in extra)
+        for (int k = 0; k < extra.Count; k++)
         {
+            var e = extra[k];
             if (!region.Contains(e.X, e.Y)) continue;
             int i = (e.Y - region.MinY) * w + (e.X - region.MinX);
             if (e.Level > light[i]) light[i] = e.Level;
@@ -69,7 +80,7 @@ public sealed class LightEngine(LightingConfig config)
                 for (int y = 1; y < h; y++) changed |= Relax(light, y * w + x, (y - 1) * w + x);
                 for (int y = h - 2; y >= 0; y--) changed |= Relax(light, y * w + x, (y + 1) * w + x);
             }
-        } while (changed && rounds < MaxRounds);
+        } while (changed && rounds < maxRounds);
         LastRounds = rounds;
     }
 
