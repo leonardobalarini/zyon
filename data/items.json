@@ -4,5 +4,6 @@
   { "id": "deep_stone",    "name": "Rocha profunda",  "maxStack": 999, "kind": "Block", "placesBlock": "deep_stone" },
   { "id": "ore_a",         "name": "Minério A",       "maxStack": 999, "kind": "Block", "placesBlock": "ore_a" },
   { "id": "ore_b",         "name": "Minério B",       "maxStack": 999, "kind": "Block", "placesBlock": "ore_b" },
-  { "id": "basic_pickaxe", "name": "Picareta básica", "maxStack": 1,   "kind": "Tool",  "power": 1.0, "speed": 1.0 }
+  { "id": "basic_pickaxe", "name": "Picareta básica", "maxStack": 1,   "kind": "Tool",  "power": 1.0, "speed": 1.0 },
+  { "id": "torch",         "name": "Tocha",           "maxStack": 999, "kind": "Block", "placesBlock": "torch" }
 ]

@@ -3,5 +3,6 @@
   { "id": "stone",      "hardness": 2.0, "solid": true, "drops": "stone" },
   { "id": "deep_stone", "hardness": 3.5, "solid": true, "drops": "deep_stone" },
   { "id": "ore_a",      "hardness": 2.5, "solid": true, "drops": "ore_a" },
-  { "id": "ore_b",      "hardness": 4.0, "solid": true, "drops": "ore_b" }
+  { "id": "ore_b",      "hardness": 4.0, "solid": true, "drops": "ore_b", "light": 0.35 },
+  { "id": "torch",      "hardness": 0.0, "solid": false, "drops": "torch", "light": 1.0 }
 ]

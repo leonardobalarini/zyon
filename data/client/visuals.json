@@ -4,7 +4,8 @@
     "stone": "#7a7a7a",
     "deep_stone": "#4b4b58",
     "ore_a": "#b0652e",
-    "ore_b": "#3aa39b"
+    "ore_b": "#3aa39b",
+    "torch": "#ffb347"
   },
   "walls": {
     "dirt_wall": "#3a2818",

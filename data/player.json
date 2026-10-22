@@ -1,5 +1,6 @@
 {
   "starterItems": [
-    { "item": "basic_pickaxe", "count": 1 }
+    { "item": "basic_pickaxe", "count": 1 },
+    { "item": "torch", "count": 30 }
   ]
 }

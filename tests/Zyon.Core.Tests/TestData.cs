@@ -10,6 +10,15 @@ internal static class TestData
 
     public static Registry Registry() => RegistryLoader.LoadFromDirectory(DataDir);
 
+    /// <summary>Registry real, mas só com a picareta inicial (os testes de inventário assumem o slot 1 livre).</summary>
+    public static Registry RegistryPickaxeOnly()
+    {
+        string Read(string file) => File.ReadAllText(Path.Combine(DataDir, file));
+        return RegistryLoader.Load(Read(RegistryLoader.BlocksFile), Read(RegistryLoader.WallsFile),
+            Read(RegistryLoader.ItemsFile), Read(RegistryLoader.PhysicsFile),
+            """{"starterItems":[{"item":"basic_pickaxe","count":1}]}""");
+    }
+
     public static WorldGenConfig WorldGenConfig() => WorldGenConfigLoader.LoadFromDirectory(DataDir);
 
     /// <summary>Registry real, mas com physics.json substituído (campos ausentes usam os padrões).</summary>
