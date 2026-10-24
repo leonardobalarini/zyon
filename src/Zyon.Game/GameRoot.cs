@@ -103,10 +103,10 @@ public partial class GameRoot : Node2D
 
             worldRenderer = new WorldRenderer();
             AddChild(worldRenderer);
-            worldRenderer.Init(newSession.World, visuals);
+            worldRenderer.Init(newSession.World, GameFlow.Art, GameFlow.ArtTextures);
             entityRenderer = new EntityRenderer();
             AddChild(entityRenderer);
-            entityRenderer.Init(newSession.World, visuals);
+            entityRenderer.Init(newSession.World, GameFlow.Art, GameFlow.ArtTextures, playerId);
             // Luz depois do mundo e das entidades (multiplica os dois) e antes do WorldOverlay: o destaque do tile
             // mirado e as rachaduras não escurecem. HUD e menus são CanvasLayers e ficam fora do multiply.
             lightOverlay = new LightOverlay();
@@ -117,10 +117,11 @@ public partial class GameRoot : Node2D
             overlay.Init(newSession.World, playerId);
             hotbar = new Hotbar();
             AddChild(hotbar);
-            hotbar.Init(newSession.World, visuals, playerId);
+            var icons = new ItemIcons(GameFlow.Art, GameFlow.ArtTextures.Items);
+            hotbar.Init(newSession.World, icons, playerId);
             inventory = new InventoryPanel();
             AddChild(inventory);
-            inventory.Init(newSession, visuals, hotbar);
+            inventory.Init(newSession, icons, hotbar);
             debugOverlay = new DebugOverlay();
             AddChild(debugOverlay);
             controller = new PlayerController();
@@ -262,7 +263,7 @@ public partial class GameRoot : Node2D
                 lastCameraTarget = RenderMath.ToPixels(RenderMath.Interpolate(me.PreviousPosition, me.Position, session.InterpolationAlpha)).ToGodot();
                 camera.Follow(lastCameraTarget);
             }
-            entityRenderer.Refresh(session.InterpolationAlpha);
+            entityRenderer.Refresh(session.InterpolationAlpha, (float)delta);
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
             inventory.Refresh();
@@ -288,9 +289,10 @@ public partial class GameRoot : Node2D
                     {
                         VerifySmokeLight();
                         VerifySmokeSave();
+                        VerifySmokeArt();
                         PrintSmokeStats();
                         GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}, " +
-                            $"minerado {smoke.MinedTile}, tocha em {smoke.TorchTile}, save ok, luz ok");
+                            $"minerado {smoke.MinedTile}, tocha em {smoke.TorchTile}, save ok, luz ok, arte ok");
                         GetTree().Quit(0);
                     }
                     else
@@ -500,6 +502,15 @@ public partial class GameRoot : Node2D
         GD.Print("SMOKE luz vizinhos (noite):" + neighbours);
         if (!propagated)
             throw new InvalidOperationException($"a luz da tocha não se propagou a um vizinho de ar:{neighbours}");
+    }
+
+    /// <summary>Smoke test: o jogador local trocou de quadro ao andar e golpeou ao minerar.</summary>
+    private void VerifySmokeArt()
+    {
+        if (entityRenderer.LocalBodyFramesSeen < 2)
+            throw new InvalidOperationException("o jogador não mudou de quadro ao andar");
+        if (!entityRenderer.LocalSwingSeen)
+            throw new InvalidOperationException("o jogador não golpeou ao minerar");
     }
 
     /// <summary>Smoke test: salva, espera o disco e confere que o mundo relido é igual ao mundo em jogo.</summary>

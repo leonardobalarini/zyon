@@ -3,6 +3,7 @@ using Zyon.Client;
 using Zyon.Core.Data;
 using Zyon.Core.Lighting;
 using Zyon.Core.WorldGen;
+using Zyon.Game.Rendering;
 
 namespace Zyon.Game;
 
@@ -18,6 +19,8 @@ public static class GameFlow
     public static WorldGenConfig WorldGenConfig { get; private set; } = null!;
     public static LightingConfig Lighting { get; private set; } = null!;
     public static ClientVisuals Visuals { get; private set; } = null!;
+    public static ArtCatalog Art { get; private set; } = null!;
+    public static ArtTextures ArtTextures { get; private set; } = null!;
     public static LaunchOptions Options { get; private set; } = null!;
     /// <summary>Saves do jogador (pasta raiz): o que o menu lista e onde ele cria.</summary>
     public static SaveLibrary Library { get; private set; } = null!;
@@ -50,7 +53,9 @@ public static class GameFlow
         Registry = RegistryLoader.LoadFromDirectory(DataDir);
         WorldGenConfig = WorldGenConfigLoader.LoadFromDirectory(DataDir);
         Lighting = LightingConfigLoader.LoadFromDirectory(DataDir);
-        Visuals = ClientVisuals.LoadFromDirectory(DataDir, Registry);
+        Visuals = ClientVisuals.LoadFromDirectory(DataDir);
+        Art = ArtCatalog.LoadFromDirectory(DataDir, Registry);
+        ArtTextures = ArtTextures.Load(Art);
         string root = Options.SavesDir ?? ProjectSettings.GlobalizePath("user://saves");
         // Mundos descartáveis (--dev, smoke test, profile-walk) ficam na subpasta "dev": nunca tocam nos saves
         // do jogador. O menu e --world/--player sem --dev usam a raiz.
