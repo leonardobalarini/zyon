@@ -30,7 +30,7 @@ Ordem dos próximos subprojetos: **arte (este)** → base inicial (bunker) → b
   - `mergeOrder`: lista de blocos do mais mole ao mais duro (terra → rocha → rocha profunda → minério A → minério B); blocos fora da lista (não sólidos) não mesclam;
   - cores do jogador: pele, cabelo, macacão (cor principal e detalhe), contorno;
   - itens: os de bloco usam a miniatura do bloco; os demais têm receita de desenho (`pickaxe`, `torch`).
-- **Saída — `assets/art/`:**
+- **Saída — `data/client/art/`:**
   - `tiles.png` — por material: 16 máscaras de borda × 3 variações (16×16 px cada);
   - `walls.png` — o mesmo para paredes;
   - `merge.png` — por material da `mergeOrder`: 4 lados × 3 variações de borda irregular (16×16, transparente fora da borda);
@@ -78,7 +78,7 @@ Ordem dos próximos subprojetos: **arte (este)** → base inicial (bunker) → b
 
 ### Client (testável)
 
-- `ArtManifest`: lê `assets/art/art.json` e valida contra o `Registry` — todo bloco, parede e item precisa de arte, senão erro claro ("falta a arte do bloco 'torch'").
+- `ArtManifest`: lê `data/client/art/art.json` e valida contra o `Registry` — todo bloco, parede e item precisa de arte, senão erro claro ("falta a arte do bloco 'torch'").
 - `ChunkMeshBuilder`: usa as UVs do atlas de arte e emite os quads de mescla.
 - `PlayerAnimator`: função pura de (`EntityView`, tempo, estado anterior) → quadro de cada camada, lado, ângulo do golpe e posição/rotação do item.
 - Saem o `PlaceholderAtlas` e as cores de blocos/itens de `visuals.json` (fica a cor do céu e as do HUD).
