@@ -81,15 +81,89 @@ public class PlayerAnimatorTests
     }
 
     [Fact]
-    public void HoldingABlockItem_ShowsItUpright_WithoutUsing()
+    public void HoldingABlockItem_ShowsItUpright_InTheHoldArmFrame()
     {
         var s = new PlayerAnimState();
 
-        var pose = new PlayerAnimator(Art, R).Update(Player(held: Torch), 1 / 60f, ref s);
+        var pose = new PlayerAnimator(Art, R).Update(Player(vx: 9f, held: Torch), 1 / 60f, ref s);
 
+        int hold = P.SwingFirst + PlayerAnimator.HoldSwingOffset;
         Assert.Equal(Torch, pose.ItemId);
+        Assert.InRange(pose.BodyFrame, P.WalkFirst, P.WalkFirst + P.WalkCount - 1);   // o corpo continua andando
+        Assert.Equal(hold, pose.ArmFrame);
+        Assert.Equal(-90f - Art.ItemByItemId[Torch]!.PointDeg, pose.ItemRotationDeg, 3);
         Assert.Equal(0f, pose.ItemRotationDeg, 3);
+        Assert.Equal(P.Hand[hold][0], pose.HandX);
+        Assert.Equal(P.Hand[hold][1], pose.HandY);
     }
+
+    [Fact]
+    public void AimingAtOwnColumn_KeepsTheCoreFacing()
+    {
+        var anim = new PlayerAnimator(Art, R);
+        var left = new PlayerAnimState();
+        var right = new PlayerAnimState();
+
+        // Jogador em x 10,5 minerando o tile 10 logo abaixo: o lado vem do Core, não da posição dentro do tile.
+        Assert.True(anim.Update(Player(facing: -1, using_: true, aimX: 10, held: Pickaxe), 1 / 60f, ref left).FacingLeft);
+        Assert.False(anim.Update(Player(facing: 1, using_: true, aimX: 10, held: Pickaxe), 1 / 60f, ref right).FacingLeft);
+    }
+
+    [Fact]
+    public void NegativeDt_IsTreatedAsZero()
+    {
+        var anim = new PlayerAnimator(Art, R);
+        var s = new PlayerAnimState();
+        anim.Update(Player(vx: 9f), 0.1f, ref s);
+        float walk = s.WalkPhase;
+
+        var pose = anim.Update(Player(vx: 9f), -1f, ref s);
+
+        Assert.Equal(walk, s.WalkPhase);
+        Assert.InRange(pose.BodyFrame, P.WalkFirst, P.WalkFirst + P.WalkCount - 1);
+
+        var swing = new PlayerAnimState();
+        anim.Update(Player(using_: true, aimX: 15, held: Pickaxe), 1 / 60f, ref swing);
+        Assert.Equal(P.SwingFirst, anim.Update(Player(using_: true, aimX: 15, held: Pickaxe), -1f, ref swing).ArmFrame);
+        Assert.True(swing.SwingPhase >= 0);
+    }
+
+    [Fact]
+    public void ReleasingAndPressingAgain_RestartsTheSwing()
+    {
+        var anim = new PlayerAnimator(Art, R);
+        var s = new PlayerAnimState();
+        var using_ = Player(using_: true, aimX: 15, held: Pickaxe);
+        for (int i = 0; i < 12; i++) anim.Update(using_, 1 / 60f, ref s);
+        Assert.NotEqual(P.SwingFirst, anim.Update(using_, 1 / 60f, ref s).ArmFrame);
+
+        anim.Update(Player(held: Pickaxe), 1 / 60f, ref s);
+
+        Assert.Equal(P.SwingFirst, anim.Update(using_, 1 / 60f, ref s).ArmFrame);
+    }
+
+    [Fact]
+    public void FasterTool_SwingsFaster()
+    {
+        var fastRegistry = Zyon.Core.Data.RegistryLoader.Load(Data("blocks.json"), Data("walls.json"),
+            Data("items.json").Replace("\"speed\": 1.0", "\"speed\": 2.0"), Data("physics.json"), Data("player.json"));
+        Assert.Equal(2f, fastRegistry.Item(Pickaxe).ToolSpeed);
+        var fastArt = ArtCatalog.Resolve(Art.Manifest, fastRegistry);
+        var slow = new PlayerAnimState();
+        var fast = new PlayerAnimState();
+        var e = Player(using_: true, aimX: 15, held: Pickaxe);
+        var slowAnim = new PlayerAnimator(Art, R);
+        var fastAnim = new PlayerAnimator(fastArt, fastRegistry);
+        for (int i = 0; i < 4; i++)
+        {
+            slowAnim.Update(e, 1 / 60f, ref slow);
+            fastAnim.Update(e, 1 / 60f, ref fast);
+        }
+
+        Assert.Equal(2 * slow.SwingPhase, fast.SwingPhase, 4);
+    }
+
+    private static string Data(string file) => File.ReadAllText(Path.Combine(TestData.DataDir, file));
 
     [Fact]
     public void NotUsing_FacesTheMovementSide()

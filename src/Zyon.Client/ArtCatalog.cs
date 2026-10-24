@@ -44,7 +44,7 @@ public sealed class ArtCatalog
         if (file == ArtManifest.MergeFile)
             return ArtImageSize.Sheet(MergeAtlasLayout.Sides * m.Variations * s, exactWidth: true, Math.Max(1, m.MergeOrder.Count) * s);
         if (file == ArtManifest.ItemsFile)
-            return ArtImageSize.Sheet((MaxOrMinus1(m.Items.Values.Select(i => i!.Cell)) + 1) * s, exactWidth: false, s);
+            return new ArtImageSize((MaxOrMinus1(m.Items.Values.Select(i => i!.Cell)) + 1) * s, s, WidthIsMinimum: true, HeightIsMinimum: false);
         if (file == ArtManifest.PlayerFile(ArtManifest.ArmLayer))
             return ArtImageSize.Exact(p.ArmFrames * p.FrameWidth, p.FrameHeight);
         if (p.Layers.Any(l => ArtManifest.PlayerFile(l) == file))
@@ -136,6 +136,8 @@ public sealed class ArtCatalog
         if (p.ArmAngleDeg.Count != p.ArmFrames) throw Fail($"player.armAngleDeg precisa de {p.ArmFrames} valores");
         if (p.FrameWidth < 1 || p.FrameHeight < 1 || p.BodyFrames < 1 || p.ArmFrames < p.BodyFrames)
             throw Fail("player: tamanho de quadro ou contagem de quadros inválidos");
+        if (p.SwingCount <= PlayerAnimator.HoldSwingOffset)
+            throw Fail($"player.swingCount precisa ser > {PlayerAnimator.HoldSwingOffset} (quadro de segurar bloco)");
         if (p.SwingFirst + p.SwingCount > p.ArmFrames || p.WalkFirst + p.WalkCount > p.BodyFrames || p.Air >= p.BodyFrames)
             throw Fail("player: índices de quadro fora das tiras");
 

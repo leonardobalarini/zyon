@@ -1,4 +1,5 @@
 using Zyon.Core.Entities;
+using Zyon.Core.Items;
 using Zyon.Core.Sim;
 
 namespace Zyon.Core.Tests;
@@ -25,6 +26,31 @@ public class EntityViewTests
         Assert.True(moving.UsingItem);
         Assert.Equal((int)p.X + 3, moving.AimX);
         Assert.Equal((int)p.Y, moving.AimY);
+    }
+
+    [Fact]
+    public void WalkingLeft_FacesLeft()
+    {
+        using var h = new SimHarness();
+
+        h.Run(30, new PlayerInput(-1f, false, false, 0, 0));
+        h.Sim.TryGetEntityView(h.PlayerId, out var moving);
+
+        Assert.True(moving.Velocity.X < 0);
+        Assert.Equal(-1, moving.Facing);
+    }
+
+    [Fact]
+    public void EmptySelectedSlot_HoldsNothing()
+    {
+        using var h = new SimHarness();
+        int empty = Inventory.HotbarSize - 1;
+        Assert.True(h.Sim.GetInventory(h.PlayerId)![empty].IsEmpty);
+
+        h.Send(new SelectHotbarSlot(h.PlayerId, empty));
+        h.Sim.TryGetEntityView(h.PlayerId, out var view);
+
+        Assert.Equal((ushort)0, view.HeldItemId);
     }
 
     [Fact]

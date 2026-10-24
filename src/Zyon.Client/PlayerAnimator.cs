@@ -29,14 +29,22 @@ public sealed class PlayerAnimator(ArtCatalog art, Registry registry)
     /// <summary>Quadros de caminhada por tile percorrido.</summary>
     public const float WalkFramesPerTile = 4f;
 
+    /// <summary>
+    /// Quadro do golpe usado para segurar um bloco/tocha parado (SwingFirst + 3: braço à frente e um pouco para baixo),
+    /// para o item ficar à frente do corpo e não escondido atrás do braço caído.
+    /// </summary>
+    public const int HoldSwingOffset = 3;
+
     private const float WalkThreshold = 0.1f;
 
     public PlayerPose Update(in EntityView e, float dt, ref PlayerAnimState s)
     {
+        dt = MathF.Max(0f, dt);
         var p = art.Manifest.Player;
         var held = e.HeldItemId == 0 ? null : registry.Item(e.HeldItemId);
         bool swinging = e.UsingItem && held is not null;
-        bool facingLeft = swinging ? e.AimX + 0.5f < e.Position.X : e.Facing < 0;
+        // Mirando a própria coluna (ex.: minerar logo abaixo) a posição dentro do tile não diz o lado: mantém o do Core.
+        bool facingLeft = swinging && e.AimX != (int)MathF.Floor(e.Position.X) ? e.AimX + 0.5f < e.Position.X : e.Facing < 0;
 
         int body;
         if (!e.OnGround)
@@ -55,7 +63,10 @@ public sealed class PlayerAnimator(ArtCatalog art, Registry registry)
             s.WalkPhase = 0;
         }
 
+        bool holdingBlock = held is not null && held.PlacesBlockId != 0;
         int arm = body;
+        if (holdingBlock && !swinging)
+            arm = p.SwingFirst + HoldSwingOffset;
         if (swinging)
         {
             float speed = held!.ToolSpeed > 0 ? held.ToolSpeed : 1f;
@@ -67,7 +78,7 @@ public sealed class PlayerAnimator(ArtCatalog art, Registry registry)
 
         ushort shown = 0;
         float rotation = 0;
-        if (held is not null && (swinging || held.PlacesBlockId != 0))
+        if (held is not null && (swinging || holdingBlock))
         {
             shown = held.Id;
             var itemArt = art.ItemByItemId[held.Id]!;

@@ -13,6 +13,7 @@ public class ChunkMeshBuilderTests
     private static readonly TileAtlasLayout WallAtlas = new(R.Walls.Count - 1, Art.Manifest.Variations);
     private static readonly ushort Dirt = R.BlockId("dirt"), Stone = R.BlockId("stone");
     private static readonly ushort DirtWall = R.WallId("dirt_wall");
+    private const int Px = RenderMath.PixelsPerTile;
 
     [Fact]
     public void EmptyChunk_HasNoQuads()
@@ -132,7 +133,7 @@ public class ChunkMeshBuilderTests
         ChunkMeshBuilder.BuildMerge(view, 0, 0, Merge, Art.MergeRankByBlockId, data);
 
         Assert.Equal(1, data.QuadCount);
-        Assert.Equal(new System.Numerics.Vector2(5 * 16, 5 * 16), data.Vertices[0]);
+        Assert.Equal(new Vector2(5 * Px, 5 * Px), data.Vertices[0]);
         var uv = Merge.Uv(Art.Manifest.MergeOrder.IndexOf("dirt"), side: 0, AutoTile.Variation(5, 5, Merge.Variations));
         Assert.Equal(uv.U0, data.Uvs[0].X, 5);
         Assert.Equal(uv.V0, data.Uvs[0].Y, 5);
@@ -152,7 +153,68 @@ public class ChunkMeshBuilderTests
         ChunkMeshBuilder.BuildMerge(view, 0, 0, Merge, Art.MergeRankByBlockId, data);
 
         Assert.Equal(1, data.QuadCount);                                      // só a borda da terra sobre a rocha (lado O da rocha)
-        Assert.Equal(new System.Numerics.Vector2(6 * 16, 5 * 16), data.Vertices[0]);
+        Assert.Equal(new Vector2(6 * Px, 5 * Px), data.Vertices[0]);
+    }
+
+    [Fact]
+    public void Merge_AcrossChunkBorder_GoesOnTheHardTileInTheNeighbourChunk()
+    {
+        var w = new TileWorld(64, 64);
+        w.SetBlock(Chunk.Size, 5, Stone);         // x 32: lx 0 do chunk (1, 0)
+        w.SetBlock(Chunk.Size - 1, 5, Dirt);      // x 31: último tile do chunk (0, 0)
+        using var view = TestData.View(w);
+        var left = new ChunkMeshData();
+        var right = new ChunkMeshData();
+
+        ChunkMeshBuilder.BuildMerge(view, 0, 0, Merge, Art.MergeRankByBlockId, left);
+        ChunkMeshBuilder.BuildMerge(view, 1, 0, Merge, Art.MergeRankByBlockId, right);
+
+        Assert.Equal(0, left.QuadCount);
+        Assert.Equal(1, right.QuadCount);
+        Assert.Equal(new Vector2(0, 5 * Px), right.Vertices[0]);
+        AssertMergeUv(right, 0, "dirt", side: 3, Chunk.Size, 5);
+    }
+
+    [Theory]
+    [InlineData(1, 0, 1)]   // terra a leste: lado L
+    [InlineData(0, 1, 2)]   // terra ao sul: lado S
+    public void Merge_EastAndSouthSides(int dx, int dy, int side)
+    {
+        var w = new TileWorld(64, 64);
+        w.SetBlock(5, 5, Stone);
+        w.SetBlock(5 + dx, 5 + dy, Dirt);
+        using var view = TestData.View(w);
+        var data = new ChunkMeshData();
+
+        ChunkMeshBuilder.BuildMerge(view, 0, 0, Merge, Art.MergeRankByBlockId, data);
+
+        Assert.Equal(1, data.QuadCount);
+        Assert.Equal(new Vector2(5 * Px, 5 * Px), data.Vertices[0]);
+        AssertMergeUv(data, 0, "dirt", side, 5, 5);
+    }
+
+    [Fact]
+    public void Merge_StoneBorderDrawsOverOre_NeverTheReverse()
+    {
+        var w = new TileWorld(64, 64);
+        w.SetBlock(5, 5, Stone);
+        w.SetBlock(6, 5, R.BlockId("ore_a"));
+        using var view = TestData.View(w);
+        var data = new ChunkMeshData();
+
+        ChunkMeshBuilder.BuildMerge(view, 0, 0, Merge, Art.MergeRankByBlockId, data);
+
+        Assert.Equal(1, data.QuadCount);
+        Assert.Equal(new Vector2(6 * Px, 5 * Px), data.Vertices[0]);   // no tile do minério, lado O
+        AssertMergeUv(data, 0, "stone", side: 3, 6, 5);
+    }
+
+    private static void AssertMergeUv(ChunkMeshData data, int quad, string softer, int side, int x, int y)
+    {
+        var uv = Merge.Uv(Art.Manifest.MergeOrder.IndexOf(softer), side, AutoTile.Variation(x, y, Merge.Variations));
+        Assert.Equal(uv.U0, data.Uvs[quad * 4].X, 5);
+        Assert.Equal(uv.V0, data.Uvs[quad * 4].Y, 5);
+        Assert.Equal(uv.U1, data.Uvs[quad * 4 + 2].X, 5);
     }
 
     [Fact]

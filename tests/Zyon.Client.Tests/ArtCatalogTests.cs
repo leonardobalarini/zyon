@@ -75,6 +75,10 @@ public class ArtCatalogTests
         m.Player.Hand.RemoveAt(0);
 
         Assert.Contains("hand", Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry())).Message);
+
+        m = Complete();
+        m.Player.SwingCount = PlayerAnimator.HoldSwingOffset;
+        Assert.Contains("player.swingCount", Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry())).Message);
     }
 
     [Theory]
@@ -142,7 +146,7 @@ public class ArtCatalogTests
         Assert.Equal(ArtImageSize.Sheet(16 * v * 16, true, (r.Blocks.Count - 1) * 16), c.ExpectedSize(ArtManifest.TilesFile));
         Assert.Equal(ArtImageSize.Sheet(16 * v * 16, true, (r.Walls.Count - 1) * 16), c.ExpectedSize(ArtManifest.WallsFile));
         Assert.Equal(ArtImageSize.Sheet(4 * v * 16, true, 5 * 16), c.ExpectedSize(ArtManifest.MergeFile));
-        Assert.Equal(ArtImageSize.Sheet((r.Items.Count - 1) * 16, false, 16), c.ExpectedSize(ArtManifest.ItemsFile));
+        Assert.Equal(new ArtImageSize((r.Items.Count - 1) * 16, 16, WidthIsMinimum: true, HeightIsMinimum: false), c.ExpectedSize(ArtManifest.ItemsFile));
         Assert.Equal(ArtImageSize.Exact(10 * 32, 48), c.ExpectedSize(ArtManifest.PlayerFile("hair")));
         Assert.Equal(ArtImageSize.Exact(15 * 32, 48), c.ExpectedSize(ArtManifest.PlayerFile(ArtManifest.ArmLayer)));
     }
@@ -165,6 +169,9 @@ public class ArtCatalogTests
         c.CheckSize(ArtManifest.TilesFile, tiles.Width, tiles.Height);
         c.CheckSize(ArtManifest.TilesFile, tiles.Width, tiles.Height + 16);
         c.CheckSize(ArtManifest.ItemsFile, c.ExpectedSize(ArtManifest.ItemsFile).Width + 32, 16);
+        var tall = Assert.Throws<DataException>(() => c.CheckSize(ArtManifest.ItemsFile, c.ExpectedSize(ArtManifest.ItemsFile).Width, 32));
+        Assert.Contains("items.png", tall.Message);
+        Assert.Contains("altura 16", tall.Message);
 
         var narrow = Assert.Throws<DataException>(() => c.CheckSize(ArtManifest.TilesFile, tiles.Width - 16, tiles.Height));
         Assert.Contains("tiles.png", narrow.Message);
