@@ -81,9 +81,10 @@ public partial class EntityRenderer : Node2D
         int i = 0;
         foreach (var e in buffer)
         {
-            var center = RenderMath.ToPixels(RenderMath.Interpolate(e.PreviousPosition, e.Position, alpha)).ToGodot();
+            var position = RenderMath.Interpolate(e.PreviousPosition, e.Position, alpha);
             if (e.Kind == EntityKind.DroppedItem)
             {
+                var center = RenderMath.ToPixels(position).ToGodot();
                 items.SetInstanceTransform2D(i, new Transform2D(0f, center));
                 var itemArt = e.Item.ItemId < art.ItemByItemId.Count ? art.ItemByItemId[e.Item.ItemId] : null;
                 items.SetInstanceCustomData(i, new Color(itemArt?.Cell ?? 0, 0, 0, 0));
@@ -99,8 +100,8 @@ public partial class EntityRenderer : Node2D
                 AddChild(node);
                 players[e.NetworkId] = node;
             }
-            // Origem do nó nos pés: centro do AABB + meia altura, em pixels inteiros.
-            node.Position = (center + new Vector2(0, RenderMath.ToPixels(e.Size).Y / 2)).Round();
+            // Origem do nó nos pés: centro do AABB + meia altura, em pixels inteiros (o mesmo arredondamento da câmera).
+            node.Position = RenderMath.SnapToPixel(RenderMath.ToPixels(position + new System.Numerics.Vector2(0, e.Size.Y / 2))).ToGodot();
             var pose = animator.Update(e, dt, ref node.State);
             node.Apply(pose);
             if (e.NetworkId == localPlayerId)

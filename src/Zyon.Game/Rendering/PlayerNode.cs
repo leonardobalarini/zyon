@@ -5,7 +5,7 @@ using Zyon.Client;
 namespace Zyon.Game.Rendering;
 
 /// <summary>
-/// Um jogador: camadas (corpo, roupa, cabelo), item na mão e braço da frente. A origem do nó fica nos pés;
+/// Um jogador: camadas (corpo, roupa, cabelo), braço da frente e o item na mão, por cima de tudo. A origem do nó fica nos pés;
 /// virar para a esquerda é Scale.X = −1 no nó "pivot", que espelha tudo junto. FeetY é a linha de pixels dos pés
 /// (a última do quadro): ela fica logo acima da origem, apoiada no chão, e não 1 px dentro dele.
 /// </summary>
@@ -17,6 +17,7 @@ public partial class PlayerNode : Node2D
     private readonly Sprite2D arm = new();
     private PlayerArt art = null!;
     private ArtCatalog catalog = null!;
+    private PlayerPose? lastPose;
 
     /// <summary>Estado do <see cref="PlayerAnimator"/> deste jogador (passado por ref a cada quadro).</summary>
     public PlayerAnimState State;
@@ -33,19 +34,21 @@ public partial class PlayerNode : Node2D
             layers.Add(s);
             pivot.AddChild(s);
         }
+        arm.Texture = textures.PlayerArm;
+        ConfigureFrames(arm, art.ArmFrames);
+        pivot.AddChild(arm);
         item.Texture = textures.Items;
         item.RegionEnabled = true;
         item.Centered = false;
         item.TextureFilter = TextureFilterEnum.Nearest;
         item.Visible = false;
         pivot.AddChild(item);
-        arm.Texture = textures.PlayerArm;
-        ConfigureFrames(arm, art.ArmFrames);
-        pivot.AddChild(arm);
     }
 
     public void Apply(PlayerPose pose)
     {
+        if (lastPose == pose) return;
+        lastPose = pose;
         pivot.Scale = new Vector2(pose.FacingLeft ? -1 : 1, 1);
         foreach (var s in layers) s.Frame = pose.BodyFrame;
         arm.Frame = pose.ArmFrame;
