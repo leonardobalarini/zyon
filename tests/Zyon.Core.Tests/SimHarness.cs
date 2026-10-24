@@ -11,7 +11,7 @@ internal sealed class SimHarness : IDisposable
 {
     public SimHarness(int width = 64, int height = 64, int groundY = 40, float playerX = 20f, Registry? registry = null)
     {
-        Registry = registry ?? TestData.Registry();
+        Registry = registry ?? TestData.RegistryPickaxeOnly();
         GroundY = groundY;
         Tiles = TestWorlds.Flat(Registry, width, height, groundY);
         Sim = new Simulation(Registry, Tiles);

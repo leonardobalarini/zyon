@@ -23,7 +23,7 @@ public class ClientVisualsTests
     {
         var r = TestData.Registry();
 
-        var v = ClientVisuals.Load("""{"blocks": {"dirt":"#102030","stone":"#000000","deep_stone":"#000000","ore_a":"#000000","ore_b":"#000000"}, "walls": {"dirt_wall":"#000000","stone_wall":"#000000"}, "items": {}, "player": "#ffffff", "sky": "#000000"}""", r);
+        var v = ClientVisuals.Load("""{"blocks": {"dirt":"#102030","stone":"#000000","deep_stone":"#000000","ore_a":"#000000","ore_b":"#000000","torch":"#000000"}, "walls": {"dirt_wall":"#000000","stone_wall":"#000000"}, "items": {}, "player": "#ffffff", "sky": "#000000"}""", r);
 
         Assert.Equal(new Rgb(0x10, 0x20, 0x30), v.ItemColor(r.ItemId("dirt")));
         Assert.Equal(ClientVisuals.FallbackColor, v.ItemColor(r.ItemId("basic_pickaxe")));
@@ -41,7 +41,7 @@ public class ClientVisualsTests
         Assert.Contains(expectedInMessage, ex.Message);
     }
 
-    private const string AllBlocks = "\"dirt\":\"#000000\",\"stone\":\"#000000\",\"deep_stone\":\"#000000\",\"ore_a\":\"#000000\",\"ore_b\":\"#000000\"";
+    private const string AllBlocks = "\"dirt\":\"#000000\",\"stone\":\"#000000\",\"deep_stone\":\"#000000\",\"ore_a\":\"#000000\",\"ore_b\":\"#000000\",\"torch\":\"#000000\"";
     private const string AllWalls = "\"dirt_wall\":\"#000000\",\"stone_wall\":\"#000000\"";
 
     [Fact]

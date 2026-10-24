@@ -6,11 +6,12 @@ namespace Zyon.Client;
 /// e coletas de lixo ocorridas durante o quadro. <see cref="Ticks"/> = ticks de simulação rodados no quadro;
 /// <see cref="MeasuredSeconds"/> = intervalo medido pelo relógio entre o início deste quadro e o do anterior
 /// (0 se desconhecido) — difere do delta quando o motor suaviza o delta; <see cref="NewChunks"/> = quantos dos
-/// <see cref="Rebuilds"/> foram chunks que entraram na faixa visível.
+/// <see cref="Rebuilds"/> foram chunks que entraram na faixa visível; <see cref="LightRecomputes"/> e
+/// <see cref="LightMs"/> = recálculos da luz no quadro e o tempo do último (0 se não houve).
 /// </summary>
 public readonly record struct FrameSample(
     double DeltaSeconds, double ProcessMs, double UpdateMs, double RenderMs, int Rebuilds, int GcCollections,
-    int Ticks = 1, double MeasuredSeconds = 0, int NewChunks = 0)
+    int Ticks = 1, double MeasuredSeconds = 0, int NewChunks = 0, int LightRecomputes = 0, double LightMs = 0)
 {
     /// <summary>Quadro com 2 ou mais ticks: a simulação avançou o dobro (ou mais) de uma vez.</summary>
     public bool IsHitch => Ticks >= 2;
@@ -24,7 +25,8 @@ public readonly record struct FrameSummary(
     double UpdateAvgMs, double UpdateMaxMs,
     double RenderAvgMs, double RenderMaxMs,
     int Rebuilds, int MaxRebuildsPerFrame, int GcCollections,
-    int ZeroTickFrames = 0, int MultiTickFrames = 0, double MeasuredMaxMs = 0);
+    int ZeroTickFrames = 0, int MultiTickFrames = 0, double MeasuredMaxMs = 0,
+    int LightRecomputes = 0, double LightMaxMs = 0);
 
 /// <summary>Último quadro com 2+ ticks: o número do quadro (desde o início) e suas medidas.</summary>
 public readonly record struct FrameHitch(long Frame, FrameSample Sample);
@@ -75,8 +77,8 @@ public sealed class FrameStats
     {
         public int Frames;
         public double Seconds;
-        private double frameMax, measuredMax, processSum, processMax, updateSum, updateMax, renderSum, renderMax;
-        private int rebuilds, rebuildsMax, gc, zeroTicks, multiTicks;
+        private double frameMax, measuredMax, lightMax, processSum, processMax, updateSum, updateMax, renderSum, renderMax;
+        private int rebuilds, rebuildsMax, gc, zeroTicks, multiTicks, lightRecomputes;
 
         public void Add(FrameSample s)
         {
@@ -98,6 +100,8 @@ public sealed class FrameStats
             gc += s.GcCollections;
             if (s.Ticks == 0) zeroTicks++;
             if (s.IsHitch) multiTicks++;
+            lightRecomputes += s.LightRecomputes;
+            if (s.LightRecomputes > 0) lightMax = Math.Max(lightMax, s.LightMs);
         }
 
         public readonly FrameSummary Summary()
@@ -110,7 +114,8 @@ public sealed class FrameStats
                 updateSum / Frames, updateMax,
                 renderSum / Frames, renderMax,
                 rebuilds, rebuildsMax, gc,
-                zeroTicks, multiTicks, measuredMax);
+                zeroTicks, multiTicks, measuredMax,
+                lightRecomputes, lightMax);
         }
     }
 }

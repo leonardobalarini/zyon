@@ -1,6 +1,7 @@
 using Godot;
 using Zyon.Client;
 using Zyon.Core.Data;
+using Zyon.Core.Lighting;
 using Zyon.Core.WorldGen;
 
 namespace Zyon.Game;
@@ -15,6 +16,7 @@ public static class GameFlow
     public static string DataDir { get; private set; } = "";
     public static Registry Registry { get; private set; } = null!;
     public static WorldGenConfig WorldGenConfig { get; private set; } = null!;
+    public static LightingConfig Lighting { get; private set; } = null!;
     public static ClientVisuals Visuals { get; private set; } = null!;
     public static LaunchOptions Options { get; private set; } = null!;
     /// <summary>Saves do jogador (pasta raiz): o que o menu lista e onde ele cria.</summary>
@@ -47,6 +49,7 @@ public static class GameFlow
         DataDir = DataPaths.Resolve();
         Registry = RegistryLoader.LoadFromDirectory(DataDir);
         WorldGenConfig = WorldGenConfigLoader.LoadFromDirectory(DataDir);
+        Lighting = LightingConfigLoader.LoadFromDirectory(DataDir);
         Visuals = ClientVisuals.LoadFromDirectory(DataDir, Registry);
         string root = Options.SavesDir ?? ProjectSettings.GlobalizePath("user://saves");
         // Mundos descartáveis (--dev, smoke test, profile-walk) ficam na subpasta "dev": nunca tocam nos saves

@@ -21,10 +21,13 @@ public partial class GameRoot : Node2D
     private int playerId;
     private EntityRenderer entityRenderer = null!;
     private PlayerController controller = null!;
+    private LightOverlay lightOverlay = null!;
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
     private InventoryPanel inventory = null!;
     private SmokeTest? smoke;
+    // Smoke test: recálculos da luz quando a tocha apareceu no mundo (antes do UpdateLight do mesmo quadro).
+    private long? recomputesAtTorch;
     private ProfileWalk? profile;
     // Início do quadro anterior (Stopwatch): o intervalo medido mostra se o delta do motor difere do relógio.
     private long lastFrameStart;
@@ -104,6 +107,11 @@ public partial class GameRoot : Node2D
             entityRenderer = new EntityRenderer();
             AddChild(entityRenderer);
             entityRenderer.Init(newSession.World, visuals);
+            // Luz depois do mundo e das entidades (multiplica os dois) e antes do WorldOverlay: o destaque do tile
+            // mirado e as rachaduras não escurecem. HUD e menus são CanvasLayers e ficam fora do multiply.
+            lightOverlay = new LightOverlay();
+            AddChild(lightOverlay);
+            lightOverlay.Init(newSession.World, GameFlow.Lighting, playerId);
             overlay = new WorldOverlay();
             AddChild(overlay);
             overlay.Init(newSession.World, playerId);
@@ -240,8 +248,12 @@ public partial class GameRoot : Node2D
             foreach (var gameEvent in session.DrainEvents())
             {
                 worldRenderer.OnEvent(gameEvent);
+                lightOverlay.OnEvent(gameEvent);
                 overlay.OnEvent(gameEvent);
                 smoke?.OnEvent(gameEvent);
+                if (smoke is not null && recomputesAtTorch is null && gameEvent is TileChanged placed
+                    && placed.Block == GameFlow.Registry.BlockId("torch"))
+                    recomputesAtTorch = lightOverlay.TotalRecomputes;
             }
             // A câmera segue a mesma posição interpolada que o jogador desenhado: com a posição do tick atual
             // (até 1 tick à frente) o mundo rolaria em degraus de 60 Hz e o jogador tremeria em relação à tela.
@@ -255,6 +267,7 @@ public partial class GameRoot : Node2D
             hotbar.Refresh();
             inventory.Refresh();
             worldRenderer.UpdateVisible(camera.VisiblePixels());
+            lightOverlay.UpdateLight(camera.VisiblePixels());
             long frameEnd = Stopwatch.GetTimestamp();
             RecordFrame(delta, measured, frameStart, updateEnd, frameEnd, (int)(session.World.Tick - tickBefore));
             if (profile is not null)
@@ -273,9 +286,11 @@ public partial class GameRoot : Node2D
                 {
                     if (smoke.Failure is null)
                     {
+                        VerifySmokeLight();
                         VerifySmokeSave();
                         PrintSmokeStats();
-                        GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}, save ok");
+                        GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}, " +
+                            $"minerado {smoke.MinedTile}, tocha em {smoke.TorchTile}, save ok, luz ok");
                         GetTree().Quit(0);
                     }
                     else
@@ -302,7 +317,8 @@ public partial class GameRoot : Node2D
             Stopwatch.GetElapsedTime(frameStart, updateEnd).TotalMilliseconds,
             Stopwatch.GetElapsedTime(updateEnd, frameEnd).TotalMilliseconds,
             worldRenderer.RebuildsLastUpdate, gcCount - lastGcCount,
-            ticks, measured, worldRenderer.NewChunksLastUpdate);
+            ticks, measured, worldRenderer.NewChunksLastUpdate,
+            lightOverlay.RecomputesLastUpdate, lightOverlay.LastComputeMs);
         lastGcCount = gcCount;
         bool hitch = frameStats.Add(sample);
         if (++framesProcessed > 60) steadyStats.Add(sample);
@@ -313,7 +329,7 @@ public partial class GameRoot : Node2D
         if (debugOverlay.ShouldRefresh(delta))
             debugOverlay.Refresh(frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
                 worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
-                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString()));
+                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString(), lightOverlay.SkyFactor));
     }
 
     /// <summary>Configuração de tempo do motor que afeta o delta entregue a _Process.</summary>
@@ -337,6 +353,9 @@ public partial class GameRoot : Node2D
         GD.Print(string.Format(CultureInfo.InvariantCulture,
             "SMOKE STATS câmera: {0}, atraso máx {1:0.0} px do mundo ({2:0.00} tiles)",
             camera.ModeDescription, cameraLagMax, cameraLagMax / RenderMath.PixelsPerTile));
+        GD.Print(string.Format(CultureInfo.InvariantCulture,
+            "SMOKE STATS luz: {0} recálculos, máx {1:0.000} ms, céu {2:0.00}",
+            frameStats.Overall.LightRecomputes, frameStats.Overall.LightMaxMs, lightOverlay.SkyFactor));
         GD.Print("SMOKE STATS apresentação: swapchain_image_count " +
             ProjectSettings.GetSetting("rendering/rendering_device/vsync/swapchain_image_count") +
             ", frame_queue_size " + ProjectSettings.GetSetting("rendering/rendering_device/vsync/frame_queue_size") +
@@ -448,6 +467,39 @@ public partial class GameRoot : Node2D
         };
         AddChild(dialog);
         return dialog;
+    }
+
+    /// <summary>Smoke test: a tocha colocada pelo roteiro está no mundo, ilumina o próprio tile e a luz foi recalculada.</summary>
+    private void VerifySmokeLight()
+    {
+        var (x, y) = smoke!.TorchTile;
+        if (session!.World.GetBlock(x, y) != GameFlow.Registry.BlockId("torch"))
+            throw new InvalidOperationException("a tocha não foi colocada");
+        if (recomputesAtTorch is not { } before || lightOverlay.TotalRecomputes <= before)
+            throw new InvalidOperationException("a luz não foi recalculada depois de a tocha ser colocada");
+        lightOverlay.UpdateLight(camera.VisiblePixels());
+        float lit = lightOverlay.LevelAt(x, y);
+        if (lit < 0.99f)
+            throw new InvalidOperationException($"o tile da tocha deveria estar iluminado (nível {lit})");
+        // De dia a tocha do roteiro fica na superfície e os vizinhos de ar já recebem luz plena do céu: a propagação
+        // é conferida num cálculo à parte, sem céu nem halo (noite), sobre o mesmo mundo.
+        var night = new Zyon.Core.Lighting.LightMap();
+        var nightEngine = new Zyon.Core.Lighting.LightEngine(GameFlow.Lighting);
+        nightEngine.Compute(session.World, new Zyon.Core.Lighting.TileRect(x - 24, y - 24, x + 24, y + 24)
+            .ClampTo(session.World.Width, session.World.Height), 0f, [], night);
+        if (night.Get(x, y) < 0.99f)
+            throw new InvalidOperationException($"à noite o tile da tocha deveria estar iluminado (nível {night.Get(x, y)})");
+        string neighbours = "";
+        bool propagated = false;
+        foreach (var (nx, ny) in new[] { (x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1) })
+        {
+            float level = night.Get(nx, ny);
+            neighbours += string.Create(CultureInfo.InvariantCulture, $" ({nx},{ny}) bloco {session.World.GetBlock(nx, ny)} parede {session.World.GetWall(nx, ny)} nível {level:0.000}");
+            propagated |= level is >= 0.93f and <= 0.95f;
+        }
+        GD.Print("SMOKE luz vizinhos (noite):" + neighbours);
+        if (!propagated)
+            throw new InvalidOperationException($"a luz da tocha não se propagou a um vizinho de ar:{neighbours}");
     }
 
     /// <summary>Smoke test: salva, espera o disco e confere que o mundo relido é igual ao mundo em jogo.</summary>

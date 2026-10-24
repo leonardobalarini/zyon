@@ -1,0 +1,10 @@
+{
+  "airAttenuation": 0.06,
+  "solidAttenuation": 0.25,
+  "dayLengthSeconds": 1440,
+  "startTimeOfDay": 0.30,
+  "nightSkyLevel": 0.15,
+  "twilightFraction": 0.041666667,
+  "playerHaloLevel": 0.3,
+  "regionMargin": 18
+}

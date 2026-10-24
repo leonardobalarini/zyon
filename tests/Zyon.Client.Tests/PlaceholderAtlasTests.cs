@@ -57,4 +57,39 @@ public class PlaceholderAtlasTests
 
         Assert.Equal(0, rgba[3]);
     }
+
+    [Fact]
+    public void NonSolidMaterial_IsASmallStick_TransparentAround()
+    {
+        var layout = new TileAtlasLayout(2, 3);
+        var rgba = PlaceholderAtlas.BuildRgba(layout, [null, Brown], [false, false]);
+        var (x, y) = layout.CellOrigin(1, 0, 0);
+
+        int Alpha(int px, int py) => rgba[((y + py) * layout.WidthPx + x + px) * 4 + 3];
+
+        Assert.Equal(0, Alpha(0, 0));
+        Assert.Equal(0, Alpha(2, 12));
+        Assert.Equal(255, Alpha(7, 10));
+        Assert.Equal(255, Alpha(8, 4));
+
+        // Bordas do palito: px 6..9, py 3..15.
+        Assert.Equal(0, Alpha(5, 10));
+        Assert.Equal(0, Alpha(10, 10));
+        Assert.Equal(0, Alpha(7, 2));
+        Assert.Equal(255, Alpha(6, 3));
+        Assert.Equal(255, Alpha(9, 15));
+    }
+
+    [Fact]
+    public void NonSolidMaterial_FlameIsBrighterThanBody()
+    {
+        var layout = new TileAtlasLayout(2, 3);
+        var rgba = PlaceholderAtlas.BuildRgba(layout, [null, Brown], [false, false]);
+        var (x, y) = layout.CellOrigin(1, 0, 0);
+
+        var flame = Pixel(rgba, layout, x + 7, y + 4);
+        var body = Pixel(rgba, layout, x + 7, y + 12);
+
+        Assert.True(flame.R + flame.G + flame.B > body.R + body.G + body.B, $"chama {flame}, corpo {body}");
+    }
 }
