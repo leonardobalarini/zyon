@@ -4,5 +4,6 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Zyon.Core.Tests" />
+    <InternalsVisibleTo Include="Zyon.ArtGen" />
   </ItemGroup>
 </Project>

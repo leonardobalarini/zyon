@@ -101,4 +101,13 @@ public class ArtCatalogTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void RealArt_LoadsAndCoversAllContent()
+    {
+        var c = ArtCatalog.LoadFromDirectory(TestData.DataDir, TestData.Registry());
+
+        Assert.Equal(TestData.Registry().Blocks.Count, c.TileRowByBlockId.Count);
+        Assert.True(File.Exists(c.PathOf(ArtManifest.TilesFile)));
+    }
 }
