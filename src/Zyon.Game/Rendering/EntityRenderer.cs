@@ -107,7 +107,7 @@ public partial class EntityRenderer : Node2D
             if (e.NetworkId == localPlayerId)
             {
                 localBodyFrames.Add(pose.BodyFrame);
-                LocalSwingSeen |= pose.ArmFrame >= art.Manifest.Player.SwingFirst;
+                LocalSwingSeen |= e.UsingItem && pose.ArmFrame >= art.Manifest.Player.SwingFirst;
             }
         }
 

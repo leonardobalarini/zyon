@@ -136,6 +136,11 @@ public sealed class ArtCatalog
         if (p.ArmAngleDeg.Count != p.ArmFrames) throw Fail($"player.armAngleDeg precisa de {p.ArmFrames} valores");
         if (p.FrameWidth < 1 || p.FrameHeight < 1 || p.BodyFrames < 1 || p.ArmFrames < p.BodyFrames)
             throw Fail("player: tamanho de quadro ou contagem de quadros inválidos");
+        if (p.Idle < 0) throw Fail($"player.idle precisa ser >= 0 (é {p.Idle})");
+        if (p.WalkFirst < 0) throw Fail($"player.walkFirst precisa ser >= 0 (é {p.WalkFirst})");
+        if (p.Air < 0) throw Fail($"player.air precisa ser >= 0 (é {p.Air})");
+        if (p.SwingFirst < 0) throw Fail($"player.swingFirst precisa ser >= 0 (é {p.SwingFirst})");
+        if (p.Idle >= p.BodyFrames) throw Fail($"player.idle precisa ser < bodyFrames (é {p.Idle})");
         if (p.SwingCount <= PlayerAnimator.HoldSwingOffset)
             throw Fail($"player.swingCount precisa ser > {PlayerAnimator.HoldSwingOffset} (quadro de segurar bloco)");
         if (p.SwingFirst + p.SwingCount > p.ArmFrames || p.WalkFirst + p.WalkCount > p.BodyFrames || p.Air >= p.BodyFrames)

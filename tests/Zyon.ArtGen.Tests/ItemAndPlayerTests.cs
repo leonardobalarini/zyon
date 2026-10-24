@@ -73,4 +73,13 @@ public class ItemAndPlayerTests
         var hand = meta.Hand[meta.SwingFirst + meta.SwingCount - 1];
         Assert.True(hand[0] > 16 && hand[1] > 16, "no fim do golpe a mão fica à frente e abaixo do ombro");
     }
+
+    [Fact]
+    public void HoldFrame_ArmPointsForwardAndDown()
+    {
+        PlayerGenerator.Build(Source, out _, out var meta);
+
+        float angle = meta.ArmAngleDeg[meta.SwingFirst + PlayerAnimator.HoldSwingOffset];
+        Assert.InRange(angle, 0.001f, 89.999f);
+    }
 }

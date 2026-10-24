@@ -82,6 +82,25 @@ public class ArtCatalogTests
     }
 
     [Theory]
+    [InlineData("idle", -1)]
+    [InlineData("walkFirst", -1)]
+    [InlineData("air", -1)]
+    [InlineData("swingFirst", -1)]
+    [InlineData("idle", 10)]
+    public void PlayerFrameIndexOutOfRange_Throws(string field, int value)
+    {
+        var m = Complete();
+        switch (field)
+        {
+            case "idle": m.Player.Idle = value; break;
+            case "walkFirst": m.Player.WalkFirst = value; break;
+            case "air": m.Player.Air = value; break;
+            case "swingFirst": m.Player.SwingFirst = value; break;
+        }
+        Assert.Contains("player." + field, Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry())).Message);
+    }
+
+    [Theory]
     [InlineData("variations")]
     [InlineData("tileSize")]
     [InlineData("tiles.dirt")]

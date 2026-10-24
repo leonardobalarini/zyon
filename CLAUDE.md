@@ -20,7 +20,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 
 ## Regras invioláveis
 
-- `Zyon.Core` (e o futuro `Zyon.Client`) **nunca** referenciam Godot.
+- `Zyon.Core`, `Zyon.Client` e `Zyon.ArtGen` **nunca** referenciam Godot.
 - Comandos (`ICommand`) e eventos (`IGameEvent`) são `record` imutáveis e serializáveis.
 - Toda validação de regra de jogo acontece no Core; comando inválido é descartado em silêncio (contador + log debug).
 - Coordenadas em unidades de tile, Y cresce para baixo, `Position` é o centro do AABB.
