@@ -1,0 +1,28 @@
+{
+  "seed": 7,
+  "variations": 3,
+  "blocks": {
+    "dirt":       { "recipe": "clumps", "palette": ["#4a3a2c", "#6b5440", "#85694f"], "cap": ["#5c5850", "#7d776b", "#969084"] },
+    "stone":      { "recipe": "clumps", "palette": ["#55554f", "#6f6f6c", "#8a8a84"] },
+    "deep_stone": { "recipe": "panels", "palette": ["#2c313d", "#3d4452", "#525b6d"] },
+    "ore_a":      { "recipe": "ore", "base": "stone", "fleck": ["#7a3f1f", "#b0643a", "#d88a55"] },
+    "ore_b":      { "recipe": "ore", "base": "deep_stone", "fleck": ["#2f8f80", "#6fe0c8", "#c8fff2"] },
+    "torch":      { "recipe": "torch", "palette": ["#3e2a1a", "#5e4228", "#7a5a38"], "flame": ["#ff8a2a", "#ffc65a", "#fff2c0"] }
+  },
+  "walls": {
+    "dirt_wall":  { "recipe": "clumps", "palette": ["#2a2018", "#3a2d22", "#46372a"] },
+    "stone_wall": { "recipe": "clumps", "palette": ["#2c2c2a", "#3a3a37", "#464642"] }
+  },
+  "mergeOrder": ["dirt", "stone", "deep_stone", "ore_a", "ore_b"],
+  "player": {
+    "skin": ["#9a6a4a", "#c08a64", "#d8a880"],
+    "hair": ["#2a1e18", "#3e2c22", "#5a4232"],
+    "outfit": ["#24525e", "#2f6f7f", "#4a95a6"],
+    "detail": "#d9a441",
+    "boots": ["#26221e", "#3a332c"],
+    "outline": "#14161a"
+  },
+  "items": {
+    "basic_pickaxe": { "recipe": "pickaxe", "handle": ["#4a3420", "#6e5032", "#8f6c46"], "head": ["#5a5f66", "#8a9099", "#c4cad2"] }
+  }
+}

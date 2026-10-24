@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Zyon.ArtGen/Zyon.ArtGen.csproj" />
     <Project Path="src/Zyon.Client/Zyon.Client.csproj" />
     <Project Path="src/Zyon.Core/Zyon.Core.csproj" />
     <Project Path="src/Zyon.Game/Zyon.Game.csproj">
@@ -7,6 +8,7 @@
     </Project>
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Zyon.ArtGen.Tests/Zyon.ArtGen.Tests.csproj" />
     <Project Path="tests/Zyon.Client.Tests/Zyon.Client.Tests.csproj" />
     <Project Path="tests/Zyon.Core.Tests/Zyon.Core.Tests.csproj" />
   </Folder>

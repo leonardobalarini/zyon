@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\data\**\*.json" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\**\*.png" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

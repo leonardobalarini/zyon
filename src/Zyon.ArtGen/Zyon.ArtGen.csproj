@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Zyon.Core\Zyon.Core.csproj" />
+    <ProjectReference Include="..\Zyon.Client\Zyon.Client.csproj" />
+  </ItemGroup>
+</Project>

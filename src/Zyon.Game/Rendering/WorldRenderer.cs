@@ -13,7 +13,6 @@ public partial class WorldRenderer : Node2D
 {
     private const int MarginChunks = 1;
     private const int RebuildBudgetPerFrame = 6;
-    private const int Variations = 3;
 
     private readonly Dictionary<(int, int), ChunkNode> active = new();
     private readonly Stack<ChunkNode> pool = new();
@@ -22,8 +21,9 @@ public partial class WorldRenderer : Node2D
     private IWorldView view = null!;
     private TileAtlasLayout blockLayout = null!;
     private TileAtlasLayout wallLayout = null!;
-    private Texture2D blockAtlas = null!;
-    private Texture2D wallAtlas = null!;
+    private MergeAtlasLayout mergeLayout = null!;
+    private ArtCatalog art = null!;
+    private ArtTextures textures = null!;
     private DirtyChunkTracker dirty = null!;
     private int chunksX;
     private int chunksY;
@@ -36,16 +36,20 @@ public partial class WorldRenderer : Node2D
     /// <summary>Quantos de <see cref="RebuildsLastUpdate"/> foram chunks que entraram na faixa visível.</summary>
     public int NewChunksLastUpdate { get; private set; }
 
-    public void Init(IWorldView worldView, ClientVisuals visuals)
+    public void Init(IWorldView worldView, ArtCatalog artCatalog, ArtTextures artTextures)
     {
         view = worldView;
+        art = artCatalog;
+        textures = artTextures;
         chunksX = (view.Width + Zyon.Core.Tiles.Chunk.Size - 1) / Zyon.Core.Tiles.Chunk.Size;
         chunksY = (view.Height + Zyon.Core.Tiles.Chunk.Size - 1) / Zyon.Core.Tiles.Chunk.Size;
         dirty = new DirtyChunkTracker(chunksX, chunksY);
-        blockLayout = new TileAtlasLayout(view.Registry.Blocks.Count, Variations);
-        wallLayout = new TileAtlasLayout(view.Registry.Walls.Count, Variations);
-        blockAtlas = BuildAtlas(blockLayout, visuals.BlockColors, view.Registry.Blocks.Select(b => b.Solid).ToList());
-        wallAtlas = BuildAtlas(wallLayout, visuals.WallColors);
+        // Linhas dos layouts = linhas reais das texturas (ArtTextures já conferiu que cobrem as linhas do catálogo):
+        // as UVs só ficam certas se o layout tiver a mesma altura do PNG.
+        int variations = art.Manifest.Variations;
+        blockLayout = new TileAtlasLayout(Rows(textures.Tiles), variations);
+        wallLayout = new TileAtlasLayout(Rows(textures.Walls), variations);
+        mergeLayout = new MergeAtlasLayout(Rows(textures.Merge), variations);
     }
 
     public void OnEvent(IGameEvent gameEvent)
@@ -95,7 +99,7 @@ public partial class WorldRenderer : Node2D
     private ChunkNode CreateNode()
     {
         var node = new ChunkNode();
-        node.Init(wallAtlas, blockAtlas);
+        node.Init(textures.Walls, textures.Tiles, textures.Merge);
         AddChild(node);
         return node;
     }
@@ -103,16 +107,13 @@ public partial class WorldRenderer : Node2D
     private void Rebuild(ChunkNode node, int cx, int cy)
     {
         RebuildsLastUpdate++;
-        ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Walls, wallLayout, scratch);
+        ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Walls, wallLayout, art.WallRowByWallId, scratch);
         node.SetWalls(scratch);
-        ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Blocks, blockLayout, scratch);
+        ChunkMeshBuilder.Build(view, cx, cy, TileLayer.Blocks, blockLayout, art.TileRowByBlockId, scratch);
         node.SetBlocks(scratch);
+        ChunkMeshBuilder.BuildMerge(view, cx, cy, mergeLayout, art.MergeRankByBlockId, scratch);
+        node.SetMerge(scratch);
     }
 
-    private static Texture2D BuildAtlas(TileAtlasLayout layout, IReadOnlyList<Rgb?> colors, IReadOnlyList<bool>? solid = null)
-    {
-        byte[] rgba = PlaceholderAtlas.BuildRgba(layout, colors, solid);
-        var image = Image.CreateFromData(layout.WidthPx, layout.HeightPx, false, Image.Format.Rgba8, rgba);
-        return ImageTexture.CreateFromImage(image);
-    }
+    private static int Rows(Texture2D atlas) => atlas.GetHeight() / TileAtlasLayout.TileSize;
 }

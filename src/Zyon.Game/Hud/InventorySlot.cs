@@ -1,7 +1,7 @@
 using System;
 using Godot;
-using Zyon.Client;
 using Zyon.Core.Items;
+using Zyon.Game.Rendering;
 
 namespace Zyon.Game.Hud;
 
@@ -9,8 +9,9 @@ namespace Zyon.Game.Hud;
 public partial class InventorySlot : Panel
 {
     public const int SlotSize = 20;
+    public const int IconSize = 16;
 
-    private ColorRect icon = null!;
+    private TextureRect icon = null!;
     private Label count = null!;
     private Action<int, int> move = null!;
     private Action<int> dragFailed = null!;
@@ -26,19 +27,32 @@ public partial class InventorySlot : Panel
         move = onMove;
         dragFailed = onDragFailed;
         CustomMinimumSize = new Vector2(SlotSize, SlotSize);
-        icon = new ColorRect { Position = new Vector2(5, 5), Size = new Vector2(SlotSize - 10, SlotSize - 10), MouseFilter = MouseFilterEnum.Ignore };
+        icon = CreateIcon();
         count = new Label { Position = new Vector2(1, SlotSize - 12), MouseFilter = MouseFilterEnum.Ignore };
         count.AddThemeFontSizeOverride("font_size", 8);
         AddChild(icon);
         AddChild(count);
     }
 
-    public void Show(ItemStack stack, ClientVisuals visuals)
+    /// <summary>
+    /// Ícone 16×16 centrado no slot de 20 px, em escala 1:1 (reduzir a arte em nearest apagaria linhas de pixels).
+    /// Não captura o mouse.
+    /// </summary>
+    public static TextureRect CreateIcon() => new()
+    {
+        Position = new Vector2((SlotSize - IconSize) / 2, (SlotSize - IconSize) / 2),
+        Size = new Vector2(IconSize, IconSize),
+        ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        TextureFilter = TextureFilterEnum.Nearest,
+        MouseFilter = MouseFilterEnum.Ignore,
+    };
+
+    public void Show(ItemStack stack, ItemIcons icons)
     {
         if (stack == shown) return;
         shown = stack;
-        icon.Visible = !stack.IsEmpty;
-        if (!stack.IsEmpty) icon.Color = visuals.ItemColor(stack.ItemId).ToGodot();
+        icon.Texture = stack.IsEmpty ? null : icons.Get(stack.ItemId);
         count.Text = stack.Count > 1 ? stack.Count.ToString() : "";
     }
 
@@ -46,7 +60,10 @@ public partial class InventorySlot : Panel
     {
         if (shown.IsEmpty) return default;
         dragging = true;
-        SetDragPreview(new ColorRect { Color = icon.Color, Size = new Vector2(12, 12), MouseFilter = MouseFilterEnum.Ignore });
+        var preview = CreateIcon();
+        preview.Position = Vector2.Zero;
+        preview.Texture = icon.Texture;
+        SetDragPreview(preview);
         return Slot;
     }
 

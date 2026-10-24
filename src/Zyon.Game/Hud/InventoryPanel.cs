@@ -1,7 +1,7 @@
 using Godot;
-using Zyon.Client;
 using Zyon.Core.Items;
 using Zyon.Core.Sim;
+using Zyon.Game.Rendering;
 
 namespace Zyon.Game.Hud;
 
@@ -14,15 +14,15 @@ public partial class InventoryPanel : CanvasLayer
     private readonly InventorySlot[] slots = new InventorySlot[Inventory.Slots];
     private PanelContainer panel = null!;
     private IGameSession session = null!;
-    private ClientVisuals visuals = null!;
+    private ItemIcons icons = null!;
     private Hotbar hotbar = null!;
 
     public bool IsOpen => panel.Visible;
 
-    public void Init(IGameSession gameSession, ClientVisuals clientVisuals, Hotbar gameHotbar)
+    public void Init(IGameSession gameSession, ItemIcons itemIcons, Hotbar gameHotbar)
     {
         session = gameSession;
-        visuals = clientVisuals;
+        icons = itemIcons;
         hotbar = gameHotbar;
         Layer = 5;
         panel = new PanelContainer { Position = new Vector2(8, 8), Visible = false };
@@ -50,7 +50,7 @@ public partial class InventoryPanel : CanvasLayer
         var inventory = session.World.GetInventory(session.LocalPlayerId);
         if (inventory is null) return;
         for (int i = 0; i < slots.Length; i++)
-            slots[i].Show(inventory[i], visuals);
+            slots[i].Show(inventory[i], icons);
     }
 
     private void Move(int from, int to) => session.Send(new MoveInventoryItem(session.LocalPlayerId, from, to));

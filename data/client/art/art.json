@@ -1,0 +1,165 @@
+{
+  "tileSize": 16,
+  "variations": 3,
+  "tiles": {
+    "dirt": 0,
+    "stone": 1,
+    "deep_stone": 2,
+    "ore_a": 3,
+    "ore_b": 4,
+    "torch": 5
+  },
+  "walls": {
+    "dirt_wall": 0,
+    "stone_wall": 1
+  },
+  "mergeOrder": [
+    "dirt",
+    "stone",
+    "deep_stone",
+    "ore_a",
+    "ore_b"
+  ],
+  "items": {
+    "dirt": {
+      "cell": 0,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "stone": {
+      "cell": 1,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "deep_stone": {
+      "cell": 2,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "ore_a": {
+      "cell": 3,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "ore_b": {
+      "cell": 4,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "basic_pickaxe": {
+      "cell": 5,
+      "gripX": 3,
+      "gripY": 12,
+      "pointDeg": -45
+    },
+    "torch": {
+      "cell": 6,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    }
+  },
+  "player": {
+    "frameWidth": 32,
+    "frameHeight": 48,
+    "feetX": 16,
+    "feetY": 47,
+    "layers": [
+      "body",
+      "outfit",
+      "hair"
+    ],
+    "bodyFrames": 10,
+    "armFrames": 15,
+    "idle": 0,
+    "walkFirst": 1,
+    "walkCount": 8,
+    "air": 9,
+    "swingFirst": 10,
+    "swingCount": 5,
+    "hand": [
+      [
+        17,
+        27
+      ],
+      [
+        16,
+        27
+      ],
+      [
+        13,
+        26
+      ],
+      [
+        11,
+        26
+      ],
+      [
+        13,
+        26
+      ],
+      [
+        16,
+        27
+      ],
+      [
+        19,
+        26
+      ],
+      [
+        21,
+        26
+      ],
+      [
+        19,
+        26
+      ],
+      [
+        22,
+        26
+      ],
+      [
+        12,
+        6
+      ],
+      [
+        20,
+        6
+      ],
+      [
+        26,
+        11
+      ],
+      [
+        26,
+        19
+      ],
+      [
+        22,
+        26
+      ]
+    ],
+    "armAngleDeg": [
+      85,
+      90,
+      107.67766,
+      114.99608,
+      107.677666,
+      90,
+      72.322334,
+      65.00392,
+      72.32234,
+      60,
+      -110,
+      -67,
+      -25,
+      18,
+      60
+    ]
+  }
+}

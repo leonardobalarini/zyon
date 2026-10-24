@@ -201,14 +201,18 @@ public sealed class Simulation : IWorldView, IDisposable
 
     private EntityView MakeView(Entity e)
     {
-        bool isPlayer = Ecs.Has<PlayerState>(e);
-        return new EntityView(
-            Ecs.Get<NetworkId>(e).Value,
-            isPlayer ? EntityKind.Player : EntityKind.DroppedItem,
-            Ecs.Get<Position>(e).Value,
-            Ecs.Get<PreviousPosition>(e).Value,
-            Ecs.Get<Body>(e).Size,
-            isPlayer ? ItemStack.Empty : Ecs.Get<DroppedItem>(e).Stack);
+        var position = Ecs.Get<Position>(e).Value;
+        var previous = Ecs.Get<PreviousPosition>(e).Value;
+        ref var body = ref Ecs.Get<Body>(e);
+        int id = Ecs.Get<NetworkId>(e).Value;
+        if (!Ecs.Has<PlayerState>(e))
+            return new EntityView(id, EntityKind.DroppedItem, position, previous, body.Size, Ecs.Get<DroppedItem>(e).Stack);
+
+        ref var state = ref Ecs.Get<PlayerState>(e);
+        var inventory = Ecs.Get<InventoryRef>(e).Inventory;
+        return new EntityView(id, EntityKind.Player, position, previous, body.Size, ItemStack.Empty,
+            Ecs.Get<Velocity>(e).Value, body.OnGround, state.Facing, state.Input.Primary,
+            state.Input.AimX, state.Input.AimY, inventory[state.SelectedSlot].ItemId);
     }
 
     private void ProcessCommands()
