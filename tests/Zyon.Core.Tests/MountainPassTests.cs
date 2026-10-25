@@ -14,6 +14,13 @@ public class MountainPassTests
         return ctx;
     }
 
+    private static WorldGenContext TerrainOnly(int width = Width, int height = Height)
+    {
+        var ctx = Context(width, height, Seed);
+        WorldGenerator.RunPass(ctx, new TerrainPass());
+        return ctx;
+    }
+
     [Fact]
     public void Mountain_PeakRightOfCenter_FacingLeft_TallerThanTheFoot()
     {
@@ -68,6 +75,7 @@ public class MountainPassTests
         Assert.False(m.FacesLeft);
         Assert.Equal(Width / 2 - 40, m.PeakX);
         Assert.Equal(m.PeakX + 30, m.FootX);
+        Assert.Equal(TerrainOnly().Surface[m.FootX], ctx.Surface[m.FootX]);   // o pé fica no nível do terreno
     }
 
     [Theory]
@@ -81,6 +89,9 @@ public class MountainPassTests
 
         Assert.InRange(m.PeakX, 0, width - 1);
         Assert.InRange(m.FootX, 0, width - 1);
+        Assert.True(ctx.Surface[m.PeakX] < ctx.Surface[m.FootX],
+            $"pico {ctx.Surface[m.PeakX]} não fica acima do pé {ctx.Surface[m.FootX]}");
+        Assert.Equal(TerrainOnly(width, height).Surface[m.FootX], ctx.Surface[m.FootX]);   // o pé fica no nível do terreno
         for (int x = 0; x < width; x++)
             Assert.True(ctx.Surface[x] >= minRow, $"coluna {x}: superfície {ctx.Surface[x]} acima de {minRow}");
     }

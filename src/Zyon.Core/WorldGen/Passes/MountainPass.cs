@@ -27,7 +27,7 @@ internal sealed class MountainPass : IWorldGenPass
         int footX = Math.Clamp(peakX - dir * steep, 0, width - 1);
         int minRow = (int)(cfg.SurfaceMin * world.Height / 2);
         float height = Math.Min(cfg.MountainHeight * k, Math.Max(0, ctx.Surface[footX] - minRow));
-        var noise = ctx.CreateNoise("mountain", cfg.MountainNoiseFrequency, 2);
+        var noise = ctx.CreateNoise("mountain.shape", cfg.MountainNoiseFrequency, 2);
         ushort fill = ctx.Materials.Stone;
 
         for (int i = -steep; i <= gentle; i++)
