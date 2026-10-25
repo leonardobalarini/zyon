@@ -67,7 +67,14 @@ public sealed class StructureTemplate
             x >= 0 && x < Width && y >= 0 && y < Height && !s[x, y].Keep && (s[x, y].Block == 0 || !registry.Block(s[x, y].Block).Solid);
 
         var (ax, ay) = Anchor;
-        if (!Free(ax, ay) || !Solid(ax, ay + 1))
+        if (ax != 0)
+            throw Fail($"linha {ay + 1}, coluna {ax + 1}: a âncora deve ficar na coluna 1 (borda esquerda do molde)");
+        if (!Free(ax, ay))
+            throw Fail($"linha {ay + 1}, coluna {ax + 1}: a âncora deve ser um tile livre");
+        for (int y = ay - 2; y < ay; y++)
+            if (!Free(ax, y))
+                throw Fail($"linha {ay + 1}, coluna {ax + 1}: o vão do portão precisa de 3 linhas livres");
+        if (!Solid(ax, ay + 1))
             throw Fail($"linha {ay + 1}, coluna {ax + 1}: a âncora precisa de chão sólido logo abaixo");
 
         var (sx, sy) = Spawn;
@@ -76,7 +83,11 @@ public sealed class StructureTemplate
         for (int y = sy - 2; y <= sy; y++)
         for (int x = sx - 1; x <= sx + 1; x++)
             if (!Free(x, y))
-                throw Fail($"linha {sy + 1}, coluna {sx + 1}: o spawn precisa de 3 colunas × 3 linhas livres (bloqueado em linha {y + 1}, coluna {x + 1})");
+            {
+                bool inside = x >= 0 && x < Width && y >= 0 && y < Height;
+                var where = inside ? $"bloqueado em linha {y + 1}, coluna {x + 1}" : "bloqueado: fora do molde";
+                throw Fail($"linha {sy + 1}, coluna {sx + 1}: o spawn precisa de 3 colunas × 3 linhas livres ({where})");
+            }
         return s;
     }
 }

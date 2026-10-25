@@ -10,11 +10,14 @@ public sealed class Structure
 
     public Structure(string name, int width, int height, StructureTile[] tiles, (int X, int Y) anchor, (int X, int Y) spawn)
     {
+        if (width < 1 || height < 1) throw new ArgumentException("largura e altura devem ser ao menos 1");
         if (tiles.Length != width * height) throw new ArgumentException("tamanho dos tiles diferente de largura × altura", nameof(tiles));
+        if (anchor.X < 0 || anchor.X >= width || anchor.Y < 0 || anchor.Y >= height) throw new ArgumentException("âncora fora do molde", nameof(anchor));
+        if (spawn.X < 0 || spawn.X >= width || spawn.Y < 0 || spawn.Y >= height) throw new ArgumentException("spawn fora do molde", nameof(spawn));
         Name = name;
         Width = width;
         Height = height;
-        this.tiles = tiles;
+        this.tiles = tiles.ToArray();
         Anchor = anchor;
         Spawn = spawn;
     }

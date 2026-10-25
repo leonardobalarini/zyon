@@ -29,7 +29,12 @@ public static class StructureLoader
         JsonNode? root;
         try
         {
-            root = JsonNode.Parse(json);
+            root = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions
+            {
+                AllowDuplicateProperties = false,
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            });
         }
         catch (JsonException ex)
         {

@@ -77,6 +77,8 @@ public class StructureLoaderTests
     [InlineData("""["#####","D...#","#####"]""", "nenhum tile marcado com 'spawn'")]
     [InlineData("""["#####","DSS.#","#####"]""", "linha 2, coluna 3: segundo tile marcado com 'spawn'")]
     [InlineData("""["#####","..S.#","#####"]""", "nenhum tile marcado com 'anchor'")]
+    [InlineData("""["#####","DDS.#","#####"]""", "linha 2, coluna 2: segundo tile marcado com 'anchor'")]
+    [InlineData("""[1]""", "linha 1: deve ser texto")]
     [InlineData("""[]""", "'rows' ausente ou vazio")]
     public void Load_InvalidRows_ThrowsWithPosition(string rows, string expected)
     {
@@ -91,12 +93,90 @@ public class StructureLoaderTests
     [InlineData("""{"legend":{"#":"nada"},"rows":["#"]}""", "use \"keep\" ou um objeto")]
     [InlineData("""{"legend":{"#":{"blok":"x"}},"rows":["#"]}""", "campo 'blok' desconhecido")]
     [InlineData("""{"rows":["#"]}""", "campo 'legend' ausente")]
+    [InlineData("""{"legend":{"#":{"block":5}},"rows":["#"]}""", "'block' deve ser um nome")]
+    [InlineData("""{"legend":{"#":{"spawn":"sim"}},"rows":["#"]}""", "'spawn' deve ser true ou false")]
+    [InlineData("""{"legend":{"#":"keep","#":"keep"},"rows":["#"]}""", "JSON inválido")]
+    [InlineData("""{"legend":{"#":"keep"},"legend":{},"rows":["#"]}""", "JSON inválido")]
     [InlineData("""não é json""", "JSON inválido")]
     public void Load_InvalidLegend_Throws(string json, string expected)
     {
         var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json));
 
+        Assert.Contains("structures/teste.json", ex.Message);
         Assert.Contains(expected, ex.Message);
+    }
+
+    [Fact]
+    public void Load_AcceptsCommentsAndTrailingCommas()
+    {
+        var json = "// molde" + Environment.NewLine + Valid.Replace("\"######\"", "\"######\", /* fim */");
+        var t = StructureLoader.Load("teste", json);
+
+        Assert.Equal(6, t.Width);
+    }
+
+    [Fact]
+    public void Resolve_UnknownWall_Throws()
+    {
+        var json = Valid.Replace("\"wall\": \"metal_wall\"", "\"wall\": \"paredex\"");
+        var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
+
+        Assert.Contains("legenda '#': parede inexistente 'paredex'", ex.Message);
+    }
+
+    [Fact]
+    public void Resolve_AnchorNotFree_Throws()
+    {
+        var json = Valid.Replace("\"D\": { \"wall\": \"metal_wall\", \"anchor\": true }", "\"D\": { \"block\": \"metal_plate\", \"anchor\": true }");
+        var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
+
+        Assert.Contains("linha 5, coluna 1: a âncora deve ser um tile livre", ex.Message);
+    }
+
+    [Fact]
+    public void Resolve_AnchorWithoutGateHeadroom_Throws()
+    {
+        var json = With("""["#####","#...#","D.S.#","#####"]""");
+        var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
+
+        Assert.Contains("linha 3, coluna 1: o vão do portão precisa de 3 linhas livres", ex.Message);
+    }
+
+    [Fact]
+    public void Resolve_AnchorNotInFirstColumn_Throws()
+    {
+        var json = With("""["#####","#....","#D.S.","#####"]""");
+        var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
+
+        Assert.Contains("linha 3, coluna 2: a âncora deve ficar na coluna 1 (borda esquerda do molde)", ex.Message);
+    }
+
+    [Fact]
+    public void Resolve_SpawnHeadroomOutsideTemplate_SaysOutside()
+    {
+        var json = With("""["#####",".....",".....","D...S","#####"]""");
+        var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
+
+        Assert.Contains("fora do molde", ex.Message);
+    }
+
+    [Fact]
+    public void Structure_Constructor_ValidatesArguments()
+    {
+        var one = new StructureTile[1];
+        Assert.Throws<ArgumentException>(() => new Structure("x", 0, 1, [], (0, 0), (0, 0)));
+        Assert.Throws<ArgumentException>(() => new Structure("x", 1, 1, one, (1, 0), (0, 0)));
+        Assert.Throws<ArgumentException>(() => new Structure("x", 1, 1, one, (0, 0), (0, 1)));
+    }
+
+    [Fact]
+    public void Structure_Constructor_CopiesTiles()
+    {
+        var tiles = new StructureTile[1];
+        var s = new Structure("x", 1, 1, tiles, (0, 0), (0, 0));
+        tiles[0] = new StructureTile(7, 7, true);
+
+        Assert.Equal(0, s[0, 0].Block);
     }
 
     [Fact]
@@ -111,7 +191,7 @@ public class StructureLoaderTests
     [Fact]
     public void Resolve_SpawnWithoutFloor_Throws()
     {
-        var json = With("""["#####","#...#","#...#","D.S.#","##.##"]""");
+        var json = With("""["#####","....#","....#","D.S.#","##.##"]""");
         var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
 
         Assert.Contains("linha 4, coluna 3: o spawn precisa de chão sólido logo abaixo", ex.Message);
@@ -120,7 +200,7 @@ public class StructureLoaderTests
     [Fact]
     public void Resolve_SpawnWithoutHeadroom_Throws()
     {
-        var json = With("""["#####","#####","D.S.#","#####"]""");
+        var json = With("""[".####",".####","D.S.#","#####"]""");
         var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
 
         Assert.Contains("o spawn precisa de 3 colunas × 3 linhas livres", ex.Message);
@@ -129,7 +209,7 @@ public class StructureLoaderTests
     [Fact]
     public void Resolve_AnchorWithoutFloor_Throws()
     {
-        var json = With("""["#####","#...#","#...#","D.S.#",".####"]""");
+        var json = With("""["#####","....#","....#","D.S.#",".####"]""");
         var ex = Assert.Throws<DataException>(() => StructureLoader.Load("teste", json).Resolve(TestData.Registry()));
 
         Assert.Contains("linha 4, coluna 1: a âncora precisa de chão sólido logo abaixo", ex.Message);
