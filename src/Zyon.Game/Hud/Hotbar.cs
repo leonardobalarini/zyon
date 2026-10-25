@@ -28,17 +28,25 @@ public partial class Hotbar : CanvasLayer
         itemIcons = itemIconSource;
         playerId = localPlayerId;
         const int total = Inventory.HotbarSize * (SlotSize + Gap) - Gap;
+        // Presa ao centro da borda de baixo: a tela interna muda de tamanho com a janela.
+        var bar = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        bar.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        bar.OffsetLeft = -total / 2;
+        bar.OffsetRight = total - total / 2;
+        bar.OffsetTop = -SlotSize - 4;
+        bar.OffsetBottom = -4;
+        AddChild(bar);
         for (int i = 0; i < Inventory.HotbarSize; i++)
         {
-            var x = (640 - total) / 2 + i * (SlotSize + Gap);
+            var x = i * (SlotSize + Gap);
             // Ignore: a hotbar não captura o mouse (clicar sobre ela não é "clique na interface").
-            backs[i] = new ColorRect { Position = new Vector2(x, 360 - SlotSize - 4), Size = new Vector2(SlotSize, SlotSize), Color = SlotBack, MouseFilter = Control.MouseFilterEnum.Ignore };
+            backs[i] = new ColorRect { Position = new Vector2(x, 0), Size = new Vector2(SlotSize, SlotSize), Color = SlotBack, MouseFilter = Control.MouseFilterEnum.Ignore };
             icons[i] = InventorySlot.CreateIcon();
             counts[i] = new Label { Position = new Vector2(1, SlotSize - 12), MouseFilter = Control.MouseFilterEnum.Ignore };
             counts[i].AddThemeFontSizeOverride("font_size", 8);
             backs[i].AddChild(icons[i]);
             backs[i].AddChild(counts[i]);
-            AddChild(backs[i]);
+            bar.AddChild(backs[i]);
         }
     }
 

@@ -25,7 +25,8 @@ public class LightingPerformanceTests(ITestOutputHelper output)
         for (int i = -20; i <= 20; i += 5)
             if (generated.Tiles.GetBlock(fx + i, fy + 6) == 0) generated.Tiles.SetBlock(fx + i, fy + 6, torch);
         using var view = new Simulation(registry, generated.Tiles);
-        var visible = new TileRect(fx - 20, fy - 11, fx + 19, fy + 11);   // 40×23 tiles = 640×360 px
+        // Maior tela interna comum (ScreenScale): 1600×900 com escala 1 = 100×56 tiles. Em 1080p são 60×34.
+        var visible = new TileRect(fx - 50, fy - 28, fx + 49, fy + 28);
         var region = visible.Expand(config.RegionMargin + RegionSlack).ClampTo(view.Width, view.Height);
         var engine = new LightEngine(config);
         var map = new LightMap();
