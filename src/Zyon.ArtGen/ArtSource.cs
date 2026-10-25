@@ -12,6 +12,8 @@ public sealed class MaterialSource
     public string? Base { get; set; }
     public string[]? Fleck { get; set; }
     public string[]? Flame { get; set; }
+    public string? Shape { get; set; }
+    public string[]? Accent { get; set; }
 }
 
 public sealed class PlayerSource
@@ -41,7 +43,8 @@ public sealed class ArtSource
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
 
-    private static readonly string[] SolidRecipes = ["clumps", "panels", "ore"];
+    private static readonly string[] SolidRecipes = ["clumps", "panels", "ore", "plates", "stripes"];
+    private static readonly string[] WallRecipes = ["clumps", "plates"];
 
     public int Seed { get; set; }
     public int Variations { get; set; } = 3;
@@ -92,8 +95,15 @@ public sealed class ArtSource
             var def = registry.Block((ushort)id);
             if (!Blocks.TryGetValue(def.Name, out var m)) throw Fail($"falta a arte do bloco '{def.Name}'");
             string ctx = $"blocks.{def.Name}";
-            if (def.Solid && !SolidRecipes.Contains(m.Recipe)) throw Fail($"{ctx}: receita '{m.Recipe}' inválida para bloco sólido (use clumps, panels ou ore)");
-            if (!def.Solid && m.Recipe != "torch") throw Fail($"{ctx}: bloco não sólido precisa da receita 'torch'");
+            if (def.Solid && !SolidRecipes.Contains(m.Recipe)) throw Fail($"{ctx}: receita '{m.Recipe}' inválida para bloco sólido (use {string.Join(", ", SolidRecipes)})");
+            if (!def.Solid && m.Recipe is not ("torch" or "prop")) throw Fail($"{ctx}: bloco não sólido precisa da receita 'torch' ou 'prop'");
+            if (m.Recipe == "prop")
+            {
+                if (m.Shape is null || !PropGenerator.Shapes.Contains(m.Shape))
+                    throw Fail($"{ctx}: forma '{m.Shape}' desconhecida (use {string.Join(", ", PropGenerator.Shapes)})");
+                if (PropGenerator.ShapesWithAccent.Contains(m.Shape)) CheckColors(m.Accent, 3, $"{ctx}.accent");
+            }
+            if (m.Recipe == "stripes") CheckColors(m.Accent, 3, $"{ctx}.accent");
             if (m.Recipe == "ore")
             {
                 if (m.Base is null || !Blocks.TryGetValue(m.Base, out var b) || b.Recipe is not ("clumps" or "panels"))
@@ -111,7 +121,7 @@ public sealed class ArtSource
         {
             var def = registry.Wall((ushort)id);
             if (!Walls.TryGetValue(def.Name, out var m)) throw Fail($"falta a arte da parede '{def.Name}'");
-            if (m.Recipe != "clumps") throw Fail($"walls.{def.Name}: paredes usam a receita 'clumps'");
+            if (!WallRecipes.Contains(m.Recipe)) throw Fail($"walls.{def.Name}: paredes usam a receita 'clumps' ou 'plates'");
             CheckColors(m.Palette, 3, $"walls.{def.Name}.palette");
         }
         foreach (var name in Walls.Keys)

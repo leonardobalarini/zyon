@@ -53,10 +53,11 @@ public class LightingDataTests
     }
 
     [Fact]
-    public void Torch_IsTheLastBlock_SoExistingIdsDoNotChange()
+    public void NewBlocksComeAfterTorch_SoExistingIdsDoNotChange()
     {
         var r = TestData.Registry();
 
-        Assert.Equal(r.Blocks.Count - 1, r.BlockId("torch"));
+        Assert.Equal(r.BlockId("ore_b") + 1, r.BlockId("torch"));
+        Assert.Equal(r.BlockId("torch") + 1, r.BlockId("metal_plate"));
     }
 }

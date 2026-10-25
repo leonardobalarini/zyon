@@ -7,11 +7,19 @@
     "deep_stone": { "recipe": "panels", "palette": ["#2c313d", "#3d4452", "#525b6d"] },
     "ore_a":      { "recipe": "ore", "base": "stone", "fleck": ["#7a3f1f", "#b0643a", "#d88a55"] },
     "ore_b":      { "recipe": "ore", "base": "deep_stone", "fleck": ["#2f8f80", "#6fe0c8", "#c8fff2"] },
-    "torch":      { "recipe": "torch", "palette": ["#3e2a1a", "#5e4228", "#7a5a38"], "flame": ["#ff8a2a", "#ffc65a", "#fff2c0"] }
+    "torch":      { "recipe": "torch", "palette": ["#3e2a1a", "#5e4228", "#7a5a38"], "flame": ["#ff8a2a", "#ffc65a", "#fff2c0"] },
+    "metal_plate":  { "recipe": "plates",  "palette": ["#3b434b", "#56606a", "#76818c"] },
+    "hazard_plate": { "recipe": "stripes", "palette": ["#9a7a1e", "#d1a72c", "#ecc95a"], "accent": ["#1c1c1e", "#2a2a2d", "#3a3a3e"] },
+    "bunker_lamp":  { "recipe": "prop", "shape": "lamp",  "palette": ["#2a2f35", "#4a525c", "#6e7884"], "accent": ["#c9a24a", "#ffe08a", "#fff6d2"] },
+    "crate":        { "recipe": "prop", "shape": "crate", "palette": ["#4a3a26", "#6e5636", "#8e744c"] },
+    "pipe":         { "recipe": "prop", "shape": "pipe",  "palette": ["#3d4a44", "#5a6e64", "#7f958a"] },
+    "vent":         { "recipe": "prop", "shape": "vent",  "palette": ["#22272c", "#3e464f", "#5c6672"] },
+    "panel":        { "recipe": "prop", "shape": "panel", "palette": ["#2a3038", "#434c58", "#626d7c"], "accent": ["#1e5a3a", "#3fd07a", "#b8ffd0"] }
   },
   "walls": {
     "dirt_wall":  { "recipe": "clumps", "palette": ["#2a2018", "#3a2d22", "#46372a"] },
-    "stone_wall": { "recipe": "clumps", "palette": ["#2c2c2a", "#3a3a37", "#464642"] }
+    "stone_wall": { "recipe": "clumps", "palette": ["#2c2c2a", "#3a3a37", "#464642"] },
+    "metal_wall": { "recipe": "plates", "palette": ["#22282e", "#2e353c", "#3a424a"] }
   },
   "mergeOrder": ["dirt", "stone", "deep_stone", "ore_a", "ore_b"],
   "player": {

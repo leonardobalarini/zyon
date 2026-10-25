@@ -29,7 +29,7 @@ public class ArtCatalogTests
         Assert.Equal(-1, c.TileRowByBlockId[0]);
         Assert.Equal(1, c.MergeRankByBlockId[r.BlockId("stone")]);
         Assert.Equal(-1, c.MergeRankByBlockId[r.BlockId("torch")]);
-        Assert.Equal(r.Items.Count - 2, c.ItemByItemId[r.ItemId("torch")]!.Cell);
+        Assert.Equal(r.ItemId("torch") - 1, c.ItemByItemId[r.ItemId("torch")]!.Cell);
     }
 
     [Fact]
