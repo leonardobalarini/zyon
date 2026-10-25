@@ -32,6 +32,8 @@ public partial class GameCamera : Camera2D
     /// </summary>
     public void Follow(Vector2 targetPixels)
     {
+        // Zoom do jogador e da janela (ScreenScaler); lido a cada quadro, então muda na hora.
+        Zoom = new Vector2(ScreenScaler.WorldZoom, ScreenScaler.WorldZoom);
         Position = RenderMath.SnapToPixel(targetPixels.ToNumerics()).ToGodot();
         if (!PositionSmoothingEnabled) ForceUpdateScroll();
     }

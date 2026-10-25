@@ -39,12 +39,43 @@ public class ScreenScaleTests
         Assert.Equal(scale, (int)Math.Floor(Math.Min(w / (double)bw, h / (double)bh)));
     }
 
+    [Theory]
+    [InlineData(768, 1, 1f)]
+    [InlineData(1009, 1, 0.5f)]
+    [InlineData(1080, 1, 0.5f)]
+    [InlineData(1369, 1, 0.5f)]
+    [InlineData(1600, 1, 1f / 3)]
+    [InlineData(2160, 2, 0.5f)]
+    public void World_IsIntegerAndZoomsOutFromInterface(int windowHeight, int expectedWorld, float expectedZoom)
+    {
+        Assert.Equal(expectedWorld, ScreenScale.ForWorld(windowHeight));
+        Assert.Equal(expectedZoom, ScreenScale.WorldZoom(windowHeight), 5);
+    }
+
+    [Theory]
+    [InlineData(1080, 1, 2)]      // um passo mais perto: 60×34 tiles
+    [InlineData(1080, 2, 3)]      // 40×22, o limite (interface + 1)
+    [InlineData(1080, 9, 3)]
+    [InlineData(1080, -5, 1)]
+    [InlineData(2160, -1, 1)]
+    [InlineData(2160, 3, 5)]
+    public void ZoomSteps_MoveWorldScaleWithinLimits(int windowHeight, int steps, int expectedWorld) =>
+        Assert.Equal(expectedWorld, ScreenScale.ForWorld(windowHeight, steps));
+
+    [Theory]
+    [InlineData(1080, 9, 2)]
+    [InlineData(1080, -3, 0)]
+    [InlineData(2160, -3, -1)]
+    public void ClampZoomSteps_DropsStepsThatHaveNoEffect(int windowHeight, int steps, int expected) =>
+        Assert.Equal(expected, ScreenScale.ClampZoomSteps(windowHeight, steps));
+
     [Fact]
-    public void VisibleTiles_At1080p_AreAbout60By34()
+    public void VisibleTiles_At1080p_AreLikeTerraria()
     {
         var (bw, bh) = ScreenScale.BaseSize(1920, 1080, ScreenScale.For(1080));
+        float zoom = ScreenScale.WorldZoom(1080);
 
-        Assert.Equal(60, bw / RenderMath.PixelsPerTile);
-        Assert.Equal(33, bh / RenderMath.PixelsPerTile);
+        Assert.Equal(120, (int)(bw / zoom) / RenderMath.PixelsPerTile);
+        Assert.Equal(67, (int)(bh / zoom) / RenderMath.PixelsPerTile);
     }
 }

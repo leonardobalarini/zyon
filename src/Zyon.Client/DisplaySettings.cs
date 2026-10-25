@@ -3,10 +3,11 @@ using System.Text.Json;
 namespace Zyon.Client;
 
 /// <summary>
-/// Preferências de tela que sobrevivem entre sessões (hoje só a tela cheia, F11). É só conforto: arquivo ausente ou
+/// Preferências de tela que sobrevivem entre sessões: tela cheia (F11) e passos de zoom do mundo (Ctrl+roda, +/−; ver
+/// <see cref="ScreenScale.ForWorld(int, int)"/>). É só conforto: arquivo ausente ou
 /// ilegível volta ao padrão em vez de impedir o jogo de abrir.
 /// </summary>
-public sealed record DisplaySettings(bool Fullscreen = false)
+public sealed record DisplaySettings(bool Fullscreen = false, int ZoomSteps = 0)
 {
     public const string FileName = "settings.json";
 

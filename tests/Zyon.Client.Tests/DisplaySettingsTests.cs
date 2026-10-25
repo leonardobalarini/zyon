@@ -22,11 +22,12 @@ public sealed class DisplaySettingsTests : IDisposable
     [Fact]
     public void SaveThenLoad_RoundTrips()
     {
-        new DisplaySettings(Fullscreen: true).Save(FilePath);
+        new DisplaySettings(Fullscreen: true, ZoomSteps: -1).Save(FilePath);
 
         var s = DisplaySettings.Load(FilePath, out var error);
 
         Assert.True(s.Fullscreen);
+        Assert.Equal(-1, s.ZoomSteps);
         Assert.Null(error);
     }
 
