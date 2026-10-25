@@ -483,8 +483,8 @@ public partial class GameRoot : Node2D
         float lit = lightOverlay.LevelAt(x, y);
         if (lit < 0.99f)
             throw new InvalidOperationException($"o tile da tocha deveria estar iluminado (nível {lit})");
-        // De dia a tocha do roteiro fica na superfície e os vizinhos de ar já recebem luz plena do céu: a propagação
-        // é conferida num cálculo à parte, sem céu nem halo (noite), sobre o mesmo mundo.
+        // A tocha do roteiro fica dentro do bunker (sem céu), mas o halo e as luminárias vizinhas poderiam mascarar a
+        // propagação: ela é conferida num cálculo à parte, sem céu nem emissores extras (noite), sobre o mesmo mundo.
         var night = new Zyon.Core.Lighting.LightMap();
         var nightEngine = new Zyon.Core.Lighting.LightEngine(GameFlow.Lighting);
         nightEngine.Compute(session.World, new Zyon.Core.Lighting.TileRect(x - 24, y - 24, x + 24, y + 24)
@@ -501,7 +501,7 @@ public partial class GameRoot : Node2D
         }
         GD.Print("SMOKE luz vizinhos (noite):" + neighbours);
         if (!propagated)
-            throw new InvalidOperationException($"a luz da tocha não se propagou a um vizinho de ar:{neighbours}");
+            throw new InvalidOperationException($"a luz da tocha não se propagou a um vizinho não sólido:{neighbours}");
     }
 
     /// <summary>Smoke test: o jogador local trocou de quadro ao andar e golpeou ao minerar.</summary>

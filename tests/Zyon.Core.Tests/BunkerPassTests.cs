@@ -151,7 +151,8 @@ public class BunkerPassTests
 
 /// <summary>
 /// Caminho andável aproximado: o jogador como coluna de 1 tile × 3 de altura; anda para o lado no mesmo nível,
-/// sobe até MaxStep tiles (pulo; o real alcança uns 4) ou cai qualquer altura.
+/// sobe até MaxStep tiles (pulo; o real alcança uns 4) ou cai qualquer altura. É uma aproximação de 1 coluna de
+/// largura (o jogador real tem 1,25): vale porque o molde do bunker não tem vãos estreitos.
 /// </summary>
 internal static class Walkable
 {
@@ -202,5 +203,30 @@ internal static class Walkable
             }
         }
         return false;
+    }
+}
+
+public class BunkerLightTests
+{
+    [Fact]
+    public void SpawnTile_HasSameLightByDayAndNight_AndIsLitByLamps()
+    {
+        var registry = TestData.Registry();
+        var ctx = WorldGenTestKit.Context(512, 256, 1234);
+        foreach (var pass in WorldGenerator.DefaultPasses())
+            WorldGenerator.RunPass(ctx, pass);
+        using var view = new Zyon.Core.Sim.Simulation(registry, ctx.World);
+        var config = TestData.LightingConfig();
+        int sx = (int)ctx.SpawnFeet.X, sy = (int)ctx.SpawnFeet.Y - 1;   // tile dos pés
+        var region = new Zyon.Core.Lighting.TileRect(sx - 30, sy - 20, sx + 30, sy + 20)
+            .Expand(config.RegionMargin).ClampTo(view.Width, view.Height);
+        var engine = new Zyon.Core.Lighting.LightEngine(config);
+        var day = new Zyon.Core.Lighting.LightMap();
+        var night = new Zyon.Core.Lighting.LightMap();
+        engine.Compute(view, region, 1f, [], day);
+        engine.Compute(view, region, 0f, [], night);
+
+        Assert.Equal(night.Get(sx, sy), day.Get(sx, sy), 5);
+        Assert.True(night.Get(sx, sy) > 0f, "as luminárias deveriam iluminar o spawn");
     }
 }

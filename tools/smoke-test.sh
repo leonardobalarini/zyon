@@ -4,7 +4,7 @@ set -uo pipefail
 GODOT="${GODOT:-/d/Projetos/Ferramentas/Godot/Godot_v4.7.2-stable_mono_win64_console.exe}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GAME="$ROOT/src/Zyon.Game"
-FRAMES="${1:-600}"
+FRAMES="${1:-900}"
 
 dotnet build "$GAME/Zyon.Game.csproj" -nologo -v q || exit 1
 # dotnet build já cria .godot/mono: a importação é detectada por .godot/imported.

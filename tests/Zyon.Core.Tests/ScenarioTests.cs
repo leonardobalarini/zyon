@@ -44,4 +44,20 @@ public class ScenarioTests
         Assert.Equal(0, h.Tiles.GetBlock(22, 39));
         Assert.Equal(1, h.Inventory[1].Count);
     }
+
+    [Theory]
+    [InlineData("metal_plate", 1)]
+    [InlineData("crate", 1)]
+    public void PlacingBunkerBlocks_PutsThemInTheWorld(string name, int count)
+    {
+        using var h = new SimHarness(registry: TestData.Registry());
+        h.Give(name, count);
+        int slot = Enumerable.Range(0, h.Inventory.SlotCount).First(i => h.Inventory[i].ItemId == h.Registry.ItemId(name));
+        Assert.InRange(slot, 0, 9);   // precisa estar na hotbar
+        h.Send(new SelectHotbarSlot(h.PlayerId, slot));
+        h.Run(1, Use(22, 39));
+
+        Assert.Equal(h.Registry.BlockId(name), h.Tiles.GetBlock(22, 39));
+        Assert.True(h.Inventory[slot].IsEmpty);
+    }
 }

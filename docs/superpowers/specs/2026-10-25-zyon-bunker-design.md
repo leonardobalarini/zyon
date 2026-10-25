@@ -70,7 +70,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 - Receita `plates`: placas de metal com juntas a cada 8 px e rebites nos cantos, 3 tons de cinza-azulado; contorno contra ar como os outros blocos.
 - Receita `stripes`: listras diagonais amarelo/preto gastas, com contorno.
 - Parede `metal_wall`: receita `plates` escurecida.
-- Sprites (receita `sprite`, desenho próprio por nome): `bunker_lamp` (luminária presa ao topo do tile, luz amarelada), `crate`, `pipe` (horizontal, atravessa o tile), `vent` (grade), `panel` (caixa com luzinha verde).
+- Sprites (receita `prop`, `PropGenerator`, desenho próprio por nome): `bunker_lamp` (luminária presa ao topo do tile, luz amarelada), `crate`, `pipe` (horizontal, atravessa o tile), `vent` (grade), `panel` (caixa com luzinha verde).
 - Fora da `mergeOrder` (metal não mescla).
 - Regerar com `tools/gen-art.sh`; `ArtUpToDateTests` garante PNGs atualizados.
 
@@ -94,12 +94,12 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 - Cada entrada da legenda: `block` (opcional; ausente = ar), `wall` (opcional; ausente = sem parede), `spawn` e `anchor` (marcadores; exatamente um de cada no molde). `"keep"` não altera o tile.
 - `anchor` marca o tile de ar no pé do vão do portão (o tile abaixo dele é chão); o passe alinha esse tile com a coluna da encosta. O portão fica na borda do molde voltada para o centro do mundo; o molde é desenhado com o portão à **esquerda** e espelhado horizontalmente quando a montanha está à esquerda do centro.
 - Planta (40 × 10 tiles): hall de entrada com o portão emoldurado em `H`, corredor, dormitório (spawn), depósito (caixotes), sala de máquinas (canos, painéis, grades); luminárias no teto de cada sala; chão contínuo, degraus de no máximo 1 tile.
-- Carga em `StructureLoader` (Core): erros param com arquivo, linha e coluna — caractere fora da legenda, bloco/parede desconhecido, linhas de larguras diferentes, zero ou mais de um `spawn`/`anchor`, `anchor` sem chão sólido logo abaixo.
+- Carga em `StructureLoader` (Core): erros param com arquivo, linha e coluna — caractere fora da legenda —, ou citam o caractere da legenda (bloco/parede inexistente); também linhas de larguras diferentes, zero ou mais de um `spawn`/`anchor`, `anchor` sem chão sólido logo abaixo.
 
 ## 6. Integração
 
 - **Core:** `WorldGen/Structures/StructureTemplate` (grade imutável + marcadores) e `StructureLoader`; `MountainPass`, `BunkerPass`; `WorldGenConfig` com os parâmetros novos; `SpawnPass` removido.
-- **Client/Game:** nenhum sistema novo; decorativos desenhados como a tocha (sprite único), metal com autotile normal.
+- **Client/Game:** nenhum sistema novo; decorativos desenhados como a tocha (um tile, receita `prop`), metal com autotile normal.
 - **Saves:** formato inalterado (blocos novos no fim; saves gravam por nome); mundos existentes carregam como estão.
 - **Luz:** o interior não vê o céu (tem parede); só luminárias e painéis iluminam.
 
@@ -120,7 +120,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
   - existe caminho andável (subida de no máximo 1 tile por passo, altura livre do jogador) do spawn até um tile de superfície fora da montanha a céu aberto;
   - pelo menos `bunkerRoofRows` linhas de bloco acima do teto do molde.
 - **Determinismo:** `WorldGenerator.Version` incrementada e hash de referência atualizado.
-- **ArtGen:** receitas `plates` e `stripes` (contorno, determinismo), sprites presentes; PNGs commitados atualizados.
+- **ArtGen:** receitas `plates` e `stripes` (contorno, determinismo), props (receita `prop`) presentes; PNGs commitados atualizados.
 - **Smoke test:** confere que o jogador começa dentro do bunker (parede de metal no tile do spawn) e ajusta o roteiro de mineração e tocha ao spawn novo.
 
 ## 9. Fora do escopo
