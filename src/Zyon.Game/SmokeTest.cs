@@ -5,7 +5,7 @@ using Zyon.Core.Sim;
 namespace Zyon.Game;
 
 /// <summary>
-/// Roteiro do smoke test: parado, anda para a direita, pula, minera o chão à frente, coloca uma tocha no buraco
+/// Roteiro do smoke test: confere que o jogador nasce no bunker, fica parado, anda para a direita, pula, minera o chão à frente, coloca uma tocha no buraco
 /// (ou num tile de ar vizinho, se o jogador caiu nele) e confere que o jogador continua no mundo, que algum tile
 /// mudou e que a tocha foi colocada. A luz da tocha é conferida pelo GameRoot.
 /// </summary>
@@ -47,6 +47,16 @@ public sealed class SmokeTest(IGameSession session, PlayerController controller,
         {
             Fail($"posição inválida {me.Position}");
             return;
+        }
+        if (frame == 0)
+        {
+            int tx = (int)System.MathF.Floor(me.Position.X);
+            int ty = (int)System.MathF.Floor(me.Position.Y + me.Size.Y / 2 - 0.5f);   // tile dos pés
+            if (session.World.GetWall(tx, ty) != session.World.Registry.WallId("metal_wall"))
+            {
+                Fail($"o jogador não começou no bunker (parede {session.World.GetWall(tx, ty)} em ({tx}, {ty}))");
+                return;
+            }
         }
 
         int third = totalFrames / 3;

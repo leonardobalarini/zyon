@@ -1,7 +1,7 @@
 # Zyon — Base inicial (bunker): Design
 
 - **Data:** 2026-10-25
-- **Status:** aprovado em brainstorming, aguardando revisão do spec escrito
+- **Status:** implementado
 - **Escopo:** subprojeto da base inicial: montanha perto do centro, bunker de metal escavado na encosta (molde em arquivo), blocos e arte novos, spawn dentro do bunker
 
 ## 1. Contexto
@@ -93,7 +93,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 
 - Cada entrada da legenda: `block` (opcional; ausente = ar), `wall` (opcional; ausente = sem parede), `spawn` e `anchor` (marcadores; exatamente um de cada no molde). `"keep"` não altera o tile.
 - `anchor` marca o tile de ar no pé do vão do portão (o tile abaixo dele é chão); o passe alinha esse tile com a coluna da encosta. O portão fica na borda do molde voltada para o centro do mundo; o molde é desenhado com o portão à **esquerda** e espelhado horizontalmente quando a montanha está à esquerda do centro.
-- Planta (~40 × 10 tiles): hall de entrada com o portão emoldurado em `H`, corredor, dormitório (spawn), depósito (caixotes), sala de máquinas (canos, painéis, grades); luminárias no teto de cada sala; chão contínuo, degraus de no máximo 1 tile.
+- Planta (40 × 10 tiles): hall de entrada com o portão emoldurado em `H`, corredor, dormitório (spawn), depósito (caixotes), sala de máquinas (canos, painéis, grades); luminárias no teto de cada sala; chão contínuo, degraus de no máximo 1 tile.
 - Carga em `StructureLoader` (Core): erros param com arquivo, linha e coluna — caractere fora da legenda, bloco/parede desconhecido, linhas de larguras diferentes, zero ou mais de um `spawn`/`anchor`, `anchor` sem chão sólido logo abaixo.
 
 ## 6. Integração
@@ -107,7 +107,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 
 - Molde inválido → falha na carga com arquivo, linha e coluna.
 - Montanha que não cabe → reduz a escala, sem erro.
-- Bunker sem encosta válida → aplaina e usa a posição planejada; sempre há bunker.
+- Bunker: não há busca de encosta. A posição vem do pé da face íngreme, empurrada para dentro do mundo se não couber; o teto é completado com rocha e o patamar diante do portão é aberto. Sempre há bunker.
 - Bloco/parede novo sem arte → o jogo recusa carregar (regra já existente).
 
 ## 8. Testes
