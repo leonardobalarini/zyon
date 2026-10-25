@@ -13,11 +13,12 @@ public partial class LoadingScreen : Control
     private static readonly System.Collections.Generic.Dictionary<string, string> PassNames = new()
     {
         ["terrain"] = "terreno",
+        ["mountain"] = "montanha",
         ["layers"] = "camadas",
         ["caves"] = "cavernas",
         ["ores"] = "minérios",
         ["walls"] = "paredes",
-        ["spawn"] = "ponto de partida",
+        ["bunker"] = "bunker",
     };
 
     private readonly CancellationTokenSource cancel = new();

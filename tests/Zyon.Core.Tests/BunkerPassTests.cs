@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Zyon.Core.Data;
 using Zyon.Core.Tiles;
 using Zyon.Core.WorldGen;
@@ -7,6 +8,12 @@ namespace Zyon.Core.Tests;
 
 public class BunkerPassTests
 {
+    /// <summary>Colunas além do portão, no sentido de fora, onde o caminho precisa chegar ao céu aberto.</summary>
+    private const int WalkOutColumns = 10;
+
+    // Os testes só leem o mundo gerado: cada mundo é gerado uma vez e compartilhado (o 4200×1200 é caro).
+    private static readonly ConcurrentDictionary<(int, int, int), Lazy<WorldGenContext>> Cache = new();
+
     private static WorldGenContext RunAll(int width = Width, int height = Height, int seed = Seed, WorldGenConfig? config = null)
     {
         var ctx = Context(width, height, seed, config);
@@ -15,18 +22,31 @@ public class BunkerPassTests
         return ctx;
     }
 
+    private static WorldGenContext Generated(int width, int height, int seed) =>
+        Cache.GetOrAdd((width, height, seed), k => new Lazy<WorldGenContext>(() => RunAll(k.Item1, k.Item2, k.Item3))).Value;
+
+    private static WorldGenConfig MirroredConfig()
+    {
+        var cfg = WorldGenConfigLoader.LoadFromDirectory(TestData.DataDir);
+        var json = File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")).Replace("\"mountainOffset\": 40", "\"mountainOffset\": -40");
+        var mirrored = WorldGenConfigLoader.Load(json);
+        mirrored.Bunker = cfg.Bunker;   // Load(json) não carrega o molde
+        return mirrored;
+    }
+
     public static TheoryData<int, int, int> Worlds => new()
     {
         { 512, 256, 1 }, { 512, 256, 2 }, { 512, 256, 3 },
         { 1050, 300, 1 }, { 1050, 300, 42 },
         { 128, 128, 5 }, { 64, 64, 9 },
+        { 4200, 1200, 1 }, { 4200, 1200, 2 },   // mundo pequeno real (WorldSize.Small)
     };
 
     [Theory]
     [MemberData(nameof(Worlds))]
     public void Bunker_IsStampedTileByTile(int width, int height, int seed)
     {
-        var ctx = RunAll(width, height, seed);
+        var ctx = Generated(width, height, seed);
         var (x0, y0, s) = ctx.Bunker!;
 
         for (int y = 0; y < s.Height; y++)
@@ -43,18 +63,24 @@ public class BunkerPassTests
     [MemberData(nameof(Worlds))]
     public void Spawn_IsOnTheMarkedTile_InsideTheBunker(int width, int height, int seed)
     {
-        var ctx = RunAll(width, height, seed);
+        var ctx = Generated(width, height, seed);
         var (x0, y0, s) = ctx.Bunker!;
 
         Assert.Equal(new System.Numerics.Vector2(x0 + s.Spawn.X + 0.5f, y0 + s.Spawn.Y + 1), ctx.SpawnFeet);
         Assert.Equal(ctx.Registry.WallId("metal_wall"), ctx.World.GetWall(x0 + s.Spawn.X, y0 + s.Spawn.Y));
+
+        int sx = (int)ctx.SpawnFeet.X, floor = (int)ctx.SpawnFeet.Y;
+        Assert.True(ctx.Registry.Block(ctx.World.GetBlock(sx, floor)).Solid, $"chão sob os pés ({sx}, {floor}) não é sólido");
+        for (int x = sx - 1; x <= sx + 1; x++)
+        for (int y = floor - 3; y < floor; y++)
+            Assert.False(ctx.Registry.Block(ctx.World.GetBlock(x, y)).Solid, $"tile sólido em ({x}, {y}) no espaço do jogador");
     }
 
     [Theory]
     [MemberData(nameof(Worlds))]
     public void Roof_HasSolidRowsAboveEveryColumn(int width, int height, int seed)
     {
-        var ctx = RunAll(width, height, seed);
+        var ctx = Generated(width, height, seed);
         var (x0, y0, s) = ctx.Bunker!;
         int roof = ctx.Config.BunkerRoofRows;
 
@@ -70,21 +96,18 @@ public class BunkerPassTests
     [MemberData(nameof(Worlds))]
     public void Player_CanWalkFromSpawnToOpenSky(int width, int height, int seed)
     {
-        var ctx = RunAll(width, height, seed);
-        var (x0, _, s) = ctx.Bunker!;
-        int sx = (int)ctx.SpawnFeet.X, feet = (int)ctx.SpawnFeet.Y - 1;
-
-        Assert.True(Walkable.ReachesOpenSky(ctx.World, ctx.Registry, sx, feet, x => x < x0 || x >= x0 + s.Width),
-            $"sem caminho do spawn ({sx}, {feet}) até o céu aberto");
+        AssertWalksOut(Generated(width, height, seed));
     }
 
-    [Fact]
-    public void Surface_MatchesFirstBlockOverTheBunkerAndPlateau()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Surface_MatchesFirstBlockOverTheBunkerAndPlateau(bool mirrored)
     {
-        var ctx = RunAll();
+        var ctx = mirrored ? RunAll(config: MirroredConfig()) : RunAll();
         var (x0, _, s) = ctx.Bunker!;
 
-        for (int x = x0 - 3; x < x0 + s.Width; x++)
+        for (int x = x0 - 3; x < x0 + s.Width + 3; x++)
         {
             int first = 0;
             while (ctx.World.GetBlock(x, first) == 0) first++;
@@ -95,16 +118,11 @@ public class BunkerPassTests
     [Fact]
     public void MirroredMountain_PutsTheGateOnTheRight_AndStillWalksOut()
     {
-        var cfg = WorldGenConfigLoader.LoadFromDirectory(TestData.DataDir);
-        var json = File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")).Replace("\"mountainOffset\": 40", "\"mountainOffset\": -40");
-        var mirrored = WorldGenConfigLoader.Load(json);
-        mirrored.Bunker = cfg.Bunker;   // Load(json) não carrega o molde
-        var ctx = RunAll(config: mirrored);
-        var (x0, _, s) = ctx.Bunker!;
+        var ctx = RunAll(config: MirroredConfig());
+        var s = ctx.Bunker!.Structure;
 
         Assert.Equal(s.Width - 1, s.Anchor.X);
-        int sx = (int)ctx.SpawnFeet.X, feet = (int)ctx.SpawnFeet.Y - 1;
-        Assert.True(Walkable.ReachesOpenSky(ctx.World, ctx.Registry, sx, feet, x => x < x0 || x >= x0 + s.Width));
+        AssertWalksOut(ctx);
     }
 
     [Fact]
@@ -115,15 +133,31 @@ public class BunkerPassTests
         var ex = Assert.Throws<InvalidOperationException>(() => RunAll(config: cfg));
         Assert.Contains("molde do bunker", ex.Message);
     }
+
+    /// <summary>Do spawn, anda até céu aberto a pelo menos WalkOutColumns colunas além do portão, do lado de fora.</summary>
+    private static void AssertWalksOut(WorldGenContext ctx)
+    {
+        var (x0, _, s) = ctx.Bunker!;
+        int gateX = x0 + s.Anchor.X;
+        bool outLeft = s.Anchor.X < s.Width / 2;
+        int goalX = outLeft ? gateX - WalkOutColumns : gateX + WalkOutColumns;
+        Assert.InRange(goalX, 0, ctx.World.Width - 1);
+        int sx = (int)ctx.SpawnFeet.X, feet = (int)ctx.SpawnFeet.Y - 1;
+
+        Assert.True(Walkable.ReachesOpenSky(ctx.World, ctx.Registry, sx, feet, x => outLeft ? x <= goalX : x >= goalX),
+            $"sem caminho do spawn ({sx}, {feet}) até o céu aberto além da coluna {goalX}");
+    }
 }
 
 /// <summary>
 /// Caminho andável aproximado: o jogador como coluna de 1 tile × 3 de altura; anda para o lado no mesmo nível,
-/// sobe 1 tile (pulo) ou cai qualquer altura.
+/// sobe até MaxStep tiles (pulo; o real alcança uns 4) ou cai qualquer altura.
 /// </summary>
 internal static class Walkable
 {
-    public static bool ReachesOpenSky(TileWorld w, Registry r, int startX, int startFeet, Func<int, bool> outside)
+    public const int MaxStep = 2;
+
+    public static bool ReachesOpenSky(TileWorld w, Registry r, int startX, int startFeet, Func<int, bool> goal)
     {
         bool Solid(int x, int y) => !w.InBounds(x, y) || r.Block(w.GetBlock(x, y)).Solid;
         bool Free(int x, int y) => !Solid(x, y) && !Solid(x, y - 1) && !Solid(x, y - 2);
@@ -147,12 +181,24 @@ internal static class Walkable
         {
             var (x, y) = queue.Dequeue();
             if (!seen.Add((x, y))) continue;
-            if (outside(x) && OpenSky(x, y)) return true;
+            if (goal(x) && OpenSky(x, y)) return true;
             foreach (int dx in new[] { -1, 1 })
             {
                 int nx = x + dx;
-                if (Free(nx, y)) queue.Enqueue((nx, Land(nx, y)));
-                else if (Free(x, y - 1) && Free(nx, y - 1)) queue.Enqueue((nx, Land(nx, y - 1)));   // sobe 1 tile
+                if (Free(nx, y))
+                {
+                    queue.Enqueue((nx, Land(nx, y)));
+                    continue;
+                }
+                for (int h = 1; h <= MaxStep; h++)   // sobe h tiles: espaço livre acima da posição atual e no destino
+                {
+                    if (!Free(x, y - h)) break;
+                    if (Free(nx, y - h))
+                    {
+                        queue.Enqueue((nx, Land(nx, y - h)));
+                        break;
+                    }
+                }
             }
         }
         return false;

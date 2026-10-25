@@ -31,6 +31,7 @@ public sealed class PersistenceScenarioTests : IDisposable
         ushort minedBlock = generated.Tiles.GetBlock(targetX, targetY);
         Assert.NotEqual(0, minedBlock);
         ushort drop = registry.Block(minedBlock).DropItemId;
+        Assert.NotEqual(0, drop);
         ulong hashAtSave;
         System.Numerics.Vector2 positionAtSave;
         long tickAtSave;
