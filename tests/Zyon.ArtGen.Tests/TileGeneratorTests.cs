@@ -117,6 +117,8 @@ public class TileGeneratorTests
         var pal = ArtSource.Colors(Source.Walls["metal_wall"].Palette!);
         int x = 15 * Source.Variations * T, y = rows["metal_wall"] * T;
         Assert.Equal(pal[0], img.Get(x + 7, y + 3));
+        Assert.Equal(pal[0], img.Get(x + 3, y + 7));
+        Assert.Equal(pal[2], img.Get(x + 1, y + 1));
     }
 
     [Theory]

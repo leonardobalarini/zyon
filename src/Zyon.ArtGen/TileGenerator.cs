@@ -116,7 +116,7 @@ public static class TileGenerator
         }
     }
 
-    /// <summary>Chapas 8×8 em fiada desencontrada: junta escura, bisel claro, rebites nos cantos e manchas raras.</summary>
+    /// <summary>Chapas 8×8 em fiada desencontrada: junta escura, bisel claro, rebites em grade 2×2 dentro de cada chapa e manchas raras.</summary>
     private static Rgba Plate(int px, int py, int v, int seed, int salt, Rgba[] pal)
     {
         int row = py / 8, ly = py % 8;

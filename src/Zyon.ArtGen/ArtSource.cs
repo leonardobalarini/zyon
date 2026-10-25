@@ -121,7 +121,7 @@ public sealed class ArtSource
         {
             var def = registry.Wall((ushort)id);
             if (!Walls.TryGetValue(def.Name, out var m)) throw Fail($"falta a arte da parede '{def.Name}'");
-            if (!WallRecipes.Contains(m.Recipe)) throw Fail($"walls.{def.Name}: paredes usam a receita 'clumps' ou 'plates'");
+            if (!WallRecipes.Contains(m.Recipe)) throw Fail($"walls.{def.Name}: receita '{m.Recipe}' inválida para parede (use {string.Join(", ", WallRecipes)})");
             CheckColors(m.Palette, 3, $"walls.{def.Name}.palette");
         }
         foreach (var name in Walls.Keys)
