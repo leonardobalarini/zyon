@@ -447,7 +447,7 @@ public partial class GameRoot : Node2D
             OkButtonText = "Tentar de novo",
             Exclusive = true,
             DialogAutowrap = true,
-            // Cabe na tela de 640×360; o texto quebra em linhas (caminhos longos inclusive).
+            // Cabe na menor tela interna (640×360, janela mínima); o texto quebra em linhas (caminhos longos inclusive).
             Size = new Vector2I(560, 160),
             MaxSize = new Vector2I(600, 340),
             Theme = new Theme { DefaultFontSize = 10 },

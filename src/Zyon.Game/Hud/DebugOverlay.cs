@@ -60,6 +60,8 @@ public partial class DebugOverlay : CanvasLayer
     public void Refresh(FrameStats stats, in DebugInfo info)
     {
         var w = stats.Window;
+        var window = GetWindow().Size;
+        var screen = GetViewport().GetVisibleRect().Size;
         label.Text = string.Format(CultureInfo.InvariantCulture,
             "FPS {0:0} | quadro med {1:0.00} ms máx {2:0.00} ms\n" +
             "_Process med {3:0.00} máx {4:0.00} ms\n" +
@@ -69,7 +71,8 @@ public partial class DebugOverlay : CanvasLayer
             "1 s: quadros com 0 ticks {18}, com 2+ ticks {19} | delta máx {2:0.00} ms, medido máx {20:0.00} ms\n" +
             "{21}\n" +
             "luz: {22} recálculos/s, máx {23:0.000} ms, céu {24:0.00}\n" +
-            "câmera: {16} (F4) | vsync: {17} (F5)",
+            "câmera: {16} (F4) | vsync: {17} (F5)\n" +
+            "janela {25}×{26} | tela interna {27:0}×{28:0} (F11 tela cheia)",
             w.Fps, w.FrameAvgMs, w.FrameMaxMs,
             w.ProcessAvgMs, w.ProcessMaxMs,
             w.UpdateAvgMs, w.UpdateMaxMs, w.RenderAvgMs, w.RenderMaxMs,
@@ -78,7 +81,8 @@ public partial class DebugOverlay : CanvasLayer
             info.CameraMode, info.VsyncMode,
             w.ZeroTickFrames, w.MultiTickFrames, w.MeasuredMaxMs,
             stats.LastHitch is { } h ? HitchText(h, stats.FrameCount) : "soluço: nenhum quadro com 2+ ticks",
-            w.LightRecomputes, w.LightMaxMs, info.SkyFactor);
+            w.LightRecomputes, w.LightMaxMs, info.SkyFactor,
+            window.X, window.Y, screen.X, screen.Y);
     }
 }
 

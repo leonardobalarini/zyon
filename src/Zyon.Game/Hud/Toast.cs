@@ -13,12 +13,16 @@ public partial class Toast : CanvasLayer
         Layer = 50;
         label = new Label
         {
-            Position = new Vector2(8, 6),
-            Size = new Vector2(624, 40),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             Visible = false,
         };
+        // Faixa no topo com a largura da tela (que acompanha a janela).
+        label.SetAnchorsPreset(Control.LayoutPreset.TopWide);
+        label.OffsetLeft = 8;
+        label.OffsetRight = -8;
+        label.OffsetTop = 6;
+        label.OffsetBottom = 46;
         label.AddThemeFontSizeOverride("font_size", 9);
         label.AddThemeColorOverride("font_outline_color", Colors.Black);
         label.AddThemeConstantOverride("outline_size", 3);
