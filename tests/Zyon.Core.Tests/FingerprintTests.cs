@@ -22,6 +22,15 @@ public class FingerprintTests
     }
 
     [Fact]
+    public void BunkerTemplate_IsPartOfTheFingerprint()
+    {
+        var withBunker = TestData.WorldGenConfig();
+        var withoutBunker = WorldGenConfigLoader.Load(File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")));
+
+        Assert.NotEqual(WorldGenConfigFingerprint.Compute(withoutBunker), WorldGenConfigFingerprint.Compute(withBunker));
+    }
+
+    [Fact]
     public void GeneratedWorld_CarriesTheFingerprint()
     {
         var config = TestData.WorldGenConfig();

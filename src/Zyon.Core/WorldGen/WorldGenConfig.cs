@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+using Zyon.Core.WorldGen.Structures;
+
 namespace Zyon.Core.WorldGen;
 
 /// <summary>Parâmetros da geração de mundo. Frações são relativas à altura do mundo; profundidades em tiles.</summary>
@@ -27,6 +30,24 @@ public sealed class WorldGenConfig
     public float ShallowWormFraction { get; init; } = 0.3f;
     public int ShallowWormDepth { get; init; } = 60;
     public List<OreConfig> Ores { get; init; } = [];
+    /// <summary>Distância do pico ao centro do mundo; positivo = à direita (portão voltado para o centro, à esquerda).</summary>
+    public int MountainOffset { get; init; } = 40;
+    /// <summary>Colunas do pé ao pico do lado do portão (paredão).</summary>
+    public int MountainSteepWidth { get; init; } = 30;
+    /// <summary>Colunas do pico ao pé do lado suave.</summary>
+    public int MountainGentleWidth { get; init; } = 80;
+    public float MountainHeight { get; init; } = 45f;
+    public float MountainNoiseFrequency { get; init; } = 0.05f;
+    public float MountainNoiseAmplitude { get; init; } = 4f;
+    /// <summary>Nome do molde em data/structures (sem extensão).</summary>
+    public string BunkerStructure { get; init; } = "bunker";
+    /// <summary>Linhas sólidas garantidas acima do teto do bunker.</summary>
+    public int BunkerRoofRows { get; init; } = 3;
+
+    /// <summary>Molde do bunker, carregado por <see cref="WorldGenConfigLoader.LoadFromDirectory"/> (null com <c>Load(json)</c>).</summary>
+    [JsonIgnore]
+    public StructureTemplate? Bunker { get; internal set; }
+
     public int SpawnSearchRadius { get; init; } = 300;
     public int SpawnFlatWidth { get; init; } = 4;
 }

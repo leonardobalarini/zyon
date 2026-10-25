@@ -1,8 +1,15 @@
 using System.Numerics;
 using Zyon.Core.Data;
 using Zyon.Core.Tiles;
+using Zyon.Core.WorldGen.Structures;
 
 namespace Zyon.Core.WorldGen;
+
+/// <summary>Montanha do passe "mountain": pico, pé da face íngreme e se o portão fica à esquerda do pico.</summary>
+public sealed record MountainInfo(int PeakX, int FootX, bool FacesLeft);
+
+/// <summary>Onde o passe "bunker" carimbou o molde (canto superior esquerdo) e qual molde (já espelhado se preciso).</summary>
+public sealed record BunkerPlacement(int X, int Y, Structure Structure);
 
 /// <summary>
 /// Estado compartilhado entre os passes. Dentro de Parallel.For use só ruído e escreva só na própria coluna:
@@ -39,6 +46,12 @@ public sealed class WorldGenContext
 
     /// <summary>Primeira linha abaixo da camada de solo de cada coluna (definida pelo passe de camadas).</summary>
     public int[] DirtBottom { get; }
+
+    /// <summary>Definido pelo passe "mountain".</summary>
+    public MountainInfo? Mountain { get; internal set; }
+
+    /// <summary>Definido pelo passe "bunker".</summary>
+    public BunkerPlacement? Bunker { get; internal set; }
 
     /// <summary>Ponto sob os pés do jogador no spawn: X no centro, Y na linha de cima do chão.</summary>
     public Vector2 SpawnFeet { get; private set; }

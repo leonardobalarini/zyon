@@ -41,6 +41,13 @@ public class WorldGenConfigTests
     [InlineData("""{"dirtDepth": 3, "dirtDepthVariation": 5}""", "dirtDepth")]
     [InlineData("""{"wormLengthMin": 50, "wormLengthMax": 10}""", "wormLength")]
     [InlineData("""{"spawnFlatWidth": 1}""", "spawnFlatWidth")]
+    [InlineData("""{"mountainSteepWidth": 3}""", "mountainSteepWidth")]
+    [InlineData("""{"mountainGentleWidth": 3}""", "mountainGentleWidth")]
+    [InlineData("""{"mountainHeight": 0}""", "mountainHeight")]
+    [InlineData("""{"mountainNoiseFrequency": 0}""", "mountainNoiseFrequency")]
+    [InlineData("""{"mountainNoiseAmplitude": -1}""", "mountainNoiseAmplitude")]
+    [InlineData("""{"bunkerRoofRows": 0}""", "bunkerRoofRows")]
+    [InlineData("""{"bunkerStructure": "../x"}""", "bunkerStructure")]
     [InlineData("""{"materials": null}""", "materials")]
     [InlineData("""{"ores": [{"block": "ore_a", "minDepth": 0.8, "maxDepth": 0.5, "veinsPerMillionTiles": 1, "veinSizeMin": 1, "veinSizeMax": 2}]}""", "ores[0]")]
     [InlineData("""{"ores": [null]}""", "ores[0]")]
@@ -59,6 +66,30 @@ public class WorldGenConfigTests
 
         Assert.Contains("worldgen.json", ex.Message);
         Assert.Contains(expectedInMessage, ex.Message);
+    }
+
+    [Fact]
+    public void LoadFromDirectory_LoadsTheBunkerTemplate()
+    {
+        var cfg = TestData.WorldGenConfig();
+
+        Assert.NotNull(cfg.Bunker);
+        Assert.Equal("bunker", cfg.Bunker!.Name);
+    }
+
+    [Fact]
+    public void Load_WithoutDirectory_HasNoBunker()
+    {
+        Assert.Null(WorldGenConfigLoader.Load("{}").Bunker);
+    }
+
+    [Fact]
+    public void Materials_ResolveTheBunker()
+    {
+        var m = WorldGenMaterials.Resolve(TestData.WorldGenConfig(), TestData.Registry());
+
+        Assert.NotNull(m.Bunker);
+        Assert.Equal(40, m.Bunker!.Width);
     }
 
     [Fact]

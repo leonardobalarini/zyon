@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Zyon.Core.Data;
+using Zyon.Core.WorldGen.Structures;
 
 namespace Zyon.Core.WorldGen;
 
@@ -12,7 +13,9 @@ public static class WorldGenConfigLoader
         var path = Path.Combine(dataDir, FileName);
         if (!File.Exists(path))
             throw new DataException($"{FileName}: arquivo não encontrado em '{dataDir}'");
-        return Load(File.ReadAllText(path));
+        var config = Load(File.ReadAllText(path));
+        config.Bunker = StructureLoader.LoadFromDirectory(dataDir, config.BunkerStructure);
+        return config;
     }
 
     public static WorldGenConfig Load(string json)
@@ -70,6 +73,15 @@ public static class WorldGenConfigLoader
             "'wormRadiusMin' e 'wormRadiusMax' devem satisfazer 0 < min <= max");
         Require(c.SpawnSearchRadius >= 0, "'spawnSearchRadius' deve ser >= 0");
         Require(c.SpawnFlatWidth >= 2, "'spawnFlatWidth' deve ser >= 2");
+
+        Require(c.MountainSteepWidth >= 4, "'mountainSteepWidth' deve ser >= 4");
+        Require(c.MountainGentleWidth >= 4, "'mountainGentleWidth' deve ser >= 4");
+        Require(c.MountainHeight > 0, "'mountainHeight' deve ser > 0");
+        Require(c.MountainNoiseFrequency > 0, "'mountainNoiseFrequency' deve ser > 0");
+        Require(c.MountainNoiseAmplitude >= 0, "'mountainNoiseAmplitude' deve ser >= 0");
+        Require(c.BunkerRoofRows >= 1, "'bunkerRoofRows' deve ser >= 1");
+        Require(!string.IsNullOrEmpty(c.BunkerStructure) && c.BunkerStructure.All(ch => ch is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_'),
+            "'bunkerStructure' deve ter só letras minúsculas, dígitos e '_'");
 
         for (int i = 0; i < c.Ores!.Count; i++)
         {

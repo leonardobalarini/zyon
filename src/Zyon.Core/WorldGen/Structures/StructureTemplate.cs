@@ -30,7 +30,10 @@ public sealed class StructureTemplate
     public int Width { get; }
     public int Height { get; }
 
-    /// <summary>Tile de ar no pé do vão do portão; o tile abaixo dele é chão.</summary>
+    /// <summary>
+    /// Portão na borda esquerda: tile livre na coluna 0, no pé do vão de 3 linhas livres acima dele,
+    /// com chão sólido logo abaixo.
+    /// </summary>
     public (int X, int Y) Anchor { get; }
 
     /// <summary>Tile onde ficam os pés do jogador ao nascer.</summary>

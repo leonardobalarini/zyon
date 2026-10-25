@@ -7,6 +7,8 @@ namespace Zyon.Core.WorldGen.Structures;
 /// <summary>
 /// Lê moldes de <c>data/structures/NOME.json</c>: <c>legend</c> (caractere → "keep" ou {block, wall, spawn, anchor})
 /// e <c>rows</c> (linhas de mesma largura). Exatamente um tile com <c>spawn</c> e um com <c>anchor</c>.
+/// A âncora é o portão na borda esquerda: precisa estar na coluna 0, ser um tile livre, ter 3 linhas livres
+/// acima (vão de passagem) e chão sólido embaixo. Aceita comentários e vírgula final.
 /// </summary>
 public static class StructureLoader
 {
