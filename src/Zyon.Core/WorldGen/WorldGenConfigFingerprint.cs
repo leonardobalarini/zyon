@@ -15,7 +15,7 @@ public static class WorldGenConfigFingerprint
         ulong h = 14695981039346656037UL;
         h = Mix(h, json);
         if (config.Bunker is { } bunker)
-            h = Mix(h, System.Text.Encoding.UTF8.GetBytes(bunker.SourceText));   // o molde muda o mundo gerado
+            h = Mix(h, System.Text.Encoding.UTF8.GetBytes(bunker.SourceText.ReplaceLineEndings("\n")));   // o molde muda o mundo gerado; fim de linha normalizado (CRLF/LF)
         return h;
     }
 
