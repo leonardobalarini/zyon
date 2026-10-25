@@ -1,7 +1,7 @@
 # Zyon — Base inicial (bunker): Design
 
 - **Data:** 2026-10-25
-- **Status:** aprovado em brainstorming, aguardando revisão do spec escrito
+- **Status:** implementado
 - **Escopo:** subprojeto da base inicial: montanha perto do centro, bunker de metal escavado na encosta (molde em arquivo), blocos e arte novos, spawn dentro do bunker
 
 ## 1. Contexto
@@ -25,24 +25,23 @@ Ordem dos passes: `terrain` → **`mountain`** → `layers` → `caves` → `ore
 
 ### Passe `mountain`
 
-- Ergue a superfície (`ctx.Surface`) num sino com ruído, centrado em `center + mountainOffset` (padrão ~40 tiles à direita do centro).
-- Altura de pico `mountainHeight` (~45 tiles) acima do terreno local; largura `mountainWidth` (~120 tiles).
-- Assimétrica: o lado voltado para o centro do mundo é mais íngreme (`mountainSteepSide` — fator de largura do lado do portão, ex.: 0,35 da largura do outro lado).
-- Roda antes de `layers`, então a montanha recebe terra no topo, rocha por dentro, cavernas e minérios normalmente.
-- Mundo pequeno: altura e largura reduzem em escala para que o pico nunca suba acima da linha `surfaceMin × altura do mundo / 2` (sobra céu acima) nem a base saia do mundo; nunca lança erro.
-- Só aritmética inteira/`DeterministicMath`; escreve só na própria coluna (pode usar `Parallel.For` ou laço simples).
+- Ergue a superfície (`ctx.Surface`) a partir do terreno local, com pico em `center + mountainOffset` (padrão 40; negativo = montanha à esquerda do centro).
+- Perfil assimétrico: do lado do centro (face do portão) cai em `mountainSteepWidth` colunas (padrão 30) num paredão (`1 − u⁴`); do outro, desce suave em `mountainGentleWidth` colunas (padrão 80, `1 − smoothstep(u)`). Altura de pico `mountainHeight` (padrão 45) mais ruído (`mountainNoiseFrequency`, `mountainNoiseAmplitude`), multiplicado pelo perfil (zero no pé).
+- Preenche com rocha entre a nova superfície e a antiga; roda antes de `layers`, então a montanha recebe terra no topo, rocha por dentro, cavernas e minérios normalmente.
+- Mundo pequeno: offset, larguras e altura reduzem pelo fator `min(1, (largura/2 − 2) / (|offset| + gentle))`; o pico nunca sobe acima da linha `surfaceMin × altura / 2`. Nunca lança erro.
+- Registra no contexto o pico, o pé da face íngreme e o lado do portão (`MountainInfo`).
 
 ### Passe `bunker`
 
-- Procura, a partir do pé da face íngreme e subindo a encosta, a primeira coluna `x` em que o molde, ancorado com o pé do portão em (`x`, `Surface[x]` − 1), fica **todo abaixo da superfície** exceto a coluna do portão (o vão abre para o ar) e com pelo menos `bunkerRoofRows` (3) linhas de material natural acima do teto.
-- Sem posição válida (montanha cortada por caverna, mundo minúsculo): usa a posição planejada mesmo assim, aplaina um patamar de 4 colunas diante do portão (ar acima, terra embaixo) e completa com rocha o que faltar acima do teto. Sempre existe bunker.
-- Carimba o molde: cada caractere define bloco e parede; `keep` não mexe. Isso substitui cavernas, minérios e paredes naturais dentro da área do molde.
-- Diante do portão: limpa blocos numa faixa de 3 colunas × altura do vão (encosta esburacada não bloqueia a saída) e garante chão sólido nelas.
-- Define o spawn no caractere marcado (centro horizontal do tile, pés no topo do chão).
+- Põe o portão (âncora do molde) no **pé da face íngreme**, com o chão do portão no nível do terreno ali; o molde entra na montanha. Se não couber no mundo, a posição é empurrada para dentro dos limites.
+- Carimba o molde: cada caractere define bloco e parede; `keep` não mexe. Isso substitui cavernas, minérios e paredes naturais dentro da área.
+- **Teto:** em cada coluna do molde, as `bunkerRoofRows` (3) linhas acima do topo do molde ficam sólidas — o que for ar vira rocha (com parede de rocha abaixo da nova superfície). Por isso não há busca de encosta: perto do pé, a rocha completa a montanha por cima do bunker.
+- **Patamar:** diante do portão, 3 colunas × 5 linhas acima do chão do portão ficam livres (sem bloco nem parede) e com chão sólido.
+- Define o spawn no caractere marcado (centro horizontal do tile, pés no topo do chão) e registra a posição do bunker no contexto (`BunkerPlacement`).
 
 ### Parâmetros (`data/worldgen.json`)
 
-`mountainOffset`, `mountainHeight`, `mountainWidth`, `mountainSteepSide`, `mountainNoiseFrequency`, `mountainNoiseAmplitude`, `bunkerStructure` (nome do arquivo em `data/structures/`), `bunkerRoofRows`. Saem `spawnSearchRadius` e `spawnFlatWidth`.
+`mountainOffset`, `mountainSteepWidth`, `mountainGentleWidth`, `mountainHeight`, `mountainNoiseFrequency`, `mountainNoiseAmplitude`, `bunkerStructure` (nome do arquivo em `data/structures/`), `bunkerRoofRows`. Saem `spawnSearchRadius` e `spawnFlatWidth`.
 
 A saída da geração muda: incrementar `WorldGenerator.Version` e atualizar as constantes do `WorldGenDeterminismTests.GoldenHash_*`.
 
@@ -71,7 +70,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 - Receita `plates`: placas de metal com juntas a cada 8 px e rebites nos cantos, 3 tons de cinza-azulado; contorno contra ar como os outros blocos.
 - Receita `stripes`: listras diagonais amarelo/preto gastas, com contorno.
 - Parede `metal_wall`: receita `plates` escurecida.
-- Sprites (receita `sprite`, desenho próprio por nome): `bunker_lamp` (luminária presa ao topo do tile, luz amarelada), `crate`, `pipe` (horizontal, atravessa o tile), `vent` (grade), `panel` (caixa com luzinha verde).
+- Sprites (receita `prop`, `PropGenerator`, desenho próprio por nome): `bunker_lamp` (luminária presa ao topo do tile, luz amarelada), `crate`, `pipe` (horizontal, atravessa o tile), `vent` (grade), `panel` (caixa com luzinha verde).
 - Fora da `mergeOrder` (metal não mescla).
 - Regerar com `tools/gen-art.sh`; `ArtUpToDateTests` garante PNGs atualizados.
 
@@ -94,13 +93,13 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 
 - Cada entrada da legenda: `block` (opcional; ausente = ar), `wall` (opcional; ausente = sem parede), `spawn` e `anchor` (marcadores; exatamente um de cada no molde). `"keep"` não altera o tile.
 - `anchor` marca o tile de ar no pé do vão do portão (o tile abaixo dele é chão); o passe alinha esse tile com a coluna da encosta. O portão fica na borda do molde voltada para o centro do mundo; o molde é desenhado com o portão à **esquerda** e espelhado horizontalmente quando a montanha está à esquerda do centro.
-- Planta (~40 × 14 tiles): hall de entrada com o portão emoldurado em `H`, corredor, dormitório (spawn), depósito (caixotes), sala de máquinas (canos, painéis, grades); luminárias no teto de cada sala; chão contínuo, degraus de no máximo 1 tile.
-- Carga em `StructureLoader` (Core): erros param com arquivo, linha e coluna — caractere fora da legenda, bloco/parede desconhecido, linhas de larguras diferentes, zero ou mais de um `spawn`/`anchor`, `anchor` sem chão sólido logo abaixo.
+- Planta (40 × 10 tiles): hall de entrada com o portão emoldurado em `H`, corredor, dormitório (spawn), depósito (caixotes), sala de máquinas (canos, painéis, grades); luminárias no teto de cada sala; chão contínuo, degraus de no máximo 1 tile.
+- Carga em `StructureLoader` (Core): erros param com arquivo, linha e coluna — caractere fora da legenda —, ou citam o caractere da legenda (bloco/parede inexistente); também linhas de larguras diferentes, zero ou mais de um `spawn`/`anchor`, `anchor` sem chão sólido logo abaixo.
 
 ## 6. Integração
 
 - **Core:** `WorldGen/Structures/StructureTemplate` (grade imutável + marcadores) e `StructureLoader`; `MountainPass`, `BunkerPass`; `WorldGenConfig` com os parâmetros novos; `SpawnPass` removido.
-- **Client/Game:** nenhum sistema novo; decorativos desenhados como a tocha (sprite único), metal com autotile normal.
+- **Client/Game:** nenhum sistema novo; decorativos desenhados como a tocha (um tile, receita `prop`), metal com autotile normal.
 - **Saves:** formato inalterado (blocos novos no fim; saves gravam por nome); mundos existentes carregam como estão.
 - **Luz:** o interior não vê o céu (tem parede); só luminárias e painéis iluminam.
 
@@ -108,7 +107,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
 
 - Molde inválido → falha na carga com arquivo, linha e coluna.
 - Montanha que não cabe → reduz a escala, sem erro.
-- Bunker sem encosta válida → aplaina e usa a posição planejada; sempre há bunker.
+- Bunker: não há busca de encosta. A posição vem do pé da face íngreme, empurrada para dentro do mundo se não couber; o teto é completado com rocha e o patamar diante do portão é aberto. Sempre há bunker.
 - Bloco/parede novo sem arte → o jogo recusa carregar (regra já existente).
 
 ## 8. Testes
@@ -121,7 +120,7 @@ Decorativos comportam-se como a tocha (atravessáveis, recolocáveis). Itens de 
   - existe caminho andável (subida de no máximo 1 tile por passo, altura livre do jogador) do spawn até um tile de superfície fora da montanha a céu aberto;
   - pelo menos `bunkerRoofRows` linhas de bloco acima do teto do molde.
 - **Determinismo:** `WorldGenerator.Version` incrementada e hash de referência atualizado.
-- **ArtGen:** receitas `plates` e `stripes` (contorno, determinismo), sprites presentes; PNGs commitados atualizados.
+- **ArtGen:** receitas `plates` e `stripes` (contorno, determinismo), props (receita `prop`) presentes; PNGs commitados atualizados.
 - **Smoke test:** confere que o jogador começa dentro do bunker (parede de metal no tile do spawn) e ajusta o roteiro de mineração e tocha ao spawn novo.
 
 ## 9. Fora do escopo

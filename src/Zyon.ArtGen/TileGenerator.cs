@@ -42,7 +42,7 @@ public static class TileGenerator
             var pal = ArtSource.Colors(src.Walls[name].Palette!);
             for (int mask = 0; mask < AutoTile.MaskCount; mask++)
             for (int v = 0; v < src.Variations; v++)
-                DrawWall(img, (mask * src.Variations + v) * T, row * T, pal, mask, v, src.Seed, salt: 5000 + id * 101);
+                DrawWall(img, (mask * src.Variations + v) * T, row * T, pal, src.Walls[name].Recipe == "plates", mask, v, src.Seed, salt: 5000 + id * 101);
         }
         return img;
     }
@@ -79,9 +79,16 @@ public static class TileGenerator
             return;
         }
 
+        if (m.Recipe == "prop")
+        {
+            PropGenerator.Draw(img, ox, oy, m.Shape!, ArtSource.Colors(m.Palette!), m.Accent is null ? null : ArtSource.Colors(m.Accent));
+            return;
+        }
+
         var pal = src.BlockPalette(name);
         var cap = m.Cap is null ? null : ArtSource.Colors(m.Cap);
         var fleck = m.Recipe == "ore" ? ArtSource.Colors(m.Fleck!) : null;
+        var accent = m.Accent is null ? null : ArtSource.Colors(m.Accent);
         bool panels = m.Recipe == "panels" || (m.Recipe == "ore" && src.Blocks[m.Base!].Recipe == "panels");
         bool n = (mask & AutoTile.North) == 0, e = (mask & AutoTile.East) == 0;
         bool s = (mask & AutoTile.South) == 0, w = (mask & AutoTile.West) == 0;
@@ -90,7 +97,12 @@ public static class TileGenerator
         for (int px = 0; px < T; px++)
         {
             if (CornerCut(px, py, n, e, s, w)) continue;
-            var c = pal[Tone(px, py, v, src.Seed, salt)];
+            var c = m.Recipe switch
+            {
+                "plates" => Plate(px, py, v, src.Seed, salt, pal),
+                "stripes" => Stripe(px, py, v, src.Seed, salt, pal, accent!),
+                _ => pal[Tone(px, py, v, src.Seed, salt)],
+            };
             if (panels) c = Panel(px, py, v, src.Seed, salt, pal) ?? c;
             if (fleck is not null) c = Fleck(px, py, v, src.Seed, salt, fleck) ?? c;
             bool capped = cap is not null && n && py < 2 + ArtHash.Range(v * T + px, 0, src.Seed + salt + 5, 2);
@@ -102,6 +114,25 @@ public static class TileGenerator
             else if ((w && px == 1) || (e && px == T - 2) || (s && py == T - 2)) c = c.Scale(ShadeFactor);
             img.Set(ox + px, oy + py, c);
         }
+    }
+
+    /// <summary>Chapas 8×8 em fiada desencontrada: junta escura, bisel claro, rebites em grade 2×2 dentro de cada chapa e manchas raras.</summary>
+    private static Rgba Plate(int px, int py, int v, int seed, int salt, Rgba[] pal)
+    {
+        int row = py / 8, ly = py % 8;
+        int shift = (row + v) % 2 * 4;   // a variação troca o desencontro das fiadas
+        int lx = (px + shift) % 8;
+        if (ly == 7 || lx == 7) return pal[0];
+        if ((lx == 1 || lx == 5) && (ly == 1 || ly == 5)) return pal[2];
+        if (ly == 0 || lx == 0) return pal[2];
+        return ArtHash.Chance(v * T + px, py, seed + salt + 30, 6) ? pal[0] : pal[1];
+    }
+
+    /// <summary>Listras diagonais de 4 px (paleta e destaque) com lascas no tom escuro.</summary>
+    private static Rgba Stripe(int px, int py, int v, int seed, int salt, Rgba[] pal, Rgba[] accent)
+    {
+        var tones = (px + py + v * 2) / 4 % 2 == 0 ? pal : accent;
+        return ArtHash.Chance(v * T + px, py, seed + salt + 31, 7) ? tones[0] : tones[1];
     }
 
     private static bool CornerCut(int px, int py, bool n, bool e, bool s, bool w) =>
@@ -152,14 +183,14 @@ public static class TileGenerator
         img.Set(ox + 8, oy + 1, flame[0]);
     }
 
-    private static void DrawWall(Canvas img, int ox, int oy, Rgba[] pal, int mask, int v, int seed, int salt)
+    private static void DrawWall(Canvas img, int ox, int oy, Rgba[] pal, bool plates, int mask, int v, int seed, int salt)
     {
         bool n = (mask & AutoTile.North) == 0, e = (mask & AutoTile.East) == 0;
         bool s = (mask & AutoTile.South) == 0, w = (mask & AutoTile.West) == 0;
         for (int py = 0; py < T; py++)
         for (int px = 0; px < T; px++)
         {
-            var c = pal[Tone(px, py, v, seed, salt)];
+            var c = plates ? Plate(px, py, v, seed, salt, pal) : pal[Tone(px, py, v, seed, salt)];
             if ((n && py == 0) || (s && py == T - 1) || (w && px == 0) || (e && px == T - 1)) c = pal[0].Scale(0.8f);
             img.Set(ox + px, oy + py, c);
         }

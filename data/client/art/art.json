@@ -7,11 +7,19 @@
     "deep_stone": 2,
     "ore_a": 3,
     "ore_b": 4,
-    "torch": 5
+    "torch": 5,
+    "metal_plate": 6,
+    "hazard_plate": 7,
+    "bunker_lamp": 8,
+    "crate": 9,
+    "pipe": 10,
+    "vent": 11,
+    "panel": 12
   },
   "walls": {
     "dirt_wall": 0,
-    "stone_wall": 1
+    "stone_wall": 1,
+    "metal_wall": 2
   },
   "mergeOrder": [
     "dirt",
@@ -59,6 +67,48 @@
     },
     "torch": {
       "cell": 6,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "metal_plate": {
+      "cell": 7,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "hazard_plate": {
+      "cell": 8,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "bunker_lamp": {
+      "cell": 9,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "crate": {
+      "cell": 10,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "pipe": {
+      "cell": 11,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "vent": {
+      "cell": 12,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "panel": {
+      "cell": 13,
       "gripX": 8,
       "gripY": 14,
       "pointDeg": -90

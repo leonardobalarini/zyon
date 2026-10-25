@@ -27,6 +27,11 @@ public sealed class PersistenceScenarioTests : IDisposable
 
         int targetX = (int)generated.SpawnFeet.X + 1;
         int targetY = (int)generated.SpawnFeet.Y;
+        // o spawn fica no piso de metal do bunker (duro): minera até quebrar, com limite
+        ushort minedBlock = generated.Tiles.GetBlock(targetX, targetY);
+        Assert.NotEqual(0, minedBlock);
+        ushort drop = registry.Block(minedBlock).DropItemId;
+        Assert.NotEqual(0, drop);
         ulong hashAtSave;
         System.Numerics.Vector2 positionAtSave;
         long tickAtSave;
@@ -35,11 +40,11 @@ public sealed class PersistenceScenarioTests : IDisposable
         {
             int player = character.SpawnInto(sim, world.PlayerPosition("Leo", physics));
             sim.SetInput(player, new PlayerInput(0f, false, true, targetX, targetY));
-            for (int i = 0; i < 60; i++) sim.Step();
+            for (int i = 0; i < 600 && sim.GetBlock(targetX, targetY) != 0; i++) sim.Step();
             sim.SetInput(player, default);
             for (int i = 0; i < 120; i++) sim.Step();
             Assert.Equal(0, sim.GetBlock(targetX, targetY));
-            Assert.Contains(Enumerable.Range(0, 50), s => sim.GetInventory(player)![s].ItemId == registry.ItemId("dirt"));
+            Assert.Contains(Enumerable.Range(0, 50), s => sim.GetInventory(player)![s].ItemId == drop);
 
             var worldToSave = WorldSave.Capture(sim, world.Info, new Dictionary<string, int> { ["Leo"] = player });
             var characterToSave = PlayerSave.Capture(sim, player, "Leo");
@@ -62,6 +67,6 @@ public sealed class PersistenceScenarioTests : IDisposable
         Assert.True(sim2.TryGetEntityView(player2, out var restored));
         Assert.Equal(positionAtSave, restored.Position);
         Assert.Equal(generated.Seed, loadedWorld.Info.Seed);
-        Assert.Contains(Enumerable.Range(0, 50), s => sim2.GetInventory(player2)![s].ItemId == registry.ItemId("dirt"));
+        Assert.Contains(Enumerable.Range(0, 50), s => sim2.GetInventory(player2)![s].ItemId == drop);
     }
 }

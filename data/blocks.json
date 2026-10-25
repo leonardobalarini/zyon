@@ -4,5 +4,12 @@
   { "id": "deep_stone", "hardness": 3.5, "solid": true, "drops": "deep_stone" },
   { "id": "ore_a",      "hardness": 2.5, "solid": true, "drops": "ore_a" },
   { "id": "ore_b",      "hardness": 4.0, "solid": true, "drops": "ore_b", "light": 0.35 },
-  { "id": "torch",      "hardness": 0.0, "solid": false, "drops": "torch", "light": 1.0 }
+  { "id": "torch",      "hardness": 0.0, "solid": false, "drops": "torch", "light": 1.0 },
+  { "id": "metal_plate",  "hardness": 5.0, "solid": true,  "drops": "metal_plate" },
+  { "id": "hazard_plate", "hardness": 5.0, "solid": true,  "drops": "hazard_plate" },
+  { "id": "bunker_lamp",  "hardness": 0.0, "solid": false, "drops": "bunker_lamp", "light": 0.9 },
+  { "id": "crate",        "hardness": 0.5, "solid": false, "drops": "crate" },
+  { "id": "pipe",         "hardness": 0.5, "solid": false, "drops": "pipe" },
+  { "id": "vent",         "hardness": 0.5, "solid": false, "drops": "vent" },
+  { "id": "panel",        "hardness": 0.5, "solid": false, "drops": "panel", "light": 0.2 }
 ]

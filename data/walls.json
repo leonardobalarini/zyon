@@ -1,4 +1,5 @@
 [
   { "id": "dirt_wall" },
-  { "id": "stone_wall" }
+  { "id": "stone_wall" },
+  { "id": "metal_wall" }
 ]

@@ -1,4 +1,5 @@
 using Zyon.Core.Data;
+using Zyon.Core.WorldGen.Structures;
 
 namespace Zyon.Core.WorldGen;
 
@@ -11,6 +12,9 @@ public sealed record WorldGenMaterials(
     ushort StoneWall,
     IReadOnlyList<(ushort Block, OreConfig Config)> Ores)
 {
+    /// <summary>Molde do bunker resolvido no Registry; null quando a configuração veio de <c>Load(json)</c>.</summary>
+    public Structure? Bunker { get; init; }
+
     public static WorldGenMaterials Resolve(WorldGenConfig config, Registry registry)
     {
         ushort Block(string name, string field) =>
@@ -34,6 +38,9 @@ public sealed record WorldGenMaterials(
             Block(m.DeepStone, "materials.deepStone"),
             Wall(m.DirtWall, "materials.dirtWall"),
             Wall(m.StoneWall, "materials.stoneWall"),
-            ores);
+            ores)
+        {
+            Bunker = config.Bunker?.Resolve(registry),
+        };
     }
 }

@@ -5,5 +5,12 @@
   { "id": "ore_a",         "name": "Minério A",       "maxStack": 999, "kind": "Block", "placesBlock": "ore_a" },
   { "id": "ore_b",         "name": "Minério B",       "maxStack": 999, "kind": "Block", "placesBlock": "ore_b" },
   { "id": "basic_pickaxe", "name": "Picareta básica", "maxStack": 1,   "kind": "Tool",  "power": 1.0, "speed": 1.0 },
-  { "id": "torch",         "name": "Tocha",           "maxStack": 999, "kind": "Block", "placesBlock": "torch" }
+  { "id": "torch",         "name": "Tocha",           "maxStack": 999, "kind": "Block", "placesBlock": "torch" },
+  { "id": "metal_plate",  "name": "Chapa de metal",  "maxStack": 999, "kind": "Block", "placesBlock": "metal_plate" },
+  { "id": "hazard_plate", "name": "Chapa listrada",  "maxStack": 999, "kind": "Block", "placesBlock": "hazard_plate" },
+  { "id": "bunker_lamp",  "name": "Luminária",       "maxStack": 999, "kind": "Block", "placesBlock": "bunker_lamp" },
+  { "id": "crate",        "name": "Caixote",         "maxStack": 999, "kind": "Block", "placesBlock": "crate" },
+  { "id": "pipe",         "name": "Cano",            "maxStack": 999, "kind": "Block", "placesBlock": "pipe" },
+  { "id": "vent",         "name": "Grade",           "maxStack": 999, "kind": "Block", "placesBlock": "vent" },
+  { "id": "panel",        "name": "Painel",          "maxStack": 999, "kind": "Block", "placesBlock": "panel" }
 ]

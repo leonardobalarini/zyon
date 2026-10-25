@@ -1,0 +1,27 @@
+{
+  "legend": {
+    "#": { "block": "metal_plate", "wall": "metal_wall" },
+    "H": { "block": "hazard_plate", "wall": "metal_wall" },
+    ".": { "wall": "metal_wall" },
+    "L": { "block": "bunker_lamp", "wall": "metal_wall" },
+    "P": { "block": "pipe", "wall": "metal_wall" },
+    "V": { "block": "vent", "wall": "metal_wall" },
+    "N": { "block": "panel", "wall": "metal_wall" },
+    "C": { "block": "crate", "wall": "metal_wall" },
+    "S": { "wall": "metal_wall", "spawn": true },
+    "D": { "wall": "metal_wall", "anchor": true },
+    " ": "keep"
+  },
+  "rows": [
+    "HH######################################",
+    "HH...L....#....L.....#....L....#...L...#",
+    "HH........#..........#.........#PPPPPPP#",
+    "HH....V...#..........#.........#.......#",
+    "................................N..N...#",
+    ".......................................#",
+    "......................C......C.........#",
+    "D..............S......CC.....CC.......V#",
+    "HH######################################",
+    "HH######################################"
+  ]
+}

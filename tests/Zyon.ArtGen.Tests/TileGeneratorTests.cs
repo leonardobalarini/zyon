@@ -20,7 +20,7 @@ public class TileGeneratorTests
         Assert.Equal(AutoTile.MaskCount * Source.Variations * T, img.Width);
         Assert.Equal((R.Blocks.Count - 1) * T, img.Height);
         Assert.Equal(0, rows["dirt"]);
-        Assert.Equal(R.Blocks.Count - 2, rows["torch"]);
+        Assert.Equal(R.BlockId("torch") - 1, rows["torch"]);
     }
 
     [Fact]
@@ -59,6 +59,79 @@ public class TileGeneratorTests
         var cap = Source.Blocks["dirt"].Cap!.Select(Rgba.Parse).ToArray();
 
         Assert.Contains(img.Get(x + 8, y + 1), cap.Concat(cap.Select(c => c.Scale(TileGenerator.HighlightFactor))));
+    }
+
+    [Theory]
+    [InlineData("bunker_lamp")]
+    [InlineData("crate")]
+    [InlineData("pipe")]
+    [InlineData("vent")]
+    [InlineData("panel")]
+    public void Prop_IsTheSameInEveryCell_AndHasTransparentPixels(string name)
+    {
+        var img = TileGenerator.BuildBlocks(Source, R, out var rows);
+        int y = rows[name] * T;
+        int cells = img.Width / T;
+        bool anyTransparent = false, anyOpaque = false;
+        for (int py = 0; py < T; py++)
+        for (int px = 0; px < T; px++)
+        {
+            var first = img.Get(px, y + py);
+            if (first.A == 0) anyTransparent = true; else anyOpaque = true;
+            for (int cell = 1; cell < cells; cell++)
+                Assert.Equal(first, img.Get(cell * T + px, y + py));
+        }
+        Assert.True(anyTransparent, $"{name}: sem fundo transparente");
+        Assert.True(anyOpaque, $"{name}: vazio");
+    }
+
+    [Fact]
+    public void MetalPlate_HasJointsAndRivets()
+    {
+        var img = TileGenerator.BuildBlocks(Source, R, out var rows);
+        var pal = ArtSource.Colors(Source.Blocks["metal_plate"].Palette!);
+        // Máscara 15 (todos os vizinhos conectados): sem contorno; variação 0.
+        int x = 15 * Source.Variations * T, y = rows["metal_plate"] * T;
+        Assert.Equal(pal[0], img.Get(x + 7, y + 3));    // junta vertical (fiada de cima, sem desencontro)
+        Assert.Equal(pal[0], img.Get(x + 3, y + 7));    // junta horizontal
+        Assert.Equal(pal[2], img.Get(x + 1, y + 1));    // rebite
+    }
+
+    [Fact]
+    public void HazardPlate_HasBothStripeColors()
+    {
+        var img = TileGenerator.BuildBlocks(Source, R, out var rows);
+        var m = Source.Blocks["hazard_plate"];
+        var yellow = ArtSource.Colors(m.Palette!);
+        var black = ArtSource.Colors(m.Accent!);
+        int x = 15 * Source.Variations * T, y = rows["hazard_plate"] * T;
+        var pixels = Enumerable.Range(0, T * T).Select(i => img.Get(x + i % T, y + i / T)).ToList();
+        Assert.Contains(pixels, p => yellow.Contains(p));
+        Assert.Contains(pixels, p => black.Contains(p));
+    }
+
+    [Fact]
+    public void MetalWall_UsesPlatesJoints()
+    {
+        var img = TileGenerator.BuildWalls(Source, R, out var rows);
+        var pal = ArtSource.Colors(Source.Walls["metal_wall"].Palette!);
+        int x = 15 * Source.Variations * T, y = rows["metal_wall"] * T;
+        Assert.Equal(pal[0], img.Get(x + 7, y + 3));
+        Assert.Equal(pal[0], img.Get(x + 3, y + 7));
+        Assert.Equal(pal[2], img.Get(x + 1, y + 1));
+    }
+
+    [Theory]
+    [InlineData("crate", """{"recipe":"clumps","palette":["#000000","#000000","#000000"]}""", "'torch' ou 'prop'")]
+    [InlineData("crate", """{"recipe":"prop","shape":"sofa","palette":["#000000","#000000","#000000"]}""", "forma 'sofa'")]
+    [InlineData("bunker_lamp", """{"recipe":"prop","shape":"lamp","palette":["#000000","#000000","#000000"]}""", "accent")]
+    [InlineData("hazard_plate", """{"recipe":"stripes","palette":["#000000","#000000","#000000"]}""", "accent")]
+    public void InvalidNewRecipes_Throw(string block, string entry, string expected)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(RepoPaths.Root, "art", "art.json")))!;
+        root["blocks"]![block] = System.Text.Json.Nodes.JsonNode.Parse(entry);
+        var ex = Assert.Throws<DataException>(() => ArtSource.Load(root.ToJsonString(), R));
+        Assert.Contains(expected, ex.Message);
     }
 
     [Fact]
