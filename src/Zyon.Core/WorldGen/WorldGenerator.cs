@@ -16,7 +16,7 @@ public sealed record GeneratedWorld(TileWorld Tiles, int Seed, int GeneratorVers
 public sealed class WorldGenerator
 {
     /// <summary>Incremente sempre que a saída da geração mudar para a mesma seed.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
     public const int MinSize = 64;
 
     private readonly Registry registry;
@@ -24,7 +24,7 @@ public sealed class WorldGenerator
     private readonly WorldGenMaterials materials;
     private readonly ulong fingerprint;
 
-    /// <summary>Gerador com os passes padrão do spec (seção 6).</summary>
+    /// <summary>Gerador com os passes padrão (terreno, montanha, camadas, cavernas, minérios, paredes, bunker).</summary>
     public WorldGenerator(Registry registry, WorldGenConfig config)
         : this(registry, config, DefaultPasses())
     {
@@ -33,11 +33,12 @@ public sealed class WorldGenerator
     public static IReadOnlyList<IWorldGenPass> DefaultPasses() =>
     [
         new TerrainPass(),
+        new MountainPass(),
         new LayersPass(),
         new CavesPass(),
         new OrePass(),
         new WallsPass(),
-        new SpawnPass(),
+        new BunkerPass(),
     ];
 
     public WorldGenerator(Registry registry, WorldGenConfig config, IReadOnlyList<IWorldGenPass> passes)
@@ -62,9 +63,6 @@ public sealed class WorldGenerator
     {
         if (width < MinSize) throw new ArgumentOutOfRangeException(nameof(width), $"Largura mínima: {MinSize}");
         if (height < MinSize) throw new ArgumentOutOfRangeException(nameof(height), $"Altura mínima: {MinSize}");
-        if (config.SpawnFlatWidth > width / 4)
-            throw new ArgumentOutOfRangeException(nameof(width),
-                $"Largura {width} é pequena demais para spawnFlatWidth={config.SpawnFlatWidth} (máximo: largura / 4)");
         if (config.BottomSolidRows + config.CaveMinDepth >= height / 2)
             throw new ArgumentOutOfRangeException(nameof(height),
                 $"Altura {height} é pequena demais para bottomSolidRows={config.BottomSolidRows} + caveMinDepth={config.CaveMinDepth} (devem somar menos que altura / 2)");

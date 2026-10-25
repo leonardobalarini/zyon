@@ -47,9 +47,6 @@ public sealed class WorldGenConfig
     /// <summary>Molde do bunker, carregado por <see cref="WorldGenConfigLoader.LoadFromDirectory"/> (null com <c>Load(json)</c>).</summary>
     [JsonIgnore]
     public StructureTemplate? Bunker { get; internal set; }
-
-    public int SpawnSearchRadius { get; init; } = 300;
-    public int SpawnFlatWidth { get; init; } = 4;
 }
 
 /// <summary>Nomes (ids textuais do Registry) dos materiais usados pela geração.</summary>

@@ -39,7 +39,5 @@
   "mountainNoiseFrequency": 0.05,
   "mountainNoiseAmplitude": 4,
   "bunkerStructure": "bunker",
-  "bunkerRoofRows": 3,
-  "spawnSearchRadius": 300,
-  "spawnFlatWidth": 4
+  "bunkerRoofRows": 3
 }

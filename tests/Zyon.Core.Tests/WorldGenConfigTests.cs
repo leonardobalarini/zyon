@@ -40,7 +40,6 @@ public class WorldGenConfigTests
     [InlineData("""{"hillinessFrequency": 0}""", "hillinessFrequency")]
     [InlineData("""{"dirtDepth": 3, "dirtDepthVariation": 5}""", "dirtDepth")]
     [InlineData("""{"wormLengthMin": 50, "wormLengthMax": 10}""", "wormLength")]
-    [InlineData("""{"spawnFlatWidth": 1}""", "spawnFlatWidth")]
     [InlineData("""{"mountainSteepWidth": 3}""", "mountainSteepWidth")]
     [InlineData("""{"mountainGentleWidth": 3}""", "mountainGentleWidth")]
     [InlineData("""{"mountainHeight": 0}""", "mountainHeight")]
