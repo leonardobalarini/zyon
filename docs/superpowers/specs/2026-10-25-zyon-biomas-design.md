@@ -65,8 +65,14 @@ Por coluna, usa os blocos do bioma do tile (com o afinamento): camada de cima (h
     { "id": "forest", "surfaceBlock": "dirt", "shallowBlock": "stone", "surfaceWall": "dirt_wall", "shallowWall": "stone_wall",
       "tree": { "shape": "dead", "trunk": "dead_trunk", "crown": "dead_branch", "heightMin": 6, "heightMax": 12 },
       "treeChance": 0.12, "treeSpacing": 5, "decoration": "dry_grass", "decorationChance": 0.25, "markers": [] },
-    { "id": "snow", "band": { "widthMin": 0.15, "widthMax": 0.2, "gapMin": 0.1, "gapMax": 0.15 }, "...": "..." },
-    { "id": "desert", "band": { "...": "..." }, "...": "..." }
+    { "id": "snow", "band": { "widthMin": 0.15, "widthMax": 0.2, "gapMin": 0.1, "gapMax": 0.15 },
+      "surfaceBlock": "snow", "shallowBlock": "ice", "surfaceWall": "snow_wall", "shallowWall": "ice_wall",
+      "tree": { "shape": "pine", "trunk": "pine_trunk", "crown": "pine_leaves", "heightMin": 8, "heightMax": 14 },
+      "treeChance": 0.15, "treeSpacing": 4, "decoration": "frozen_shrub", "decorationChance": 0.15, "markers": ["snow", "ice"] },
+    { "id": "desert", "band": { "widthMin": 0.15, "widthMax": 0.2, "gapMin": 0.1, "gapMax": 0.15 },
+      "surfaceBlock": "sand", "shallowBlock": "sandstone", "surfaceWall": "sand_wall", "shallowWall": "sandstone_wall",
+      "tree": { "shape": "cactus", "trunk": "cactus", "crown": "cactus", "heightMin": 3, "heightMax": 6 },
+      "treeChance": 0.06, "treeSpacing": 6, "decoration": "dry_bush", "decorationChance": 0.1, "markers": ["sand", "sandstone", "cactus"] }
   ]
 }
 ```
@@ -96,7 +102,7 @@ Por coluna, usa os blocos do bioma do tile (com o afinamento): camada de cima (h
 | `frozen_shrub` | não | 0 | — | |
 | `dry_bush` | não | 0 | — | |
 
-- Campo novo `"tree": true` no `blocks.json` (padrão falso). `"drops"` ausente = não dá item (já suportado? se não, passa a ser).
+- Campo novo `"tree": true` no `blocks.json` (padrão falso). `"drops"` ausente = não dá item (já suportado pelo `RegistryLoader`).
 - A areia não cai (fora do escopo).
 
 ### Paredes novas
@@ -113,7 +119,7 @@ Quando um bloco com `tree` é quebrado, todos os blocos com `tree` ligados a ele
 
 ### Arte (ArtGen, `art/art.json`)
 
-- `snow`, `ice`, `sand`, `sandstone`: receita `clumps` (gelo com brilhos claros; arenito com faixas horizontais — variação da receita ou receita nova `strata`); entram na `mergeOrder` (neve < areia < terra < gelo < arenito < rocha …).
+- `snow`, `ice`, `sand`, `sandstone`: receita `clumps` (gelo com brilhos claros; arenito com faixas horizontais — receita nova `strata`); entram na `mergeOrder` (neve < areia < terra < gelo < arenito < rocha …).
 - `wood`: receita nova `planks` (tábuas horizontais com juntas).
 - Troncos, galhos, folhas, cacto e decorativos: desenhos próprios (receita `prop`, formas novas: `trunk`, `branch`, `leaves`, `cactus`, `grass`, `shrub`, `bush`); troncos e cacto conectam verticalmente (o desenho atravessa o tile).
 - Paredes: as receitas dos blocos, escurecidas.
@@ -127,7 +133,7 @@ Quando um bloco com `tree` é quebrado, todos os blocos com `tree` ligados a ele
 
 ### Ambiente (Client)
 
-- `data/client/biomes.json`: por bioma, `sky` (cor) e os nomes das camadas de fundo. Sai `sky` do `visuals.json` (fica a cor de céu do padrão? não: o `visuals.json` some se só tinha o céu — ver plano).
+- `data/client/biomes.json`: por bioma, `sky` (cor) e os nomes das camadas de fundo. O `visuals.json` (que só tinha o céu) sai: `ClientVisuals` passa a ler `data/client/biomes.json` e exige uma entrada para cada bioma do `data/biomes.json`.
 - `BiomeAmbience` (Client, testável): recebe o bioma detectado e o tempo; dá a cor do céu atual e o peso de cada fundo, mudando linearmente em 2 s quando o bioma muda.
 - Godot: `RenderingServer.SetDefaultClearColor` com a cor atual; um `Parallax2D` por camada e bioma (fator de rolagem 0,1 e 0,3, repetição horizontal), com `Modulate.A` = peso; a base da camada fica na altura média da superfície do mundo (linha `surfaceMax × altura`), e não se desenha nada abaixo dela. Ficam atrás dos chunks e embaixo da camada de luz (a noite os escurece).
 - F3: linha com o bioma atual.
