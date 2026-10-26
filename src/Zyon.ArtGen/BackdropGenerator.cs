@@ -41,9 +41,11 @@ public static class BackdropGenerator
             case ("desert", false):
                 Ridge(img, shape, light, salt, step: 120, baseY: 150, amplitude: 50, cap: 2);
                 break;
-            default:
+            case ("desert", true):
                 Wrecks(img, shape, light, Ridge(img, shape, light, salt, step: 96, baseY: 165, amplitude: 20, cap: 1), salt, count: 3);
                 break;
+            default:
+                throw new ArgumentException($"estilo '{style}' sem camada {(near ? "próxima" : "distante")}", nameof(style));
         }
         return img;
     }
@@ -51,6 +53,8 @@ public static class BackdropGenerator
     /// <summary>Altura do relevo em x (0..amplitude): pontos de controle a cada step px, periódicos na largura, ligados por smoothstep inteiro.</summary>
     public static int RidgeHeight(int x, int step, int amplitude, int salt)
     {
+        if (step < 1 || Width % step != 0)
+            throw new ArgumentException($"step {step} deve ser positivo e dividir a largura {Width} (senão a emenda não é periódica)", nameof(step));
         int n = Width / step;
         x = Mod(x, Width);
         int i = x / step, t = x % step;
@@ -152,7 +156,9 @@ public static class BackdropGenerator
         for (int k = 0; k < count; k++)
         {
             int x0 = ArtHash.Range(k, 1, salt, Width);
-            int ground = top[x0] + 1;
+            int lowest = top[x0];
+            for (int dx = 1; dx < 34; dx++) lowest = Math.Max(lowest, top[(x0 + dx) % Width]);
+            int ground = lowest + 1;
             for (int dx = 0; dx < 34; dx++)
             for (int y = ground - 9; y < ground; y++)
                 PutWrapped(img, x0 + dx, y, y == ground - 9 && (dx < 8 || dx > 21) ? light : shape);

@@ -136,6 +136,14 @@ public class ArtCatalogTests
         Assert.Contains("repetido", ex.Message);
     }
 
+    [Fact]
+    public void EmptyBackgroundName_Throws()
+    {
+        var m = Complete();
+        m.Backgrounds = [""];
+        Assert.Contains("backgrounds[0] ausente", Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry())).Message);
+    }
+
     [Theory]
     [InlineData("\"tiles\"", "tiles")]
     [InlineData("\"walls\"", "walls")]

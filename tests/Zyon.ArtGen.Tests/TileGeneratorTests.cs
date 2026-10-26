@@ -268,8 +268,8 @@ public class TileGeneratorTests
         foreach (int py in new[] { 3, 7, 11, 15 })
             for (int px = 0; px < T; px++)
                 Assert.Equal(dark, img.Get(x + px, y + py));
-        foreach (int py in new[] { 1, 5, 9, 13 })
-            Assert.Contains(Enumerable.Range(0, T), px => img.Get(x + px, y + py) == dark);
+        foreach (int first in new[] { 0, 4, 8, 12 })
+            Assert.Contains(Enumerable.Range(0, T), px => Enumerable.Range(first, 3).All(py => img.Get(x + px, y + py) == dark));
     }
 
     [Fact]
@@ -315,5 +315,18 @@ public class TileGeneratorTests
         if (crossesVertically)   // tronco e cacto atravessam o tile: o de cima continua o de baixo
             for (int px = 0; px < T; px++)
                 Assert.Equal(img.Get(px, 0).A != 0, img.Get(px, T - 1).A != 0);
+    }
+
+    [Theory]
+    [InlineData("Neve", """{"style":"snow","far":["#000000","#000000"],"near":["#000000","#000000"]}""", "backgrounds.Neve")]
+    [InlineData("neve", "null", "backgrounds.neve")]
+    [InlineData("neve", """{"style":"lava","far":["#000000","#000000"],"near":["#000000","#000000"]}""", "backgrounds.neve")]
+    [InlineData("neve", """{"style":"snow","far":["#000000","#000000","#000000"],"near":["#000000","#000000"]}""", "backgrounds.neve.far")]
+    public void InvalidBackgrounds_Throw(string name, string entry, string expected)
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(RepoPaths.Root, "art", "art.json")))!;
+        root["backgrounds"]![name] = System.Text.Json.Nodes.JsonNode.Parse(entry);
+        var ex = Assert.Throws<DataException>(() => ArtSource.Load(root.ToJsonString(), R));
+        Assert.Contains(expected, ex.Message);
     }
 }

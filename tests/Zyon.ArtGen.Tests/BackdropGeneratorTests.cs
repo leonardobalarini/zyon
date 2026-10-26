@@ -79,4 +79,10 @@ public class BackdropGeneratorTests
     {
         Assert.Throws<ArgumentException>(() => BackdropGenerator.Draw("jungle", false, Colors, 1));
     }
+
+    [Fact]
+    public void RidgeHeight_RejectsStepThatDoesNotDivideWidth()
+    {
+        Assert.Throws<ArgumentException>(() => BackdropGenerator.RidgeHeight(0, 7, 10, 1));
+    }
 }
