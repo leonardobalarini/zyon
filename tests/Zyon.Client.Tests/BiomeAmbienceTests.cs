@@ -21,6 +21,14 @@ public class BiomeAmbienceTests
     }
 
     [Fact]
+    public void Weight_OfUnknownBiome_Throws()
+    {
+        var a = new BiomeAmbience(Visuals, "forest");
+
+        Assert.Throws<ArgumentException>(() => a.Weight("jungle"));
+    }
+
+    [Fact]
     public void Change_IsLinearOverTwoSeconds()
     {
         var a = new BiomeAmbience(Visuals, "forest");

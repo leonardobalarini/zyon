@@ -42,6 +42,8 @@ public class DataFilesTests
         string[] trees = ["dead_trunk", "dead_branch", "pine_trunk", "pine_leaves", "cactus"];
 
         foreach (var name in trees) Assert.True(r.Block(r.BlockId(name)).Tree, name);
+        foreach (var name in new[] { "dead_trunk", "pine_trunk", "cactus" }) Assert.True(r.Block(r.BlockId(name)).Trunk, name);
+        foreach (var name in new[] { "dead_branch", "pine_leaves" }) Assert.False(r.Block(r.BlockId(name)).Trunk, name);
         foreach (var name in new[] { "snow", "ice", "sand", "sandstone", "wood" })
         {
             Assert.True(r.Block(r.BlockId(name)).Solid, name);

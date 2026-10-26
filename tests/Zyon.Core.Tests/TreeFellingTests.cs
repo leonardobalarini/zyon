@@ -1,3 +1,4 @@
+using Arch.Core;
 using Zyon.Core.Entities;
 using Zyon.Core.Sim;
 using Zyon.Core.Sim.Systems;
@@ -44,6 +45,52 @@ public class TreeFellingTests
         var events = h.Sim.DrainEvents();
         Assert.Equal(8, events.OfType<TileChanged>().Count(e => e.Block == 0));
         Assert.Equal(8, events.OfType<EntitySpawned>().Count(e => e.Kind == EntityKind.DroppedItem));
+        var wood = h.Registry.ItemId("wood");
+        int woodCount = 0, otherCount = 0;
+        h.Sim.Ecs.Query(in Queries.Items, (ref DroppedItem d) =>
+        {
+            if (d.Stack.ItemId == wood) woodCount += d.Stack.Count; else otherCount += d.Stack.Count;
+        });
+        Assert.Equal(8, woodCount);
+        Assert.Equal(0, otherCount);
+    }
+
+    [Fact]
+    public void BreakingABranch_RemovesOnlyTheBranch()
+    {
+        using var h = new SimHarness();
+        PlantDeadTree(h);
+        h.Idle(5);
+        h.Sim.DrainEvents();
+
+        h.Run(TicksToMine(h, "dead_branch"), Use(23, 35));
+
+        Assert.Equal(0, h.Tiles.GetBlock(23, 35));
+        for (int y = 34; y <= 39; y++) Assert.Equal(h.Registry.BlockId("dead_trunk"), h.Tiles.GetBlock(22, y));
+        Assert.Equal(h.Registry.BlockId("dead_branch"), h.Tiles.GetBlock(21, 36));
+        Assert.Equal(h.Registry.BlockId("dead_branch"), h.Tiles.GetBlock(20, 36));
+        var events = h.Sim.DrainEvents();
+        Assert.Single(events.OfType<TileChanged>(), e => e.Block == 0);
+        Assert.Single(events.OfType<EntitySpawned>(), e => e.Kind == EntityKind.DroppedItem);
+    }
+
+    [Fact]
+    public void BreakingAPineLeaf_RemovesOnlyTheLeaf()
+    {
+        using var h = new SimHarness();
+        ushort trunk = h.Registry.BlockId("pine_trunk"), leaves = h.Registry.BlockId("pine_leaves");
+        for (int y = 34; y <= 39; y++) h.Tiles.SetBlock(22, y, trunk);
+        h.Tiles.SetBlock(21, 36, leaves);
+        h.Tiles.SetBlock(23, 36, leaves);
+        h.Idle(5);
+        h.Sim.DrainEvents();
+
+        h.Run(TicksToMine(h, "pine_leaves"), Use(21, 36));
+
+        Assert.Equal(0, h.Tiles.GetBlock(21, 36));
+        Assert.Equal(leaves, h.Tiles.GetBlock(23, 36));
+        for (int y = 34; y <= 39; y++) Assert.Equal(trunk, h.Tiles.GetBlock(22, y));
+        Assert.Single(h.Sim.DrainEvents().OfType<TileChanged>(), e => e.Block == 0);
     }
 
     [Fact]
@@ -51,7 +98,7 @@ public class TreeFellingTests
     {
         using var h = new SimHarness();
         PlantDeadTree(h);
-        h.Tiles.SetBlock(23, 39, h.Registry.BlockId("dead_trunk"));   // raiz vizinha na linha de baixo
+        h.Tiles.SetBlock(23, 39, h.Registry.BlockId("dead_trunk"));   // tronco vizinho na linha de baixo: nada sustenta a árvore, quebrar o chão não derruba nada
 
         h.Run(TicksToMine(h, "dirt") + 5, Use(22, 40));
 
@@ -68,7 +115,8 @@ public class TreeFellingTests
         ushort trunk = r.BlockId("pine_trunk");
         for (int y = 10; y <= 20; y++) world.SetBlock(10, y, trunk);
         world.SetBlock(11, 15, trunk);    // mesma linha do corte: vai junto
-        world.SetBlock(12, 16, trunk);    // ligado só por baixo: fica
+        world.SetBlock(12, 16, trunk);    // longe de qualquer tronco: fica
+        world.SetBlock(11, 16, trunk);    // abaixo de (11,15), linha 16 > 15: fica
         world.SetBlock(12, 15, r.BlockId("dirt"));
         world.SetBlock(10, 15, 0);        // o tile cortado já foi quebrado
         var result = new List<(int X, int Y)>();
@@ -78,6 +126,7 @@ public class TreeFellingTests
         Assert.Contains((11, 15), result);
         Assert.Contains((10, 10), result);
         Assert.DoesNotContain((10, 16), result);
+        Assert.DoesNotContain((11, 16), result);
         Assert.DoesNotContain((12, 16), result);
         Assert.Equal(6, result.Count);   // (10,14..10) + (11,15)
     }
@@ -96,6 +145,6 @@ public class TreeFellingTests
 
         TreeFelling.Collect(world, r, 10, 39, result);
 
-        Assert.Equal(TreeFelling.MaxBlocks, result.Count);
+        Assert.Equal(TreeFelling.MaxBlocks - 1, result.Count);
     }
 }

@@ -6,7 +6,7 @@ using Zyon.Core.Physics;
 
 namespace Zyon.Core.Sim.Systems;
 
-/// <summary>Ação primária contextual: ferramenta minera (bloco de árvore derruba a árvore, ver TreeFelling), bloco é colocado.</summary>
+/// <summary>Ação primária contextual: ferramenta minera (quebrar um tronco derruba a árvore, ver TreeFelling; folha e galho quebram sozinhos), bloco é colocado.</summary>
 internal sealed class ToolActionSystem : ISystem
 {
     private static readonly Vector2 TileSize = new(1f, 1f);
@@ -101,7 +101,7 @@ internal sealed class ToolActionSystem : ISystem
         }
 
         Break(sim, tx, ty, block);
-        if (block.Tree)
+        if (block.Trunk)
         {
             TreeFelling.Collect(sim.Tiles, sim.Registry, tx, ty, felled);
             foreach (var (x, y) in felled)

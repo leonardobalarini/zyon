@@ -57,6 +57,25 @@ public class BiomeDetectorTests
     }
 
     [Fact]
+    public void Tie_FirstBiomeInTheFileWins()
+    {
+        var world = new TileWorld(128, 128);
+        Fill(world, "snow", Set.DetectThreshold);
+        Fill(world, "sand", Set.DetectThreshold, y0: 60);
+
+        Assert.Equal("snow", Detect(world));
+    }
+
+    [Fact]
+    public void NearTheBottomRightEdge_DoesNotThrow()
+    {
+        var world = new TileWorld(64, 64);
+        Fill(world, "sand", 300, x0: 44, y0: 44);
+
+        Assert.Equal("desert", Detect(world, 63, 63));
+    }
+
+    [Fact]
     public void MarkersOutsideTheArea_DoNotCount()
     {
         var world = new TileWorld(256, 128);

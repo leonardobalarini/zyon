@@ -58,10 +58,12 @@ public sealed class BiomeSet
                 registry.TryGetBlockId(name, out var id) ? id : throw new DataException($"{ctx}: '{field}' referencia bloco inexistente '{name}'");
             ushort Wall(string name, string field) =>
                 registry.TryGetWallId(name, out var id) ? id : throw new DataException($"{ctx}: '{field}' referencia parede inexistente '{name}'");
-            ushort TreeBlock(string name, string field)
+            ushort TreeBlock(string name, string field, bool trunk)
             {
                 ushort id = Block(name, field);
-                return registry.Block(id).Tree ? id : throw new DataException($"{ctx}: '{field}' precisa ser um bloco de árvore (\"tree\": true), '{name}' não é");
+                var def = registry.Block(id);
+                if (trunk) return def.Trunk ? id : throw new DataException($"{ctx}: '{field}' precisa ser um tronco (\"trunk\": true), '{name}' não é");
+                return def.Tree ? id : throw new DataException($"{ctx}: '{field}' precisa ser um bloco de árvore (\"tree\": true), '{name}' não é");
             }
 
             var t = e.Tree!;
@@ -72,7 +74,7 @@ public sealed class BiomeSet
                 "cactus" => TreeShape.Cactus,
                 _ => throw new DataException($"{ctx}: 'tree.shape' '{t.Shape}' desconhecida"),
             },
-                TreeBlock(t.Trunk, "tree.trunk"), TreeBlock(t.Crown, "tree.crown"), t.HeightMin, t.HeightMax);
+                TreeBlock(t.Trunk, "tree.trunk", true), TreeBlock(t.Crown, "tree.crown", false), t.HeightMin, t.HeightMax);
 
             var markers = new List<ushort>();
             foreach (var name in e.Markers)

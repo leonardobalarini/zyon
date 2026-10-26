@@ -311,6 +311,26 @@ public class RegistryLoaderTests
     }
 
     [Fact]
+    public void TrunkFlag_DefaultsToFalse_AndIsRead()
+    {
+        var r = TestData.RegistryWithEdits(editBlocks: blocks =>
+            blocks.Add(JsonNode.Parse("""{"id": "test_trunk", "hardness": 1.0, "solid": false, "tree": true, "trunk": true}""")));
+
+        Assert.True(r.Block(r.BlockId("test_trunk")).Trunk);
+        Assert.False(r.Block(r.BlockId("dirt")).Trunk);
+    }
+
+    [Fact]
+    public void TrunkFlag_WithoutTree_Throws()
+    {
+        var ex = Assert.Throws<DataException>(() => TestData.RegistryWithEdits(editBlocks: blocks =>
+            blocks.Add(JsonNode.Parse("""{"id": "test_trunk", "hardness": 1.0, "solid": false, "trunk": true}"""))));
+
+        Assert.Contains("test_trunk", ex.Message);
+        Assert.Contains("'trunk'", ex.Message);
+    }
+
+    [Fact]
     public void TreeFlag_WithWrongType_Throws()
     {
         var ex = Assert.Throws<DataException>(() => TestData.RegistryWithEdits(editBlocks: blocks =>

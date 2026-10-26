@@ -11,13 +11,15 @@ public sealed class BiomeAmbience
 
     private readonly ClientVisuals visuals;
     private readonly Dictionary<string, float> weights = [];
+    private readonly string[] ids;
     private Rgb from;
     private float progress = 1f;
 
     public BiomeAmbience(ClientVisuals visuals, string initialBiome)
     {
         this.visuals = visuals;
-        foreach (var id in visuals.Biomes.Keys) weights[id] = 0f;
+        ids = visuals.Biomes.Keys.ToArray();
+        foreach (var id in ids) weights[id] = 0f;
         Require(initialBiome);
         Current = initialBiome;
         weights[initialBiome] = 1f;
@@ -27,7 +29,11 @@ public sealed class BiomeAmbience
     public string Current { get; private set; }
     public Rgb Sky { get; private set; }
 
-    public float Weight(string biomeId) => weights[biomeId];
+    public float Weight(string biomeId)
+    {
+        Require(biomeId);
+        return weights[biomeId];
+    }
 
     public void SetBiome(string biomeId)
     {
@@ -42,7 +48,7 @@ public sealed class BiomeAmbience
     {
         float step = seconds / TransitionSeconds;
         progress = Math.Min(1f, progress + step);
-        foreach (var id in visuals.Biomes.Keys)
+        foreach (var id in ids)
             weights[id] = id == Current ? Math.Min(1f, weights[id] + step) : Math.Max(0f, weights[id] - step);
         var to = visuals.For(Current).Sky;
         Sky = new Rgb(Lerp(from.R, to.R, progress), Lerp(from.G, to.G, progress), Lerp(from.B, to.B, progress));
