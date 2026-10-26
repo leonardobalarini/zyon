@@ -5,8 +5,8 @@ using Zyon.Core.WorldGen.Structures;
 
 namespace Zyon.Core.WorldGen;
 
-/// <summary>Montanha do passe "mountain": pico, pé da face íngreme e se o portão fica à esquerda do pico.</summary>
-public sealed record MountainInfo(int PeakX, int FootX, bool FacesLeft);
+/// <summary>Montanha do passe "mountain": pico, pé da face íngreme (portão), se o portão fica à esquerda do pico e o pé do lado suave.</summary>
+public sealed record MountainInfo(int PeakX, int FootX, bool FacesLeft, int GentleFootX);
 
 /// <summary>Onde o passe "bunker" carimbou o molde (canto superior esquerdo) e qual molde (já espelhado se preciso).</summary>
 public sealed record BunkerPlacement(int X, int Y, Structure Structure);
@@ -30,6 +30,8 @@ public sealed class WorldGenContext
         this.report = report;
         Surface = new int[world.Width];
         DirtBottom = new int[world.Width];
+        DeepStart = new int[world.Width];
+        Biomes = materials.Biomes is { } set ? new BiomeMap(set, world.Height) : null;
     }
 
     public TileWorld World { get; }
@@ -46,6 +48,12 @@ public sealed class WorldGenContext
 
     /// <summary>Primeira linha abaixo da camada de solo de cada coluna (definida pelo passe de camadas).</summary>
     public int[] DirtBottom { get; }
+
+    /// <summary>Primeira linha da rocha profunda de cada coluna (definida pelo passe de camadas).</summary>
+    public int[] DeepStart { get; }
+
+    /// <summary>Bioma de cada tile; só o padrão até o passe "biomes" rodar. Null se a configuração não tem biomas (<c>Load(json)</c>).</summary>
+    public BiomeMap? Biomes { get; }
 
     /// <summary>Definido pelo passe "mountain".</summary>
     public MountainInfo? Mountain { get; internal set; }

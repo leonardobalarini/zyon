@@ -11,7 +11,7 @@ public class WorldGenDeterminismTests
     public void DefaultPasses_AreInSpecOrder()
     {
         Assert.Equal(
-            new[] { "terrain", "mountain", "layers", "caves", "ores", "walls", "bunker" },
+            new[] { "terrain", "mountain", "biomes", "layers", "caves", "ores", "walls", "bunker" },
             Generator().Passes.Select(p => p.Name));
     }
 
