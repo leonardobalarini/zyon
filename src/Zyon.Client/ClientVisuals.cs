@@ -80,7 +80,7 @@ public sealed class ClientVisuals
         foreach (var (id, visual) in biomes)
             foreach (var layer in visual.Layers)
                 if (!manifest.Backgrounds.Contains(layer))
-                    throw Fail($"{id}: camada '{layer}' sem arte (falta em art/art.json → backgrounds; rode tools/gen-art.sh)");
+                    throw Fail($"{id}: camada '{layer}' sem arte: o gerador cria '<chave>_far' e '<chave>_near' de cada chave em art/art.json → backgrounds; rode tools/gen-art.sh");
     }
 
     private static Rgb Parse(string? hex, string field) =>

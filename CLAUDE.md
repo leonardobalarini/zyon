@@ -29,7 +29,7 @@ Motor: Godot 4 (.NET) com C#. A lógica do jogo vive em bibliotecas .NET puras.
 - Nunca criar/destruir entidades dentro de um `Query` do Arch: colete e aplique depois.
 - Godot: usar somente API do Godot 4 (nunca Godot 3).
 - Requer .NET SDK 10 (os projetos têm alvo net10.0).
-- Blocos com `"tree": true` são partes de árvore; os com `"trunk": true` (troncos e cacto; exige `tree`) são os únicos que derrubam a árvore ao serem quebrados: caem os blocos `tree` ligados (4 vizinhos) na mesma linha ou acima, no máximo 256 contando o cortado (`TreeFelling`). Um bloco só pode ser marcador de um bioma.
+- Blocos com `"tree": true` são partes de árvore; os com `"trunk": true` (troncos e cacto; exige `tree`; o cacto é `trunk` inteiro, então quebrar um braço derruba o cacto dali para cima) são os únicos que derrubam a árvore ao serem quebrados: caem os blocos `tree` ligados (4 vizinhos) na mesma linha ou acima, no máximo 256 contando o cortado (`TreeFelling`). Um bloco só pode ser marcador de um bioma.
 - Ids numéricos de blocos/paredes/itens são posicionais (ordem do JSON); nunca persistir ids crus sem a paleta de nomes.
 - Blocos novos entram no **fim** do `blocks.json` (ids são posicionais; inserir no meio muda o hash de referência da geração).
 - Mudou um molde em `data/structures/`? A saída da geração muda: incremente `WorldGenerator.Version` e atualize o golden hash (o molde entra na impressão digital da configuração).

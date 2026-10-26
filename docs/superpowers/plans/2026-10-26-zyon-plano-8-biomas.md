@@ -3476,4 +3476,4 @@ Claude-Session: https://claude.ai/code/session_01W24Cc2XiDdunZLMumFEGj2"
 
 - **Sombra das árvores:** a luz do céu desce pela coluna até o primeiro bloco (inclusive não sólido), então a coluna sob uma árvore fica um pouco mais escura (a luz entra pelos lados com a atenuação do ar). Aceito neste plano.
 - **`Parallax2D` com zoom:** o fundo usa o zoom da câmera; a verificação visual da Tarefa 12 é o único teste disso.
-- **Mundos minúsculos** (< ~500 colunas): as faixas podem encostar na montanha (regra de 20 colunas na borda do spec); só os testes de tamanhos reais exigem a montanha na floresta.
+- **Mundos minúsculos** (< ~200 colunas): as faixas podem encostar na montanha (regra de 20 colunas na borda do spec); só os testes de tamanhos reais exigem a montanha na floresta.
