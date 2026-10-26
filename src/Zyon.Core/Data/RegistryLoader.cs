@@ -63,7 +63,7 @@ public static class RegistryLoader
             float light = d.Light ?? 0f;
             if (light < 0f || light > 1f || !float.IsFinite(light))
                 throw new DataException($"{ctx}: campo 'light' deve estar entre 0 e 1");
-            blocks[i + 1] = new BlockDef((ushort)(i + 1), d.Id!, hardness, solid, drop, light);
+            blocks[i + 1] = new BlockDef((ushort)(i + 1), d.Id!, hardness, solid, drop, light, d.Tree ?? false);
         }
 
         var walls = new WallDef[wallDtos.Count + 1];
@@ -172,6 +172,7 @@ public static class RegistryLoader
         public bool? Solid { get; set; }
         public string? Drops { get; set; }
         public float? Light { get; set; }
+        public bool? Tree { get; set; }
     }
 
     private sealed class WallDto

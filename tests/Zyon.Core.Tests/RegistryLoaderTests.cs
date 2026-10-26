@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Zyon.Core.Data;
 
 namespace Zyon.Core.Tests;
@@ -296,5 +297,25 @@ public class RegistryLoaderTests
     {
         var msg = Fail(blocks: """[{"id":"dirt","hardnes":1,"solid":true}]""");
         Assert.Contains("blocks.json", msg);
+    }
+
+    [Fact]
+    public void TreeFlag_DefaultsToFalse_AndIsRead()
+    {
+        var r = TestData.RegistryWithEdits(editBlocks: blocks =>
+            blocks.Add(JsonNode.Parse("""{"id": "test_trunk", "hardness": 1.0, "solid": false, "tree": true}""")));
+
+        Assert.True(r.Block(r.BlockId("test_trunk")).Tree);
+        Assert.False(r.Block(r.BlockId("dirt")).Tree);
+        Assert.False(r.Block(0).Tree);
+    }
+
+    [Fact]
+    public void TreeFlag_WithWrongType_Throws()
+    {
+        var ex = Assert.Throws<DataException>(() => TestData.RegistryWithEdits(editBlocks: blocks =>
+            blocks.Add(JsonNode.Parse("""{"id": "test_trunk", "hardness": 1.0, "solid": false, "tree": "sim"}"""))));
+
+        Assert.Contains("blocks.json", ex.Message);
     }
 }
