@@ -64,4 +64,16 @@ public class FingerprintTests
 
         Assert.Equal(WorldGenConfigFingerprint.Compute(config), world.ConfigFingerprint);
     }
+
+    [Fact]
+    public void Biomes_ChangeTheFingerprint()
+    {
+        var a = TestData.WorldGenConfig();
+        var b = TestData.WorldGenConfig();
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(TestData.DataDir, Zyon.Core.Biomes.BiomeConfigLoader.FileName)))!;
+        json["edgeNoise"] = 7;
+        b.Biomes = Zyon.Core.Biomes.BiomeConfigLoader.Load(json.ToJsonString());
+
+        Assert.NotEqual(WorldGenConfigFingerprint.Compute(a), WorldGenConfigFingerprint.Compute(b));
+    }
 }
