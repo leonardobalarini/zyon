@@ -33,7 +33,7 @@ public static class BackdropGenerator
                 DeadTrees(img, shape, light, Ridge(img, shape, light, salt, step: 80, baseY: 165, amplitude: 12, cap: 1), salt, count: 8);
                 break;
             case ("snow", false):
-                Ridge(img, shape, light, salt, step: 48, baseY: 150, amplitude: 110, cap: 8);
+                Ridge(img, shape, light, salt, step: 60, baseY: 150, amplitude: 90, cap: 8);
                 break;
             case ("snow", true):
                 Pines(img, shape, light, Ridge(img, shape, light, salt, step: 80, baseY: 160, amplitude: 30, cap: 2), salt, count: 10);
@@ -65,7 +65,7 @@ public static class BackdropGenerator
 
     private static int Mod(int x, int m) => ((x % m) + m) % m;
 
-    /// <summary>Relevo cheio até a base da imagem; as cap primeiras linhas dos trechos altos levam o realce. Devolve o topo de cada coluna.</summary>
+    /// <summary>Relevo cheio até a base da imagem; as cap primeiras linhas de todo o relevo levam o realce. Devolve o topo de cada coluna.</summary>
     private static int[] Ridge(Canvas img, Rgba shape, Rgba light, int salt, int step, int baseY, int amplitude, int cap)
     {
         var top = new int[Width];
@@ -73,9 +73,8 @@ public static class BackdropGenerator
         {
             int h = RidgeHeight(x, step, amplitude, salt);
             top[x] = baseY - h;
-            bool capped = h * 3 >= amplitude;
             for (int y = top[x]; y < Height; y++)
-                img.Set(x, y, capped && y < top[x] + cap ? light : shape);
+                img.Set(x, y, y < top[x] + cap ? light : shape);
         }
         return top;
     }
