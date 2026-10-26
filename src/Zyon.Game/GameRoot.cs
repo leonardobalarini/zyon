@@ -24,6 +24,7 @@ public partial class GameRoot : Node2D
     private PlayerController controller = null!;
     private LightOverlay lightOverlay = null!;
     private BackgroundLayers backgrounds = null!;
+    private BackdropAnchor backdropAnchor = null!;
     private BiomeDetector biomeDetector = null!;
     private BiomeAmbience ambience = null!;
     private long lastBiomeTick;
@@ -111,12 +112,13 @@ public partial class GameRoot : Node2D
             RenderingServer.SetDefaultClearColor(lastSky.ToGodot());
             GD.Print($"Zyon: mundo '{System.IO.Path.GetFileNameWithoutExtension(game.WorldPath)}' {sim.Width}×{sim.Height}, seed {game.Info.Seed}, personagem '{game.PlayerName}'");
 
-            // Fundos antes dos chunks (ordem na árvore = ordem de desenho) e da luz (a noite os escurece).
+            // Fundos antes dos chunks (ordem na árvore = ordem de desenho) e da luz (a noite os escurece). A base
+            // acompanha a superfície da área visível, lida uma vez agora (ver BackdropAnchor); é posta a cada quadro.
             backgrounds = new BackgroundLayers();
             AddChild(backgrounds);
-            backgrounds.Init(visuals, GameFlow.ArtTextures.Backgrounds,
-                GameFlow.WorldGenConfig.SurfaceMax * sim.Height * RenderMath.PixelsPerTile);
+            backgrounds.Init(visuals, GameFlow.ArtTextures.Backgrounds);
             backgrounds.Refresh(ambience);
+            backdropAnchor = new BackdropAnchor(BackdropAnchor.SurfaceRows(newSession.World));
             worldRenderer = new WorldRenderer();
             AddChild(worldRenderer);
             worldRenderer.Init(newSession.World, GameFlow.Art, GameFlow.ArtTextures);
@@ -295,8 +297,12 @@ public partial class GameRoot : Node2D
             overlay.Refresh(GetGlobalMousePosition());
             hotbar.Refresh();
             inventory.Refresh();
-            worldRenderer.UpdateVisible(camera.VisiblePixels());
-            lightOverlay.UpdateLight(camera.VisiblePixels());
+            var visible = camera.VisiblePixels();
+            worldRenderer.UpdateVisible(visible);
+            lightOverlay.UpdateLight(visible);
+            backgrounds.SetBase(backdropAnchor.Update(
+                (int)Mathf.Floor(visible.Position.X / RenderMath.PixelsPerTile),
+                (int)Mathf.Floor(visible.End.X / RenderMath.PixelsPerTile), (float)delta) * RenderMath.PixelsPerTile);
             long frameEnd = Stopwatch.GetTimestamp();
             RecordFrame(delta, measured, frameStart, updateEnd, frameEnd, (int)(session.World.Tick - tickBefore));
             if (profile is not null)

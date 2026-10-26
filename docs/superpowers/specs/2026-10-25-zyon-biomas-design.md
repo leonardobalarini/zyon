@@ -135,7 +135,7 @@ Quando um bloco com `tree` é quebrado, todos os blocos com `tree` ligados a ele
 
 - `data/client/biomes.json`: por bioma, `sky` (cor) e os nomes das camadas de fundo. O `visuals.json` (que só tinha o céu) sai: `ClientVisuals` passa a ler `data/client/biomes.json` e exige uma entrada para cada bioma do `data/biomes.json`.
 - `BiomeAmbience` (Client, testável): recebe o bioma detectado e o tempo; dá a cor do céu atual e o peso de cada fundo, mudando linearmente em 2 s quando o bioma muda.
-- Godot: `RenderingServer.SetDefaultClearColor` com a cor atual; um `Parallax2D` por camada e bioma (fator de rolagem 0,1 e 0,3, repetição horizontal), com `Modulate.A` = peso; a base da camada fica na altura média da superfície do mundo (linha `surfaceMax × altura`), e não se desenha nada abaixo dela. Ficam atrás dos chunks e embaixo da camada de luz (a noite os escurece).
+- Godot: `RenderingServer.SetDefaultClearColor` com a cor atual; um `Parallax2D` por camada e bioma (fator de rolagem 0,1 e 0,3, repetição horizontal), com `Modulate.A` = peso; a base da camada fica na superfície média das colunas visíveis, alguns tiles abaixo do chão (`BackdropAnchor`, Client: superfície de cada coluna lida uma vez ao abrir o jogo, média em O(1) por soma prefixada, aproximação exponencial suave), e não se desenha nada abaixo dela. Uma linha fixa (ex.: `surfaceMax × altura`) não serve: a superfície varia 10% da altura (120 tiles num mundo pequeno) e o fundo tem só ~22 tiles, então ele ficaria quase sempre escondido atrás do terreno. Ficam atrás dos chunks e embaixo da camada de luz (a noite os escurece).
 - F3: linha com o bioma atual.
 
 ## 6. Saves

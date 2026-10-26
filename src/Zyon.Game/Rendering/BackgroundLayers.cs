@@ -7,7 +7,8 @@ namespace Zyon.Game.Rendering;
 /// <summary>
 /// Fundo distante em parallax: as camadas de todos os biomas (distantes primeiro, depois as próximas), cada uma um
 /// Parallax2D que rola na horizontal a uma fração da câmera e se repete; na vertical acompanha o mundo, com a base
-/// na linha surfaceMax × altura (abaixo dela só o céu). A opacidade de cada bioma vem do BiomeAmbience. Fica antes
+/// numa linha dada por <see cref="SetBase"/> (a superfície média da área visível, suavizada: BackdropAnchor; abaixo
+/// dela só o céu). A opacidade de cada bioma vem do BiomeAmbience. Fica antes
 /// dos chunks na árvore (atrás deles) e antes da LightOverlay (a noite escurece o fundo).
 /// </summary>
 public partial class BackgroundLayers : Node2D
@@ -26,8 +27,10 @@ public partial class BackgroundLayers : Node2D
     private const int RepeatTimes = 16;
 
     private readonly List<(string Biome, Parallax2D Node)> layers = new();
+    private readonly List<Sprite2D> sprites = new();
+    private float baseY = float.NaN;
 
-    public void Init(ClientVisuals visuals, IReadOnlyDictionary<string, Texture2D> textures, float baseY)
+    public void Init(ClientVisuals visuals, IReadOnlyDictionary<string, Texture2D> textures)
     {
         for (int i = 0; i < ClientVisuals.LayerCount; i++)
             foreach (var (biome, visual) in visuals.Biomes)
@@ -40,17 +43,27 @@ public partial class BackgroundLayers : Node2D
                     RepeatTimes = RepeatTimes,
                     Visible = false,
                 };
-                parallax.AddChild(new Sprite2D
+                var sprite = new Sprite2D
                 {
                     Texture = texture,
                     Centered = false,
                     Scale = new Vector2(PixelScale, PixelScale),
-                    Position = new Vector2(0f, baseY - texture.GetHeight() * PixelScale),
                     TextureFilter = TextureFilterEnum.Nearest,
-                });
+                };
+                parallax.AddChild(sprite);
+                sprites.Add(sprite);
                 AddChild(parallax);
                 layers.Add((biome, parallax));
             }
+    }
+
+    /// <summary>Põe o pé de todas as camadas na altura <paramref name="baseYPixels"/> (pixels do mundo).</summary>
+    public void SetBase(float baseYPixels)
+    {
+        if (baseYPixels == baseY) return;
+        baseY = baseYPixels;
+        foreach (var sprite in sprites)
+            sprite.Position = new Vector2(0f, baseY - sprite.Texture.GetHeight() * PixelScale);
     }
 
     public void Refresh(BiomeAmbience ambience)
