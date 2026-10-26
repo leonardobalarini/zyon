@@ -214,4 +214,106 @@ public class TileGeneratorTests
         Assert.Contains("art.json", ex.Message);
         Assert.Contains(expected, ex.Message);
     }
+
+    private static ArtSource FreshSource() => ArtSource.LoadFromFile(Path.Combine(RepoPaths.Root, "art", "art.json"), R);
+
+    private static readonly string[] Gray = ["#101010", "#808080", "#c0c0c0"];
+
+    private static (int X, int Y) CellOf(ArtSource src, int row, int mask, int variation) =>
+        ((mask * src.Variations + variation) * T, row * T);
+
+    /// <summary>Em cada coluna da célula, as linhas escuras ficam a 4 px uma da outra (faixas horizontais).</summary>
+    private static void AssertStrata(Canvas img, int x, int y)
+    {
+        var dark = Rgba.Parse(Gray[0]);
+        for (int px = 0; px < T; px++)
+        {
+            var rows = Enumerable.Range(0, T).Where(py => img.Get(x + px, y + py) == dark).ToList();
+            Assert.Equal(4, rows.Count);
+            for (int i = 1; i < rows.Count; i++) Assert.Equal(4, rows[i] - rows[i - 1]);
+        }
+    }
+
+    [Fact]
+    public void Strata_HasHorizontalDarkLinesEvery4Pixels()
+    {
+        var src = FreshSource();
+        src.Blocks["stone"] = new MaterialSource { Recipe = "strata", Palette = Gray };
+        var img = TileGenerator.BuildBlocks(src, R, out var rows);
+        var (x, y) = CellOf(src, rows["stone"], mask: 15, variation: 1);
+
+        AssertStrata(img, x, y);
+    }
+
+    [Fact]
+    public void StrataWall_HasTheSameLines()
+    {
+        var src = FreshSource();
+        src.Walls["stone_wall"] = new MaterialSource { Recipe = "strata", Palette = Gray };
+        var img = TileGenerator.BuildWalls(src, R, out var rows);
+        var (x, y) = CellOf(src, rows["stone_wall"], mask: 15, variation: 0);
+
+        AssertStrata(img, x, y);
+    }
+
+    [Fact]
+    public void Planks_HaveDarkJointEvery4Rows_AndASeamInEachPlank()
+    {
+        var src = FreshSource();
+        src.Blocks["stone"] = new MaterialSource { Recipe = "planks", Palette = Gray };
+        var img = TileGenerator.BuildBlocks(src, R, out var rows);
+        var (x, y) = CellOf(src, rows["stone"], mask: 15, variation: 2);
+        var dark = Rgba.Parse(Gray[0]);
+
+        foreach (int py in new[] { 3, 7, 11, 15 })
+            for (int px = 0; px < T; px++)
+                Assert.Equal(dark, img.Get(x + px, y + py));
+        foreach (int py in new[] { 1, 5, 9, 13 })
+            Assert.Contains(Enumerable.Range(0, T), px => img.Get(x + px, y + py) == dark);
+    }
+
+    [Fact]
+    public void ClumpsWithAccent_HaveGlints()
+    {
+        var src = FreshSource();
+        src.Blocks["stone"] = new MaterialSource { Recipe = "clumps", Palette = Gray, Accent = ["#0000ff", "#00ff00", "#ff0000"] };
+        var img = TileGenerator.BuildBlocks(src, R, out var rows);
+        var (x, y) = CellOf(src, rows["stone"], mask: 15, variation: 0);
+        var brightest = Rgba.Parse("#ff0000");
+
+        Assert.Contains(Enumerable.Range(0, T * T), i => img.Get(x + i % T, y + i / T) == brightest);
+    }
+
+    [Fact]
+    public void PlanksWall_IsRejected()
+    {
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(RepoPaths.Root, "art", "art.json")))!;
+        root["walls"]!["stone_wall"]!["recipe"] = "planks";
+
+        var ex = Assert.Throws<DataException>(() => ArtSource.Load(root.ToJsonString(), R));
+
+        Assert.Contains("planks", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("trunk", true)]
+    [InlineData("cactus", true)]
+    [InlineData("branch", false)]
+    [InlineData("leaves", false)]
+    [InlineData("grass", false)]
+    [InlineData("shrub", false)]
+    [InlineData("bush", false)]
+    public void TreeAndDecorationShapes_HaveOpaqueAndTransparentPixels(string shape, bool crossesVertically)
+    {
+        var img = new Canvas(T, T);
+        var pal = Gray.Select(Rgba.Parse).ToArray();
+
+        PropGenerator.Draw(img, 0, 0, shape, pal, pal);
+
+        int opaque = Enumerable.Range(0, T * T).Count(i => img.Get(i % T, i / T).A != 0);
+        Assert.InRange(opaque, 8, T * T - 1);
+        if (crossesVertically)   // tronco e cacto atravessam o tile: o de cima continua o de baixo
+            for (int px = 0; px < T; px++)
+                Assert.Equal(img.Get(px, 0).A != 0, img.Get(px, T - 1).A != 0);
+    }
 }

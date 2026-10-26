@@ -43,8 +43,8 @@ public sealed class ArtSource
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     };
 
-    private static readonly string[] SolidRecipes = ["clumps", "panels", "ore", "plates", "stripes"];
-    private static readonly string[] WallRecipes = ["clumps", "plates"];
+    private static readonly string[] SolidRecipes = ["clumps", "panels", "ore", "plates", "stripes", "strata", "planks"];
+    private static readonly string[] WallRecipes = ["clumps", "plates", "strata"];
 
     public int Seed { get; set; }
     public int Variations { get; set; } = 3;
@@ -104,6 +104,7 @@ public sealed class ArtSource
                 if (PropGenerator.ShapesWithAccent.Contains(m.Shape)) CheckColors(m.Accent, 3, $"{ctx}.accent");
             }
             if (m.Recipe == "stripes") CheckColors(m.Accent, 3, $"{ctx}.accent");
+            if (m.Recipe == "clumps" && m.Accent is not null) CheckColors(m.Accent, 3, $"{ctx}.accent");   // brilhos (gelo)
             if (m.Recipe == "ore")
             {
                 if (m.Base is null || !Blocks.TryGetValue(m.Base, out var b) || b.Recipe is not ("clumps" or "panels"))
