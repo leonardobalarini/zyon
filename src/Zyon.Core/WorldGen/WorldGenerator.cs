@@ -16,7 +16,7 @@ public sealed record GeneratedWorld(TileWorld Tiles, int Seed, int GeneratorVers
 public sealed class WorldGenerator
 {
     /// <summary>Incremente sempre que a saída da geração mudar para a mesma seed.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
     public const int MinSize = 64;
 
     private readonly Registry registry;

@@ -1,6 +1,9 @@
 namespace Zyon.Core.WorldGen.Passes;
 
-/// <summary>Paredes de fundo em todo tile abaixo da superfície (inclusive dentro das cavernas): solo na camada de solo, rocha abaixo.</summary>
+/// <summary>
+/// Paredes de fundo em todo tile abaixo da superfície (inclusive dentro das cavernas): as do bioma do tile na camada
+/// de cima e na rocha rasa, rocha na rocha profunda.
+/// </summary>
 internal sealed class WallsPass : IWorldGenPass
 {
     public string Name => "walls";
@@ -9,12 +12,25 @@ internal sealed class WallsPass : IWorldGenPass
     {
         var world = ctx.World;
         var m = ctx.Materials;
+        var biomes = ctx.Biomes ?? throw new InvalidOperationException("biomas não carregados: use WorldGenConfigLoader.LoadFromDirectory");
 
         Parallel.For(0, world.Width, x =>
         {
+            int surface = ctx.Surface[x];
             int dirtBottom = ctx.DirtBottom[x];
-            for (int y = ctx.Surface[x] + 1; y < world.Height; y++)
-                world.SetWall(x, y, y < dirtBottom ? m.DirtWall : m.StoneWall);
+            int deepStart = ctx.DeepStart[x];
+            for (int y = surface + 1; y < world.Height; y++)
+            {
+                ushort wall;
+                if (y >= deepStart)
+                    wall = m.StoneWall;
+                else
+                {
+                    var biome = biomes.At(x, y, surface);
+                    wall = y < dirtBottom ? biome.SurfaceWall : biome.ShallowWall;
+                }
+                world.SetWall(x, y, wall);
+            }
         });
     }
 }

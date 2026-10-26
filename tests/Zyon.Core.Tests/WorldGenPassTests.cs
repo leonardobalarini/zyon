@@ -34,21 +34,38 @@ public class WorldGenPassTests
     }
 
     [Fact]
-    public void Layers_DirtOnTop_StoneBelow_DeepStoneAtBottom()
+    public void Layers_FollowTheBiomeOfEachTile_AndDeepStoneBelow()
     {
-        var ctx = Run(new TerrainPass(), new LayersPass());
+        var ctx = Run(new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass());
         var m = ctx.Materials;
+        var map = ctx.Biomes!;
 
         for (int x = 0; x < Width; x++)
         {
-            int s = ctx.Surface[x];
-            int d = ctx.DirtBottom[x];
+            int s = ctx.Surface[x], d = ctx.DirtBottom[x], deep = ctx.DeepStart[x];
             Assert.True(d > s, $"coluna {x}: DirtBottom {d} <= superfície {s}");
-            Assert.Equal(m.Dirt, ctx.World.GetBlock(x, s));
-            Assert.Equal(m.Dirt, ctx.World.GetBlock(x, d - 1));
-            Assert.Equal(m.Stone, ctx.World.GetBlock(x, d));
-            Assert.Equal(m.DeepStone, ctx.World.GetBlock(x, Height - 1));
+            Assert.True(deep > d, $"coluna {x}: DeepStart {deep} <= DirtBottom {d}");
+            for (int y = s; y < Height; y++)
+            {
+                var b = map.At(x, y, s);
+                ushort expected = y >= deep ? m.DeepStone : y < d ? b.SurfaceBlock : b.ShallowBlock;
+                Assert.Equal(expected, ctx.World.GetBlock(x, y));
+            }
         }
+    }
+
+    [Fact]
+    public void Layers_HaveTheBlocksOfAllThreeBiomes()
+    {
+        var ctx = Run(new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass());
+        var r = ctx.Registry;
+        var present = new HashSet<ushort>();
+        for (int y = 0; y < Height; y++)
+        for (int x = 0; x < Width; x++)
+            present.Add(ctx.World.GetBlock(x, y));
+
+        foreach (var name in new[] { "dirt", "stone", "snow", "ice", "sand", "sandstone", "deep_stone" })
+            Assert.Contains(r.BlockId(name), present);
     }
 
     [Fact]
@@ -187,35 +204,66 @@ public class WorldGenPassTests
     }
 
     [Fact]
-    public void Ores_NeverReplaceDirtOrAir()
+    public void Ores_NeverReplaceTheSurfaceLayerOrAir()
     {
-        var before = Run(new TerrainPass(), new LayersPass(), new CavesPass());
-        var after = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass());
-        var m = after.Materials;
+        var before = Run(new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass(), new CavesPass());
+        var after = Run(new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass(), new CavesPass(), new OrePass());
+        var surfaceBlocks = after.Biomes!.Set.All.Select(b => b.SurfaceBlock).ToHashSet();
 
         for (int y = 0; y < Height; y++)
         for (int x = 0; x < Width; x++)
         {
             ushort old = before.World.GetBlock(x, y);
-            if (old == 0 || old == m.Dirt)
+            if (old == 0 || surfaceBlocks.Contains(old))
                 Assert.Equal(old, after.World.GetBlock(x, y));
         }
     }
 
     [Fact]
-    public void Walls_FillBelowSurface_IncludingCaves_AndNothingAbove()
+    public void Ores_AlsoReplaceIceAndSandstone()
     {
-        var ctx = Run(new TerrainPass(), new LayersPass(), new CavesPass(), new WallsPass());
+        var root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")))!;
+        root["ores"] = System.Text.Json.Nodes.JsonNode.Parse(
+            """[{"block":"ore_a","minDepth":0.3,"maxDepth":0.65,"veinsPerMillionTiles":3000,"veinSizeMin":10,"veinSizeMax":14}]""");
+        var config = WorldGenConfigLoader.Load(root.ToJsonString());
+        var loaded = TestData.WorldGenConfig();
+        config.Biomes = loaded.Biomes;
+        IWorldGenPass[] layers = [new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass()];
+
+        var before = RunWith(config, layers);
+        var after = RunWith(config, [.. layers, new OrePass()]);
+        var r = after.Registry;
+        ushort ore = r.BlockId("ore_a");
+        var replaced = new HashSet<ushort>();
+        for (int y = 0; y < Height; y++)
+        for (int x = 0; x < Width; x++)
+            if (after.World.GetBlock(x, y) == ore && before.World.GetBlock(x, y) != ore)
+                replaced.Add(before.World.GetBlock(x, y));
+
+        Assert.Contains(r.BlockId("ice"), replaced);
+        Assert.Contains(r.BlockId("sandstone"), replaced);
+    }
+
+    [Fact]
+    public void Walls_FollowTheBiome_BelowTheSurface_AndNothingAbove()
+    {
+        var ctx = Run(new TerrainPass(), new MountainPass(), new BiomesPass(), new LayersPass(), new CavesPass(), new WallsPass());
         var m = ctx.Materials;
+        var map = ctx.Biomes!;
 
         for (int x = 0; x < Width; x++)
         for (int y = 0; y < Height; y++)
         {
             ushort wall = ctx.World.GetWall(x, y);
-            if (y <= ctx.Surface[x])
+            int s = ctx.Surface[x];
+            if (y <= s)
+            {
                 Assert.Equal(0, wall);
-            else
-                Assert.Equal(y < ctx.DirtBottom[x] ? m.DirtWall : m.StoneWall, wall);
+                continue;
+            }
+            var b = map.At(x, y, s);
+            ushort expected = y >= ctx.DeepStart[x] ? m.StoneWall : y < ctx.DirtBottom[x] ? b.SurfaceWall : b.ShallowWall;
+            Assert.Equal(expected, wall);
         }
     }
 
@@ -226,6 +274,7 @@ public class WorldGenPassTests
         root["ores"] = System.Text.Json.Nodes.JsonNode.Parse(
             """[{"block":"ore_a","minDepth":0.50,"maxDepth":0.52,"veinsPerMillionTiles":500,"veinSizeMin":10,"veinSizeMax":14}]""");
         var config = WorldGenConfigLoader.Load(root.ToJsonString());
+        config.Biomes = TestData.WorldGenConfig().Biomes;
 
         var ctx = RunWith(config, new TerrainPass(), new LayersPass(), new CavesPass(), new OrePass());
         var (block, ore) = ctx.Materials.Ores[0];
