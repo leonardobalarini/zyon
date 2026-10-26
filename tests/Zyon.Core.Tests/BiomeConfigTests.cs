@@ -59,6 +59,7 @@ public class BiomeConfigTests
         { "duplicate-id", "repetido" },
         { "tree-missing", "tree" },
         { "spacing-zero", "treeSpacing" },
+        { "edge-noise-too-big", "edgeNoise" },
     };
 
     private static string Broken(string name) => name switch
@@ -84,6 +85,7 @@ public class BiomeConfigTests
         "duplicate-id" => Edit(r => Biome(r, "desert")["id"] = "snow"),
         "tree-missing" => Edit(r => Biome(r, "forest").Remove("tree")),
         "spacing-zero" => Edit(r => Biome(r, "forest")["treeSpacing"] = 0),
+        "edge-noise-too-big" => Edit(r => r["edgeNoise"] = 10),
         _ => throw new ArgumentException(name),
     };
 
@@ -129,6 +131,23 @@ public class BiomeConfigTests
         var ex = Assert.Throws<DataException>(() => BiomeSet.Resolve(config, TestData.Registry()));
 
         Assert.Contains("marcador", ex.Message);
+    }
+
+    [Fact]
+    public void MarkerRepeatedInTheSameBiome_ThrowsOnResolve()
+    {
+        var config = BiomeConfigLoader.Load(Edit(r => Biome(r, "snow")["markers"] = new JsonArray("snow", "snow")));
+
+        var ex = Assert.Throws<DataException>(() => BiomeSet.Resolve(config, TestData.Registry()));
+
+        Assert.Contains("repetido", ex.Message);
+    }
+
+    [Fact]
+    public void MaxEdgeNoise_StaysBelowTheBandMargin()
+    {
+        Assert.True(BiomeConfigLoader.MaxEdgeNoise < Zyon.Core.WorldGen.Passes.BiomesPass.EdgeMargin);
+        Assert.Equal(10, Zyon.Core.WorldGen.Passes.BiomesPass.EdgeMargin);
     }
 
     [Fact]

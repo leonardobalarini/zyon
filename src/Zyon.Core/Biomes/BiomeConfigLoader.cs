@@ -7,6 +7,12 @@ public static class BiomeConfigLoader
 {
     public const string FileName = "biomes.json";
 
+    /// <summary>
+    /// Maior 'edgeNoise' aceito: precisa ser menor que a folga entre a faixa e a montanha (BiomesPass.EdgeMargin),
+    /// senão o ruído da divisa levaria o bioma da faixa até a montanha.
+    /// </summary>
+    public const int MaxEdgeNoise = 9;
+
     public static readonly string[] Shapes = ["dead", "pine", "cactus"];
 
     public static BiomeConfig LoadFromDirectory(string dataDir)
@@ -41,7 +47,7 @@ public static class BiomeConfigLoader
     private static void Validate(BiomeConfig c)
     {
         Require(c.Biomes is not null, "campo 'biomes' não pode ser nulo");
-        Require(c.EdgeNoise >= 0, "'edgeNoise' deve ser >= 0");
+        Require(c.EdgeNoise >= 0 && c.EdgeNoise <= MaxEdgeNoise, $"'edgeNoise' deve estar entre 0 e {MaxEdgeNoise}");
         Require(c.Taper >= 1, "'taper' deve ser >= 1");
         Require(c.DetectWidth >= 1 && c.DetectHeight >= 1, "'detectWidth' e 'detectHeight' devem ser >= 1");
         Require(c.DetectThreshold >= 1, "'detectThreshold' deve ser >= 1");

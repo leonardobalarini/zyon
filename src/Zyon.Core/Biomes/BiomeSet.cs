@@ -65,7 +65,13 @@ public sealed class BiomeSet
             }
 
             var t = e.Tree!;
-            var tree = new BiomeTree(t.Shape switch { "dead" => TreeShape.Dead, "pine" => TreeShape.Pine, _ => TreeShape.Cactus },
+            var tree = new BiomeTree(t.Shape switch
+            {
+                "dead" => TreeShape.Dead,
+                "pine" => TreeShape.Pine,
+                "cactus" => TreeShape.Cactus,
+                _ => throw new DataException($"{ctx}: 'tree.shape' '{t.Shape}' desconhecida"),
+            },
                 TreeBlock(t.Trunk, "tree.trunk"), TreeBlock(t.Crown, "tree.crown"), t.HeightMin, t.HeightMax);
 
             var markers = new List<ushort>();
@@ -73,7 +79,10 @@ public sealed class BiomeSet
             {
                 ushort id = Block(name!, "markers");
                 if (markerOwner.TryGetValue(id, out var other))
+                {
+                    if (other == e.Id) throw new DataException($"{ctx}: marcador '{name}' repetido");
                     throw new DataException($"{ctx}: marcador '{name}' já é do bioma '{other}' (cada bloco marca um bioma só)");
+                }
                 markerOwner[id] = e.Id;
                 markers.Add(id);
             }

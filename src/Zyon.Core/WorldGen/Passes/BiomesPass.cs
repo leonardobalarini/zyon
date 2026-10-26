@@ -3,7 +3,8 @@ namespace Zyon.Core.WorldGen.Passes;
 /// <summary>
 /// Põe as duas faixas de bioma (neve e deserto, nos dados) em lados opostos do centro — o Random do passe sorteia o
 /// lado —, cada uma a uma distância da montanha (ou do centro) e com largura sorteadas entre os limites dos dados,
-/// em frações da largura do mundo. A montanha e o bunker ficam sempre no bioma padrão.
+/// em frações da largura do mundo. A montanha e o bunker ficam sempre no bioma padrão. Em mundos minúsculos
+/// (menos de ~200 colunas) a faixa encostada na borda do mundo (<see cref="MinBandWidth"/>) pode cobrir a montanha.
 /// </summary>
 internal sealed class BiomesPass : IWorldGenPass
 {
@@ -20,6 +21,7 @@ internal sealed class BiomesPass : IWorldGenPass
     public void Apply(WorldGenContext ctx)
     {
         var map = ctx.Biomes ?? throw new InvalidOperationException("biomas não carregados: use WorldGenConfigLoader.LoadFromDirectory");
+        if (map.Bands.Count > 0) throw new InvalidOperationException("o passe 'biomes' já rodou neste contexto");
         int width = ctx.World.Width, center = width / 2;
         int innerLeft = center, innerRight = center;
         if (ctx.Mountain is { } m)

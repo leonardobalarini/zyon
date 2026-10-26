@@ -54,8 +54,14 @@ public class BiomesPassTests
     {
         var ctx = RunBiomes(width, height, seed);
 
+        var (innerLeft, innerRight) = Inner(ctx);
         foreach (var (biome, left, right) in ctx.Biomes!.Bands)
-            Assert.InRange(right - left + 1, (int)(biome.Band!.WidthMin * width) - 1, (int)MathF.Ceiling(biome.Band.WidthMax * width) + 1);
+        {
+            var band = biome.Band!;
+            Assert.InRange(right - left + 1, (int)(band.WidthMin * width) - 1, (int)MathF.Ceiling(band.WidthMax * width) + 1);
+            int gap = left < innerLeft ? innerLeft - right : left - innerRight;
+            Assert.InRange(gap, (int)(band.GapMin * width) - 1, (int)MathF.Ceiling(band.GapMax * width) + 1);
+        }
     }
 
     [Theory]
@@ -71,6 +77,16 @@ public class BiomesPassTests
             Assert.InRange(left, 0, width - 1);
             Assert.InRange(right, left + BiomesPass.MinBandWidth - 1, width - 1);
         }
+    }
+
+    [Fact]
+    public void RunningTwice_Throws()
+    {
+        var ctx = RunBiomes(1050, 300, 1);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new BiomesPass().Apply(ctx));
+
+        Assert.Contains("biomes", ex.Message);
     }
 
     [Fact]
