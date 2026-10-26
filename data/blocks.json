@@ -11,5 +11,18 @@
   { "id": "crate",        "hardness": 0.5, "solid": false, "drops": "crate" },
   { "id": "pipe",         "hardness": 0.5, "solid": false, "drops": "pipe" },
   { "id": "vent",         "hardness": 0.5, "solid": false, "drops": "vent" },
-  { "id": "panel",        "hardness": 0.5, "solid": false, "drops": "panel", "light": 0.2 }
+  { "id": "panel",        "hardness": 0.5, "solid": false, "drops": "panel", "light": 0.2 },
+  { "id": "snow",         "hardness": 0.8, "solid": true,  "drops": "snow" },
+  { "id": "ice",          "hardness": 2.0, "solid": true,  "drops": "ice" },
+  { "id": "sand",         "hardness": 1.0, "solid": true,  "drops": "sand" },
+  { "id": "sandstone",    "hardness": 2.0, "solid": true,  "drops": "sandstone" },
+  { "id": "wood",         "hardness": 1.5, "solid": true,  "drops": "wood" },
+  { "id": "dead_trunk",   "hardness": 1.5, "solid": false, "drops": "wood", "tree": true, "trunk": true },
+  { "id": "dead_branch",  "hardness": 0.5, "solid": false, "drops": "wood", "tree": true },
+  { "id": "pine_trunk",   "hardness": 1.5, "solid": false, "drops": "wood", "tree": true, "trunk": true },
+  { "id": "pine_leaves",  "hardness": 0.2, "solid": false, "tree": true },
+  { "id": "cactus",       "hardness": 1.0, "solid": false, "drops": "cactus", "tree": true, "trunk": true },
+  { "id": "dry_grass",    "hardness": 0.0, "solid": false },
+  { "id": "frozen_shrub", "hardness": 0.0, "solid": false },
+  { "id": "dry_bush",     "hardness": 0.0, "solid": false }
 ]

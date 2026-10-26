@@ -22,6 +22,13 @@ public static class ArtBuilder
         var items = ItemIconGenerator.Build(src, registry, tiles, out var itemArts);
         var player = PlayerGenerator.Build(src, out var layers, out _);
 
+        var backgrounds = new Dictionary<string, Canvas>();   // nome da camada → imagem, na ordem do art.json
+        foreach (var (name, b) in src.Backgrounds)
+        {
+            backgrounds[$"{name}_far"] = BackdropGenerator.Draw(b!.Style, near: false, ArtSource.Colors(b.Far!), src.Seed);
+            backgrounds[$"{name}_near"] = BackdropGenerator.Draw(b.Style, near: true, ArtSource.Colors(b.Near!), src.Seed);
+        }
+
         var manifest = new ArtManifest
         {
             Variations = src.Variations,
@@ -30,6 +37,7 @@ public static class ArtBuilder
             MergeOrder = [.. src.MergeOrder],
             Items = itemArts,
             Player = player,
+            Backgrounds = [.. backgrounds.Keys],
         };
         ArtCatalog.Resolve(manifest, registry);   // a saída precisa passar na mesma validação do jogo
 
@@ -41,6 +49,7 @@ public static class ArtBuilder
             [ArtManifest.ItemsFile] = items,
         };
         foreach (var (layer, canvas) in layers) images[ArtManifest.PlayerFile(layer)] = canvas;
+        foreach (var (name, canvas) in backgrounds) images[ArtManifest.BackgroundFile(name)] = canvas;
         return new GeneratedArt(images, manifest);
     }
 

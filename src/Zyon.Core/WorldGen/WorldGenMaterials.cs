@@ -1,3 +1,4 @@
+using Zyon.Core.Biomes;
 using Zyon.Core.Data;
 using Zyon.Core.WorldGen.Structures;
 
@@ -14,6 +15,9 @@ public sealed record WorldGenMaterials(
 {
     /// <summary>Molde do bunker resolvido no Registry; null quando a configuração veio de <c>Load(json)</c>.</summary>
     public Structure? Bunker { get; init; }
+
+    /// <summary>Biomas resolvidos no Registry; null quando a configuração veio de <c>Load(json)</c>.</summary>
+    public BiomeSet? Biomes { get; init; }
 
     public static WorldGenMaterials Resolve(WorldGenConfig config, Registry registry)
     {
@@ -41,6 +45,7 @@ public sealed record WorldGenMaterials(
             ores)
         {
             Bunker = config.Bunker?.Resolve(registry),
+            Biomes = config.Biomes is null ? null : BiomeSet.Resolve(config.Biomes, registry),
         };
     }
 }

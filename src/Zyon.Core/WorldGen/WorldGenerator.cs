@@ -16,7 +16,7 @@ public sealed record GeneratedWorld(TileWorld Tiles, int Seed, int GeneratorVers
 public sealed class WorldGenerator
 {
     /// <summary>Incremente sempre que a saída da geração mudar para a mesma seed.</summary>
-    public const int Version = 2;
+    public const int Version = 3;
     public const int MinSize = 64;
 
     private readonly Registry registry;
@@ -24,7 +24,7 @@ public sealed class WorldGenerator
     private readonly WorldGenMaterials materials;
     private readonly ulong fingerprint;
 
-    /// <summary>Gerador com os passes padrão (terreno, montanha, camadas, cavernas, minérios, paredes, bunker).</summary>
+    /// <summary>Gerador com os passes padrão (terreno, montanha, biomas, camadas, cavernas, minérios, paredes, bunker, árvores).</summary>
     public WorldGenerator(Registry registry, WorldGenConfig config)
         : this(registry, config, DefaultPasses())
     {
@@ -34,11 +34,13 @@ public sealed class WorldGenerator
     [
         new TerrainPass(),
         new MountainPass(),
+        new BiomesPass(),
         new LayersPass(),
         new CavesPass(),
         new OrePass(),
         new WallsPass(),
         new BunkerPass(),
+        new TreesPass(),
     ];
 
     public WorldGenerator(Registry registry, WorldGenConfig config, IReadOnlyList<IWorldGenPass> passes)

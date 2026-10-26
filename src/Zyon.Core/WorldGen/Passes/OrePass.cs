@@ -1,6 +1,6 @@
 namespace Zyon.Core.WorldGen.Passes;
 
-/// <summary>Veios de minério por caminhada aleatória, só substituindo rocha e rocha profunda dentro da faixa de profundidade.</summary>
+/// <summary>Veios de minério por caminhada aleatória, só substituindo rocha rasa (de qualquer bioma) e rocha profunda dentro da faixa de profundidade.</summary>
 internal sealed class OrePass : IWorldGenPass
 {
     public string Name => "ores";
@@ -10,6 +10,11 @@ internal sealed class OrePass : IWorldGenPass
         var world = ctx.World;
         var m = ctx.Materials;
         var rng = ctx.Random;
+        var replaceable = new bool[ctx.Registry.Blocks.Count];
+        replaceable[m.Stone] = replaceable[m.DeepStone] = true;
+        if (ctx.Biomes is { } biomes)
+            foreach (var biome in biomes.Set.All)
+                replaceable[biome.ShallowBlock] = true;
         long area = (long)world.Width * world.Height;
 
         for (int i = 0; i < m.Ores.Count; i++)
@@ -31,7 +36,7 @@ internal sealed class OrePass : IWorldGenPass
                     if (world.InBounds(x, y) && y >= yMin && y < yMax)
                     {
                         ushort current = world.GetBlock(x, y);
-                        if (current == m.Stone || current == m.DeepStone)
+                        if (replaceable[current])
                         {
                             world.SetBlock(x, y, block);
                             placed++;

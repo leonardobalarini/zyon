@@ -1,5 +1,9 @@
 [
   { "id": "dirt_wall" },
   { "id": "stone_wall" },
-  { "id": "metal_wall" }
+  { "id": "metal_wall" },
+  { "id": "snow_wall" },
+  { "id": "ice_wall" },
+  { "id": "sand_wall" },
+  { "id": "sandstone_wall" }
 ]

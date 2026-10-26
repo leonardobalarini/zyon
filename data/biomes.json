@@ -1,0 +1,21 @@
+{
+  "default": "forest",
+  "edgeNoise": 6,
+  "taper": 4,
+  "detectWidth": 60,
+  "detectHeight": 40,
+  "detectThreshold": 200,
+  "biomes": [
+    { "id": "forest", "surfaceBlock": "dirt", "shallowBlock": "stone", "surfaceWall": "dirt_wall", "shallowWall": "stone_wall",
+      "tree": { "shape": "dead", "trunk": "dead_trunk", "crown": "dead_branch", "heightMin": 6, "heightMax": 12 },
+      "treeChance": 0.12, "treeSpacing": 5, "decoration": "dry_grass", "decorationChance": 0.25, "markers": [] },
+    { "id": "snow", "band": { "widthMin": 0.15, "widthMax": 0.2, "gapMin": 0.1, "gapMax": 0.15 },
+      "surfaceBlock": "snow", "shallowBlock": "ice", "surfaceWall": "snow_wall", "shallowWall": "ice_wall",
+      "tree": { "shape": "pine", "trunk": "pine_trunk", "crown": "pine_leaves", "heightMin": 8, "heightMax": 14 },
+      "treeChance": 0.15, "treeSpacing": 4, "decoration": "frozen_shrub", "decorationChance": 0.15, "markers": ["snow", "ice"] },
+    { "id": "desert", "band": { "widthMin": 0.15, "widthMax": 0.2, "gapMin": 0.1, "gapMax": 0.15 },
+      "surfaceBlock": "sand", "shallowBlock": "sandstone", "surfaceWall": "sand_wall", "shallowWall": "sandstone_wall",
+      "tree": { "shape": "cactus", "trunk": "cactus", "crown": "cactus", "heightMin": 3, "heightMax": 6 },
+      "treeChance": 0.06, "treeSpacing": 6, "decoration": "dry_bush", "decorationChance": 0.1, "markers": ["sand", "sandstone", "cactus"] }
+  ]
+}

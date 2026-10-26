@@ -30,7 +30,8 @@ public class BunkerPassTests
         var cfg = WorldGenConfigLoader.LoadFromDirectory(TestData.DataDir);
         var json = File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")).Replace("\"mountainOffset\": 40", "\"mountainOffset\": -40");
         var mirrored = WorldGenConfigLoader.Load(json);
-        mirrored.Bunker = cfg.Bunker;   // Load(json) não carrega o molde
+        mirrored.Bunker = cfg.Bunker;   // Load(json) não carrega o molde nem os biomas
+        mirrored.Biomes = cfg.Biomes;
         return mirrored;
     }
 
@@ -129,6 +130,7 @@ public class BunkerPassTests
     public void WithoutTemplate_Throws()
     {
         var cfg = WorldGenConfigLoader.Load(File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json")));
+        cfg.Biomes = TestData.WorldGenConfig().Biomes;   // só o molde fica de fora
 
         var ex = Assert.Throws<InvalidOperationException>(() => RunAll(config: cfg));
         Assert.Contains("molde do bunker", ex.Message);

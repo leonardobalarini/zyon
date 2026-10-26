@@ -4,7 +4,7 @@ using Zyon.Core.Data;
 namespace Zyon.Core.WorldGen;
 
 /// <summary>
-/// FNV-1a 64 da configuração normalizada (serializada em JSON) e do texto do molde do bunker. Vai no save para indicar se o mundo foi
+/// FNV-1a 64 da configuração normalizada (serializada em JSON) e do texto do molde do bunker e dos biomas. Vai no save para indicar se o mundo foi
 /// gerado com outros parâmetros: WorldGenerator.Version não captura mudanças em data/worldgen.json.
 /// </summary>
 public static class WorldGenConfigFingerprint
@@ -16,6 +16,8 @@ public static class WorldGenConfigFingerprint
         h = Mix(h, json);
         if (config.Bunker is { } bunker)
             h = Mix(h, System.Text.Encoding.UTF8.GetBytes(bunker.SourceText.ReplaceLineEndings("\n")));   // o molde muda o mundo gerado; fim de linha normalizado (CRLF/LF)
+        if (config.Biomes is { } biomes)
+            h = Mix(h, JsonSerializer.SerializeToUtf8Bytes(biomes, RegistryLoader.Options));   // os biomas mudam o mundo gerado
         return h;
     }
 

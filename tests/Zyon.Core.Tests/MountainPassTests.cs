@@ -96,6 +96,34 @@ public class MountainPassTests
             Assert.True(ctx.Surface[x] >= minRow, $"coluna {x}: superfície {ctx.Surface[x]} acima de {minRow}");
     }
 
+    [Theory]
+    [InlineData(40, 1)]
+    [InlineData(-40, -1)]
+    public void Mountain_GentleFoot_IsTheEndOfTheGentleSlope(int offset, int dir)
+    {
+        var cfg = WorldGenConfigLoader.Load(File.ReadAllText(Path.Combine(TestData.DataDir, "worldgen.json"))
+            .Replace("\"mountainOffset\": 40", $"\"mountainOffset\": {offset}"));
+        const int gentle = 80;   // mundo de teste (512): k = 1, largura suave sem encolher
+        var terrain = TerrainOnly();
+        var ctx = RunMountain(config: cfg);
+        var m = ctx.Mountain!;
+
+        Assert.Equal(gentle, cfg.MountainGentleWidth);
+        Assert.Equal(m.PeakX + dir * gentle, m.GentleFootX);
+        for (int i = 0; i <= gentle / 2; i++)
+        {
+            int x = m.PeakX + dir * i;
+            Assert.True(ctx.Surface[x] < terrain.Surface[x], $"coluna {x} (i={i}) não foi elevada");
+        }
+        for (int i = 0; i <= gentle; i++)
+            Assert.True(ctx.Surface[m.PeakX + dir * i] <= terrain.Surface[m.PeakX + dir * i]);
+        for (int i = 1; i <= 20; i++)
+        {
+            int x = m.GentleFootX + dir * i;
+            Assert.Equal(terrain.Surface[x], ctx.Surface[x]);   // além do pé suave: terreno intacto
+        }
+    }
+
     [Fact]
     public void Mountain_IsDeterministic()
     {

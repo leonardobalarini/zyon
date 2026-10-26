@@ -1,0 +1,5 @@
+{
+  "forest": { "sky": "#7f9fbf", "layers": ["forest_far", "forest_near"] },
+  "snow":   { "sky": "#a9bfd6", "layers": ["snow_far", "snow_near"] },
+  "desert": { "sky": "#c9ad86", "layers": ["desert_far", "desert_near"] }
+}

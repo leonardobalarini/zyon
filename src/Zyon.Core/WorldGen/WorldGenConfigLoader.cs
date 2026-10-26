@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Zyon.Core.Biomes;
 using Zyon.Core.Data;
 using Zyon.Core.WorldGen.Structures;
 
@@ -15,6 +16,7 @@ public static class WorldGenConfigLoader
             throw new DataException($"{FileName}: arquivo não encontrado em '{dataDir}'");
         var config = Load(File.ReadAllText(path));
         config.Bunker = StructureLoader.LoadFromDirectory(dataDir, config.BunkerStructure);
+        config.Biomes = BiomeConfigLoader.LoadFromDirectory(dataDir);
         return config;
     }
 

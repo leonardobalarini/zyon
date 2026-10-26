@@ -44,6 +44,7 @@ internal sealed class MountainPass : IWorldGenPass
             ctx.Surface[x] = top;
         }
 
-        ctx.Mountain = new MountainInfo(peakX, footX, facesLeft);
+        int gentleFootX = Math.Clamp(peakX + dir * gentle, 0, width - 1);
+        ctx.Mountain = new MountainInfo(peakX, footX, facesLeft, gentleFootX);
     }
 }

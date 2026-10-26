@@ -14,14 +14,31 @@
     "crate":        { "recipe": "prop", "shape": "crate", "palette": ["#4a3a26", "#6e5636", "#8e744c"] },
     "pipe":         { "recipe": "prop", "shape": "pipe",  "palette": ["#3d4a44", "#5a6e64", "#7f958a"] },
     "vent":         { "recipe": "prop", "shape": "vent",  "palette": ["#22272c", "#3e464f", "#5c6672"] },
-    "panel":        { "recipe": "prop", "shape": "panel", "palette": ["#2a3038", "#434c58", "#626d7c"], "accent": ["#1e5a3a", "#3fd07a", "#b8ffd0"] }
+    "panel":        { "recipe": "prop", "shape": "panel", "palette": ["#2a3038", "#434c58", "#626d7c"], "accent": ["#1e5a3a", "#3fd07a", "#b8ffd0"] },
+    "snow":         { "recipe": "clumps", "palette": ["#9aa6b4", "#c4cdd8", "#e6ecf2"] },
+    "ice":          { "recipe": "clumps", "palette": ["#4f7f9e", "#76a6c4", "#a3cde3"], "accent": ["#bfe3f5", "#e2f4fc", "#ffffff"] },
+    "sand":         { "recipe": "clumps", "palette": ["#a08455", "#c2a46c", "#dcc38c"] },
+    "sandstone":    { "recipe": "strata", "palette": ["#7d5f3a", "#9a7a4e", "#b59664"] },
+    "wood":         { "recipe": "planks", "palette": ["#4a3220", "#6e4c30", "#8e6a44"] },
+    "dead_trunk":   { "recipe": "prop", "shape": "trunk",  "palette": ["#2e2620", "#4a3e34", "#62564a"] },
+    "dead_branch":  { "recipe": "prop", "shape": "branch", "palette": ["#2e2620", "#4a3e34", "#62564a"] },
+    "pine_trunk":   { "recipe": "prop", "shape": "trunk",  "palette": ["#2e2016", "#4a3424", "#664a34"] },
+    "pine_leaves":  { "recipe": "prop", "shape": "leaves", "palette": ["#1c3326", "#2a4a36", "#3e6650"] },
+    "cactus":       { "recipe": "prop", "shape": "cactus", "palette": ["#2c4a2a", "#46703e", "#6e9a5a"] },
+    "dry_grass":    { "recipe": "prop", "shape": "grass",  "palette": ["#5e5034", "#857244", "#a8925c"] },
+    "frozen_shrub": { "recipe": "prop", "shape": "shrub",  "palette": ["#26343a", "#3a4e56", "#56707a"], "accent": ["#c4cdd8", "#e6ecf2", "#ffffff"] },
+    "dry_bush":     { "recipe": "prop", "shape": "bush",   "palette": ["#3e3022", "#5a4632", "#786048"] }
   },
   "walls": {
     "dirt_wall":  { "recipe": "clumps", "palette": ["#2a2018", "#3a2d22", "#46372a"] },
     "stone_wall": { "recipe": "clumps", "palette": ["#2c2c2a", "#3a3a37", "#464642"] },
-    "metal_wall": { "recipe": "plates", "palette": ["#22282e", "#2e353c", "#3a424a"] }
+    "metal_wall": { "recipe": "plates", "palette": ["#22282e", "#2e353c", "#3a424a"] },
+    "snow_wall":      { "recipe": "clumps", "palette": ["#4a5260", "#5c6676", "#6c7686"] },
+    "ice_wall":       { "recipe": "clumps", "palette": ["#22394a", "#2c4a5e", "#365a70"] },
+    "sand_wall":      { "recipe": "clumps", "palette": ["#4c3e28", "#5e4c32", "#6c583c"] },
+    "sandstone_wall": { "recipe": "strata", "palette": ["#3c2e1e", "#4a3a26", "#584630"] }
   },
-  "mergeOrder": ["dirt", "stone", "deep_stone", "ore_a", "ore_b"],
+  "mergeOrder": ["snow", "sand", "dirt", "ice", "sandstone", "stone", "deep_stone", "ore_a", "ore_b"],
   "player": {
     "skin": ["#9a6a4a", "#c08a64", "#d8a880"],
     "hair": ["#2a1e18", "#3e2c22", "#5a4232"],
@@ -32,5 +49,10 @@
   },
   "items": {
     "basic_pickaxe": { "recipe": "pickaxe", "handle": ["#4a3420", "#6e5032", "#8f6c46"], "head": ["#5a5f66", "#8a9099", "#c4cad2"] }
+  },
+  "backgrounds": {
+    "forest": { "style": "forest", "far": ["#5d6b78", "#6c7a86"], "near": ["#3a434c", "#4a545e"] },
+    "snow":   { "style": "snow",   "far": ["#7c8ea4", "#dfe8f2"], "near": ["#4c5c6e", "#c8d4e0"] },
+    "desert": { "style": "desert", "far": ["#b08a64", "#c49e76"], "near": ["#8a6644", "#a07a54"] }
   }
 }

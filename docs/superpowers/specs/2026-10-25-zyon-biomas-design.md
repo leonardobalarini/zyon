@@ -1,7 +1,7 @@
 # Zyon — Biomas da superfície: Design
 
 - **Data:** 2026-10-25
-- **Status:** aprovado em brainstorming, aguardando revisão do spec escrito
+- **Status:** aprovado e implementado (plano 8)
 - **Escopo:** três biomas de superfície (floresta morta, neve, deserto) com blocos, paredes, árvores derrubáveis, decoração, cor do céu e fundo em parallax por bioma, e detecção do bioma em volta do jogador
 
 ## 1. Contexto
@@ -29,7 +29,7 @@ Ordem dos passes: `terrain` → `mountain` → **`biomes`** → `layers` → `ca
 - Padrão: floresta. Duas faixas: neve e deserto; um sorteio (`ctx.Random` do passe) decide qual fica à esquerda do centro.
 - Cada faixa tem largura `widthMin`–`widthMax` (fração da largura do mundo, padrão 0,15–0,20) e começa a `gapMin`–`gapMax` (fração, padrão 0,10–0,15) do lado de fora da montanha (do pé mais distante do centro, `MountainInfo`) — a montanha e o bunker ficam sempre na floresta. Entre a faixa e a borda do mundo sobra floresta.
 - Mundo pequeno: a faixa é encolhida para caber entre a montanha + 10 colunas e a borda − 10 colunas; nunca lança erro; se sobrarem menos de 20 colunas, a faixa tem largura 20 e encosta na borda.
-- Borda irregular: cada divisa é deslocada por ruído 1D (`biomes.edge`, amplitude `edgeNoise`, padrão 6 colunas).
+- Borda irregular: cada divisa é deslocada por ruído 1D (`biomes.edge`, amplitude `edgeNoise`, padrão 6 colunas; no máximo 9, menor que a folga de 10 colunas entre a faixa e a montanha).
 - Afinamento: a `d` linhas abaixo da superfície, a divisa anda `d / taper` colunas para dentro da faixa (padrão `taper` = 4). O mapa guarda a divisa na superfície; `layers` e `walls` aplicam o afinamento por tile.
 
 ### Passe `layers` (alterado)
@@ -44,7 +44,7 @@ Por coluna, usa os blocos do bioma do tile (com o afinamento): camada de cima (h
 ### Passe `trees`
 
 - Roda depois do `bunker`; não planta dentro do retângulo do bunker (com o teto) nem no patamar diante do portão (± 2 colunas de folga).
-- Percorre as colunas da superfície; em cada uma, com probabilidade `treeChance` do bioma e respeitando `treeSpacing` colunas desde a última árvore, planta a árvore do bioma se: o tile da superfície é o `surfaceBlock` do bioma, há ar para a árvore inteira (tronco + copa/galhos) e nenhum outro bloco no caminho.
+- Percorre as colunas da superfície; em cada uma, com probabilidade `treeChance` do bioma e respeitando `treeSpacing` colunas desde a última árvore, planta a árvore do bioma se: o tile da superfície é o `surfaceBlock` do bioma, há ar para a árvore inteira (tronco + copa/galhos) e nenhum outro bloco no caminho. Árvores não são plantadas encostadas em outras (a derrubada levaria a vizinha).
 - Formatos (código, parâmetros nos dados):
   - **dead** (árvore morta): tronco de `heightMin`–`heightMax` (6–12) com 2–4 galhos de 1–2 tiles saindo para os lados, alternados, na metade de cima.
   - **pine** (pinheiro): tronco de 8–14; copa triangular de `pine_leaves` nas últimas 2/3 do tronco, largura diminuindo de 5 para 1 tile até a ponta acima do tronco.
@@ -86,21 +86,21 @@ Por coluna, usa os blocos do bioma do tile (com o afinamento): camada de cima (h
 
 ### Blocos novos (no **fim** do `blocks.json`)
 
-| id | sólido | dureza | drop | árvore |
-|---|---|---|---|---|
-| `snow` | sim | 0,8 | `snow` | |
-| `ice` | sim | 2,0 | `ice` | |
-| `sand` | sim | 1,0 | `sand` | |
-| `sandstone` | sim | 2,0 | `sandstone` | |
-| `wood` | sim | 1,5 | `wood` | |
-| `dead_trunk` | não | 1,5 | `wood` | sim |
-| `dead_branch` | não | 0,5 | `wood` | sim |
-| `pine_trunk` | não | 1,5 | `wood` | sim |
-| `pine_leaves` | não | 0,2 | — | sim |
-| `cactus` | não | 1,0 | `cactus` | sim |
-| `dry_grass` | não | 0 | — | |
-| `frozen_shrub` | não | 0 | — | |
-| `dry_bush` | não | 0 | — | |
+| id | sólido | dureza | drop | árvore | trunk |
+|---|---|---|---|---|---|
+| `snow` | sim | 0,8 | `snow` | | |
+| `ice` | sim | 2,0 | `ice` | | |
+| `sand` | sim | 1,0 | `sand` | | |
+| `sandstone` | sim | 2,0 | `sandstone` | | |
+| `wood` | sim | 1,5 | `wood` | | |
+| `dead_trunk` | não | 1,5 | `wood` | sim | sim |
+| `dead_branch` | não | 0,5 | `wood` | sim | |
+| `pine_trunk` | não | 1,5 | `wood` | sim | sim |
+| `pine_leaves` | não | 0,2 | — | sim | |
+| `cactus` | não | 1,0 | `cactus` | sim | sim |
+| `dry_grass` | não | 0 | — | | |
+| `frozen_shrub` | não | 0 | — | | |
+| `dry_bush` | não | 0 | — | | |
 
 - Campo novo `"tree": true` no `blocks.json` (padrão falso). `"drops"` ausente = não dá item (já suportado pelo `RegistryLoader`).
 - A areia não cai (fora do escopo).
@@ -115,7 +115,7 @@ Neve, Gelo, Areia, Arenito, Madeira (`wood`, coloca o bloco de tábuas), Cacto (
 
 ### Derrubar árvores (Core)
 
-Quando um bloco com `tree` é quebrado, todos os blocos com `tree` ligados a ele (4 vizinhos, só por blocos com `tree`) que estejam **na mesma linha ou acima** também quebram, cada um soltando o próprio drop no seu tile e emitindo `TileChanged`. O que está abaixo (toco) fica. Não há regra de sustentação: cavar o chão sob a árvore não a derruba. Limite de segurança: no máximo 256 blocos por derrubada.
+Só quebrar um bloco com `"trunk": true` (os troncos `dead_trunk` e `pine_trunk` e o `cactus`; exige `tree`) derruba a árvore. Galhos e folhas (`"tree": true` sem `trunk`) quebram sozinhos. A derrubada leva os blocos com `tree` ligados ao cortado (4 vizinhos, só por blocos com `tree`) que estejam **na mesma linha ou acima**, cada um soltando o próprio drop no seu tile e emitindo `TileChanged`. O que está abaixo (toco) fica. Como o cacto usa o mesmo bloco no tronco e nos braços, quebrar um braço derruba o braço e o tronco dali para cima (como no Terraria). Não há regra de sustentação: cavar o chão sob a árvore não a derruba. Limite de segurança: no máximo 256 blocos por derrubada, contando o cortado.
 
 ### Arte (ArtGen, `art/art.json`)
 
@@ -135,7 +135,7 @@ Quando um bloco com `tree` é quebrado, todos os blocos com `tree` ligados a ele
 
 - `data/client/biomes.json`: por bioma, `sky` (cor) e os nomes das camadas de fundo. O `visuals.json` (que só tinha o céu) sai: `ClientVisuals` passa a ler `data/client/biomes.json` e exige uma entrada para cada bioma do `data/biomes.json`.
 - `BiomeAmbience` (Client, testável): recebe o bioma detectado e o tempo; dá a cor do céu atual e o peso de cada fundo, mudando linearmente em 2 s quando o bioma muda.
-- Godot: `RenderingServer.SetDefaultClearColor` com a cor atual; um `Parallax2D` por camada e bioma (fator de rolagem 0,1 e 0,3, repetição horizontal), com `Modulate.A` = peso; a base da camada fica na altura média da superfície do mundo (linha `surfaceMax × altura`), e não se desenha nada abaixo dela. Ficam atrás dos chunks e embaixo da camada de luz (a noite os escurece).
+- Godot: `RenderingServer.SetDefaultClearColor` com a cor atual; um `Parallax2D` por camada e bioma (fator de rolagem 0,1 e 0,3, repetição horizontal), com `Modulate.A` = peso; a base da camada fica na superfície média das colunas visíveis, alguns tiles abaixo do chão (`BackdropAnchor`, Client: superfície de cada coluna lida uma vez ao abrir o jogo, média em O(1) por soma prefixada, aproximação exponencial suave), e não se desenha nada abaixo dela. Uma linha fixa (ex.: `surfaceMax × altura`) não serve: a superfície varia 10% da altura (120 tiles num mundo pequeno) e o fundo tem só ~22 tiles, então ele ficaria quase sempre escondido atrás do terreno. Ficam atrás dos chunks e embaixo da camada de luz (a noite os escurece).
 - F3: linha com o bioma atual.
 
 ## 6. Saves

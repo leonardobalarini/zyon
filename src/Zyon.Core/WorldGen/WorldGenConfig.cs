@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Zyon.Core.Biomes;
 using Zyon.Core.WorldGen.Structures;
 
 namespace Zyon.Core.WorldGen;
@@ -47,6 +48,10 @@ public sealed class WorldGenConfig
     /// <summary>Molde do bunker, carregado por <see cref="WorldGenConfigLoader.LoadFromDirectory"/> (null com <c>Load(json)</c>).</summary>
     [JsonIgnore]
     public StructureTemplate? Bunker { get; internal set; }
+
+    /// <summary>Biomas (data/biomes.json), carregados por <see cref="WorldGenConfigLoader.LoadFromDirectory"/> (null com <c>Load(json)</c>).</summary>
+    [JsonIgnore]
+    public BiomeConfig? Biomes { get; internal set; }
 }
 
 /// <summary>Nomes (ids textuais do Registry) dos materiais usados pela geração.</summary>

@@ -49,6 +49,8 @@ public sealed class ArtCatalog
             return ArtImageSize.Exact(p.ArmFrames * p.FrameWidth, p.FrameHeight);
         if (p.Layers.Any(l => ArtManifest.PlayerFile(l) == file))
             return ArtImageSize.Exact(p.BodyFrames * p.FrameWidth, p.FrameHeight);
+        if (m.Backgrounds.Any(b => ArtManifest.BackgroundFile(b) == file))
+            return ArtImageSize.Exact(ArtManifest.BackgroundWidth, ArtManifest.BackgroundHeight);
         throw new ArgumentException($"arte: arquivo desconhecido '{file}'", nameof(file));
     }
 
@@ -73,6 +75,7 @@ public sealed class ArtCatalog
         var files = new List<string> { ArtManifest.TilesFile, ArtManifest.WallsFile, ArtManifest.MergeFile, ArtManifest.ItemsFile };
         files.AddRange(catalog.Manifest.Player.Layers.Select(ArtManifest.PlayerFile));
         files.Add(ArtManifest.PlayerFile(ArtManifest.ArmLayer));
+        files.AddRange(catalog.Manifest.Backgrounds.Select(ArtManifest.BackgroundFile));
         foreach (var f in files)
             if (!File.Exists(catalog.PathOf(f))) throw new DataException($"arte: arquivo '{catalog.PathOf(f)}' não encontrado");
         return catalog;
@@ -89,6 +92,14 @@ public sealed class ArtCatalog
         if (m.MergeOrder is null) throw Fail("mergeOrder ausente");
         if (m.Items is null) throw Fail("items ausente");
         if (m.Player is null) throw Fail("player ausente");
+        if (m.Backgrounds is null) throw Fail("backgrounds ausente");
+        var backgroundNames = new HashSet<string>();
+        for (int i = 0; i < m.Backgrounds.Count; i++)
+        {
+            string name = m.Backgrounds[i];
+            if (string.IsNullOrEmpty(name)) throw Fail($"backgrounds[{i}] ausente");
+            if (!backgroundNames.Add(name)) throw Fail($"backgrounds: '{name}' repetido");
+        }
         if (m.Player.Layers is null || m.Player.Layers.Any(l => string.IsNullOrEmpty(l))) throw Fail("player.layers ausente ou com nome vazio");
         if (m.Player.Hand is null) throw Fail("player.hand ausente");
         if (m.Player.ArmAngleDeg is null) throw Fail("player.armAngleDeg ausente");
