@@ -98,7 +98,7 @@ public partial class GameRoot : Node2D
         var newSession = new LocalSession(sim, playerId);
         try
         {
-            RenderingServer.SetDefaultClearColor(visuals.Sky.ToGodot());
+            RenderingServer.SetDefaultClearColor(visuals.For(GameFlow.Biomes.Default.Id).Sky.ToGodot());
             GD.Print($"Zyon: mundo '{System.IO.Path.GetFileNameWithoutExtension(game.WorldPath)}' {sim.Width}×{sim.Height}, seed {game.Info.Seed}, personagem '{game.PlayerName}'");
 
             worldRenderer = new WorldRenderer();

@@ -16,42 +16,78 @@ public readonly record struct Rgb(byte R, byte G, byte B)
     }
 }
 
-/// <summary>Cores do cliente que não são arte: o céu. Lidas de data/client/visuals.json.</summary>
+/// <summary>Céu e camadas de fundo (da mais distante à mais próxima) de um bioma.</summary>
+public sealed record BiomeVisual(Rgb Sky, IReadOnlyList<string> Layers);
+
+/// <summary>
+/// Cores e fundos de cada bioma, lidos de data/client/biomes.json (não confundir com data/biomes.json, da
+/// simulação). Precisa de exatamente uma entrada para cada bioma dos dados; as camadas precisam existir na arte.
+/// </summary>
 public sealed class ClientVisuals
 {
-    public const string FileName = "visuals.json";
+    public const string FileName = "biomes.json";
+    public const string DisplayName = "client/biomes.json";
 
-    private ClientVisuals(Rgb sky) => Sky = sky;
+    /// <summary>Camadas por bioma: distante e próxima.</summary>
+    public const int LayerCount = 2;
 
-    public Rgb Sky { get; }
+    private readonly Dictionary<string, BiomeVisual> biomes;
 
-    public static ClientVisuals LoadFromDirectory(string dataDir)
+    private ClientVisuals(Dictionary<string, BiomeVisual> biomes) => this.biomes = biomes;
+
+    public IReadOnlyDictionary<string, BiomeVisual> Biomes => biomes;
+
+    public BiomeVisual For(string biomeId) => biomes[biomeId];
+
+    public static ClientVisuals LoadFromDirectory(string dataDir, IEnumerable<string> biomeIds)
     {
         var path = Path.Combine(dataDir, "client", FileName);
-        if (!File.Exists(path)) throw new DataException($"{FileName}: arquivo não encontrado em '{path}'");
-        return Load(File.ReadAllText(path));
+        if (!File.Exists(path)) throw new DataException($"{DisplayName}: arquivo não encontrado em '{path}'");
+        return Load(File.ReadAllText(path), biomeIds);
     }
 
-    public static ClientVisuals Load(string json)
+    public static ClientVisuals Load(string json, IEnumerable<string> biomeIds)
     {
-        Dto dto;
+        Dictionary<string, Dto?> dtos;
         try
         {
-            dto = JsonSerializer.Deserialize<Dto>(json, JsonOptions) ?? throw Fail("conteúdo vazio");
+            dtos = JsonSerializer.Deserialize<Dictionary<string, Dto?>>(json, JsonOptions) ?? throw Fail("conteúdo vazio");
         }
         catch (JsonException ex)
         {
             throw Fail($"JSON inválido — {ex.Message}");
         }
 
-        return new ClientVisuals(Parse(dto.Sky, "sky"));
+        var ids = biomeIds.ToList();
+        foreach (var id in ids)
+            if (!dtos.ContainsKey(id)) throw Fail($"falta o bioma '{id}' (de data/biomes.json)");
+        var result = new Dictionary<string, BiomeVisual>();
+        foreach (var (id, dto) in dtos)
+        {
+            if (!ids.Contains(id)) throw Fail($"bioma '{id}' não existe em data/biomes.json");
+            if (dto is null) throw Fail($"{id}: entrada nula");
+            var layers = dto.Layers;
+            if (layers is null || layers.Count != LayerCount || layers.Any(string.IsNullOrEmpty))
+                throw Fail($"{id}: 'layers' precisa de {LayerCount} nomes (distante, próxima)");
+            result[id] = new BiomeVisual(Parse(dto.Sky, $"{id}.sky"), layers!);
+        }
+        return new ClientVisuals(result);
+    }
+
+    /// <summary>Lança DataException se alguma camada de fundo não estiver no manifesto da arte.</summary>
+    public void RequireArt(ArtManifest manifest)
+    {
+        foreach (var (id, visual) in biomes)
+            foreach (var layer in visual.Layers)
+                if (!manifest.Backgrounds.Contains(layer))
+                    throw Fail($"{id}: camada '{layer}' sem arte (falta em art/art.json → backgrounds; rode tools/gen-art.sh)");
     }
 
     private static Rgb Parse(string? hex, string field) =>
         hex is null ? throw Fail($"campo '{field}' ausente") :
         Rgb.TryParse(hex, out var c) ? c : throw Fail($"'{field}': cor inválida '{hex}' (use #rrggbb)");
 
-    private static DataException Fail(string message) => new($"{FileName}: {message}");
+    private static DataException Fail(string message) => new($"{DisplayName}: {message}");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -64,5 +100,6 @@ public sealed class ClientVisuals
     private sealed class Dto
     {
         public string? Sky { get; set; }
+        public List<string>? Layers { get; set; }
     }
 }

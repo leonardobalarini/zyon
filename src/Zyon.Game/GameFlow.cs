@@ -1,5 +1,6 @@
 using Godot;
 using Zyon.Client;
+using Zyon.Core.Biomes;
 using Zyon.Core.Data;
 using Zyon.Core.Lighting;
 using Zyon.Core.WorldGen;
@@ -18,6 +19,7 @@ public static class GameFlow
     public static Registry Registry { get; private set; } = null!;
     public static WorldGenConfig WorldGenConfig { get; private set; } = null!;
     public static LightingConfig Lighting { get; private set; } = null!;
+    public static BiomeSet Biomes { get; private set; } = null!;
     public static ClientVisuals Visuals { get; private set; } = null!;
     public static ArtCatalog Art { get; private set; } = null!;
     public static ArtTextures ArtTextures { get; private set; } = null!;
@@ -53,9 +55,11 @@ public static class GameFlow
         Registry = RegistryLoader.LoadFromDirectory(DataDir);
         WorldGenConfig = WorldGenConfigLoader.LoadFromDirectory(DataDir);
         Lighting = LightingConfigLoader.LoadFromDirectory(DataDir);
-        Visuals = ClientVisuals.LoadFromDirectory(DataDir);
+        Biomes = BiomeSet.Resolve(WorldGenConfig.Biomes!, Registry);
         Art = ArtCatalog.LoadFromDirectory(DataDir, Registry);
         ArtTextures = ArtTextures.Load(Art);
+        Visuals = ClientVisuals.LoadFromDirectory(DataDir, Biomes.All.Select(b => b.Id));
+        Visuals.RequireArt(Art.Manifest);
         string root = Options.SavesDir ?? ProjectSettings.GlobalizePath("user://saves");
         // Mundos descartáveis (--dev, smoke test, profile-walk) ficam na subpasta "dev": nunca tocam nos saves
         // do jogador. O menu e --world/--player sem --dev usam a raiz.
