@@ -18,11 +18,16 @@ public sealed class ArtTextures
 
     public required Texture2D PlayerArm { get; init; }
 
+    /// <summary>Camadas de fundo pelo nome (manifesto: backgrounds).</summary>
+    public required IReadOnlyDictionary<string, Texture2D> Backgrounds { get; init; }
+
     /// <summary>Lança DataException se um PNG faltar, não puder ser lido ou tiver tamanho diferente do manifesto.</summary>
     public static ArtTextures Load(ArtCatalog art)
     {
         var layers = new List<Texture2D>();
         foreach (var layer in art.Manifest.Player.Layers) layers.Add(Png(art, ArtManifest.PlayerFile(layer)));
+        var backgrounds = new Dictionary<string, Texture2D>();
+        foreach (var name in art.Manifest.Backgrounds) backgrounds[name] = Png(art, ArtManifest.BackgroundFile(name));
         return new ArtTextures
         {
             Tiles = Png(art, ArtManifest.TilesFile),
@@ -31,6 +36,7 @@ public sealed class ArtTextures
             Items = Png(art, ArtManifest.ItemsFile),
             PlayerLayers = layers,
             PlayerArm = Png(art, ArtManifest.PlayerFile(ArtManifest.ArmLayer)),
+            Backgrounds = backgrounds,
         };
     }
 

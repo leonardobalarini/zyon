@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Godot;
 using Zyon.Client;
+using Zyon.Core.Biomes;
 using Zyon.Core.Sim;
 using Zyon.Game.Hud;
 using Zyon.Game.Menus;
@@ -22,6 +23,11 @@ public partial class GameRoot : Node2D
     private EntityRenderer entityRenderer = null!;
     private PlayerController controller = null!;
     private LightOverlay lightOverlay = null!;
+    private BackgroundLayers backgrounds = null!;
+    private BiomeDetector biomeDetector = null!;
+    private BiomeAmbience ambience = null!;
+    private long lastBiomeTick;
+    private Rgb lastSky;
     private WorldOverlay overlay = null!;
     private Hotbar hotbar = null!;
     private InventoryPanel inventory = null!;
@@ -98,9 +104,19 @@ public partial class GameRoot : Node2D
         var newSession = new LocalSession(sim, playerId);
         try
         {
-            RenderingServer.SetDefaultClearColor(visuals.For(GameFlow.Biomes.Default.Id).Sky.ToGodot());
+            biomeDetector = new BiomeDetector(GameFlow.Biomes, GameFlow.Registry);
+            // Começa já no bioma do jogador, sem transição.
+            ambience = new BiomeAmbience(visuals, DetectBiome(newSession.World).Id);
+            lastSky = ambience.Sky;
+            RenderingServer.SetDefaultClearColor(lastSky.ToGodot());
             GD.Print($"Zyon: mundo '{System.IO.Path.GetFileNameWithoutExtension(game.WorldPath)}' {sim.Width}×{sim.Height}, seed {game.Info.Seed}, personagem '{game.PlayerName}'");
 
+            // Fundos antes dos chunks (ordem na árvore = ordem de desenho) e da luz (a noite os escurece).
+            backgrounds = new BackgroundLayers();
+            AddChild(backgrounds);
+            backgrounds.Init(visuals, GameFlow.ArtTextures.Backgrounds,
+                GameFlow.WorldGenConfig.SurfaceMax * sim.Height * RenderMath.PixelsPerTile);
+            backgrounds.Refresh(ambience);
             worldRenderer = new WorldRenderer();
             AddChild(worldRenderer);
             worldRenderer.Init(newSession.World, GameFlow.Art, GameFlow.ArtTextures);
@@ -256,6 +272,18 @@ public partial class GameRoot : Node2D
                     && placed.Block == GameFlow.Registry.BlockId("torch"))
                     recomputesAtTorch = lightOverlay.TotalRecomputes;
             }
+            if (session.World.Tick - lastBiomeTick >= BiomeDetector.IntervalTicks)
+            {
+                lastBiomeTick = session.World.Tick;
+                ambience.SetBiome(DetectBiome(session.World).Id);
+            }
+            ambience.Advance((float)delta);
+            if (ambience.Sky != lastSky)
+            {
+                lastSky = ambience.Sky;
+                RenderingServer.SetDefaultClearColor(lastSky.ToGodot());
+            }
+            backgrounds.Refresh(ambience);
             // A câmera segue a mesma posição interpolada que o jogador desenhado: com a posição do tick atual
             // (até 1 tick à frente) o mundo rolaria em degraus de 60 Hz e o jogador tremeria em relação à tela.
             if (session.World.TryGetEntityView(playerId, out var me))
@@ -290,9 +318,10 @@ public partial class GameRoot : Node2D
                         VerifySmokeLight();
                         VerifySmokeSave();
                         VerifySmokeArt();
+                        VerifySmokeBiome();
                         PrintSmokeStats();
                         GD.Print($"SMOKE OK: tick {session.World.Tick}, chunks {worldRenderer.ActiveChunkCount}, " +
-                            $"minerado {smoke.MinedTile}, tocha em {smoke.TorchTile}, save ok, luz ok, arte ok");
+                            $"minerado {smoke.MinedTile}, tocha em {smoke.TorchTile}, save ok, luz ok, arte ok, bioma {ambience.Current}");
                         GetTree().Quit(0);
                     }
                     else
@@ -331,8 +360,14 @@ public partial class GameRoot : Node2D
         if (debugOverlay.ShouldRefresh(delta))
             debugOverlay.Refresh(frameStats, new DebugInfo(worldRenderer.ActiveChunkCount,
                 worldRenderer.RebuildsLastUpdate, session!.InterpolationAlpha, ticks,
-                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString(), lightOverlay.SkyFactor));
+                camera.ModeDescription, DisplayServer.WindowGetVsyncMode().ToString(), lightOverlay.SkyFactor, ambience.Current));
     }
+
+    /// <summary>Bioma em volta do jogador local (o padrão se ele não existir).</summary>
+    private Biome DetectBiome(IWorldView world) =>
+        world.TryGetEntityView(playerId, out var me)
+            ? biomeDetector.Detect(world, (int)MathF.Floor(me.Position.X), (int)MathF.Floor(me.Position.Y))
+            : GameFlow.Biomes.Default;
 
     /// <summary>Configuração de tempo do motor que afeta o delta entregue a _Process.</summary>
     private static string TimingEnvironment() =>
@@ -511,6 +546,13 @@ public partial class GameRoot : Node2D
             throw new InvalidOperationException("o jogador não mudou de quadro ao andar");
         if (!entityRenderer.LocalSwingSeen)
             throw new InvalidOperationException("o jogador não golpeou ao minerar");
+    }
+
+    /// <summary>Smoke test: o spawn fica no bunker, na floresta (bioma padrão).</summary>
+    private void VerifySmokeBiome()
+    {
+        if (ambience.Current != GameFlow.Biomes.Default.Id)
+            throw new InvalidOperationException($"bioma no spawn é '{ambience.Current}', esperado '{GameFlow.Biomes.Default.Id}'");
     }
 
     /// <summary>Smoke test: salva, espera o disco e confere que o mundo relido é igual ao mundo em jogo.</summary>
