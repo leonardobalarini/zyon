@@ -11,7 +11,7 @@ public class WorldGenDeterminismTests
     public void DefaultPasses_AreInSpecOrder()
     {
         Assert.Equal(
-            new[] { "terrain", "mountain", "biomes", "layers", "caves", "ores", "walls", "bunker" },
+            new[] { "terrain", "mountain", "biomes", "layers", "caves", "ores", "walls", "bunker", "trees" },
             Generator().Passes.Select(p => p.Name));
     }
 
@@ -39,7 +39,7 @@ public class WorldGenDeterminismTests
     // Se este teste falhar após uma atualização do .NET, da FastNoiseLite ou de uma mudança
     // intencional na geração: incremente WorldGenerator.Version (quando for intencional) e
     // atualize as constantes abaixo com os novos valores.
-    private const ulong GoldenHash = 0xEDDA1723085749DDUL;
+    private const ulong GoldenHash = 0x3B78430B7F59253DUL;
     private static readonly System.Numerics.Vector2 GoldenSpawnFeet = new(281.5f, 76f);
 
     [Fact]

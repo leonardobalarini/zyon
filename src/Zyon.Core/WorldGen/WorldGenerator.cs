@@ -24,7 +24,7 @@ public sealed class WorldGenerator
     private readonly WorldGenMaterials materials;
     private readonly ulong fingerprint;
 
-    /// <summary>Gerador com os passes padrão (terreno, montanha, biomas, camadas, cavernas, minérios, paredes, bunker).</summary>
+    /// <summary>Gerador com os passes padrão (terreno, montanha, biomas, camadas, cavernas, minérios, paredes, bunker, árvores).</summary>
     public WorldGenerator(Registry registry, WorldGenConfig config)
         : this(registry, config, DefaultPasses())
     {
@@ -40,6 +40,7 @@ public sealed class WorldGenerator
         new OrePass(),
         new WallsPass(),
         new BunkerPass(),
+        new TreesPass(),
     ];
 
     public WorldGenerator(Registry registry, WorldGenConfig config, IReadOnlyList<IWorldGenPass> passes)
