@@ -46,6 +46,8 @@ public sealed class ArtManifest
     public const string MergeFile = "merge.png";
     public const string ItemsFile = "items.png";
     public const string ArmLayer = "arm";
+    public const int BackgroundWidth = 480;
+    public const int BackgroundHeight = 180;
 
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
@@ -60,6 +62,11 @@ public sealed class ArtManifest
     public List<string> MergeOrder { get; set; } = [];
     public Dictionary<string, ItemArt> Items { get; set; } = [];
     public PlayerArt Player { get; set; } = new();
+
+    /// <summary>Camadas de fundo (nome sem extensão), em backgrounds/&lt;nome&gt;.png, 480×180, repetíveis na horizontal.</summary>
+    public List<string> Backgrounds { get; set; } = [];
+
+    public static string BackgroundFile(string name) => $"backgrounds/{name}.png";
 
     public static string PlayerFile(string layer) => $"player/{layer}.png";
 

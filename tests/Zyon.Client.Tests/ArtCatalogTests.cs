@@ -121,12 +121,28 @@ public class ArtCatalogTests
         Assert.Contains(field, Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry())).Message);
     }
 
+    [Fact]
+    public void Backgrounds_ExpectExactSize_AndRejectDuplicates()
+    {
+        var m = Complete();
+        m.Backgrounds = ["forest_far"];
+        var c = ArtCatalog.Resolve(m, TestData.Registry());
+
+        Assert.True(c.ExpectedSize(ArtManifest.BackgroundFile("forest_far")).Matches(480, 180));
+        Assert.False(c.ExpectedSize(ArtManifest.BackgroundFile("forest_far")).Matches(480, 192));
+
+        m.Backgrounds = ["forest_far", "forest_far"];
+        var ex = Assert.Throws<DataException>(() => ArtCatalog.Resolve(m, TestData.Registry()));
+        Assert.Contains("repetido", ex.Message);
+    }
+
     [Theory]
     [InlineData("\"tiles\"", "tiles")]
     [InlineData("\"walls\"", "walls")]
     [InlineData("\"mergeOrder\"", "mergeOrder")]
     [InlineData("\"items\"", "items")]
     [InlineData("\"player\"", "player")]
+    [InlineData("\"backgrounds\"", "backgrounds ausente")]
     [InlineData("\"hand\"", "player.hand")]
     [InlineData("\"layers\"", "player.layers")]
     [InlineData("\"armAngleDeg\"", "player.armAngleDeg")]
@@ -209,6 +225,8 @@ public class ArtCatalogTests
         var files = new List<string> { ArtManifest.TilesFile, ArtManifest.WallsFile, ArtManifest.MergeFile, ArtManifest.ItemsFile,
             ArtManifest.PlayerFile(ArtManifest.ArmLayer) };
         files.AddRange(c.Manifest.Player.Layers.Select(ArtManifest.PlayerFile));
+        files.AddRange(c.Manifest.Backgrounds.Select(ArtManifest.BackgroundFile));
+        Assert.Equal(6, c.Manifest.Backgrounds.Count);
 
         foreach (var f in files)
         {

@@ -49,5 +49,10 @@
   },
   "items": {
     "basic_pickaxe": { "recipe": "pickaxe", "handle": ["#4a3420", "#6e5032", "#8f6c46"], "head": ["#5a5f66", "#8a9099", "#c4cad2"] }
+  },
+  "backgrounds": {
+    "forest": { "style": "forest", "far": ["#5d6b78", "#6c7a86"], "near": ["#3a434c", "#4a545e"] },
+    "snow":   { "style": "snow",   "far": ["#7c8ea4", "#dfe8f2"], "near": ["#4c5c6e", "#c8d4e0"] },
+    "desert": { "style": "desert", "far": ["#b08a64", "#c49e76"], "near": ["#8a6644", "#a07a54"] }
   }
 }

@@ -26,6 +26,13 @@ public sealed class PlayerSource
     public string Outline { get; set; } = "";
 }
 
+public sealed class BackdropSource
+{
+    public string Style { get; set; } = "";
+    public string[]? Far { get; set; }
+    public string[]? Near { get; set; }
+}
+
 public sealed class ItemSource
 {
     public string Recipe { get; set; } = "";
@@ -53,6 +60,7 @@ public sealed class ArtSource
     public List<string> MergeOrder { get; set; } = [];
     public PlayerSource Player { get; set; } = new();
     public Dictionary<string, ItemSource> Items { get; set; } = [];
+    public Dictionary<string, BackdropSource?> Backgrounds { get; set; } = [];
 
     public static ArtSource LoadFromFile(string path, Registry registry)
     {
@@ -133,6 +141,18 @@ public sealed class ArtSource
         {
             if (!registry.TryGetBlockId(name, out var id) || !registry.Block(id).Solid) throw Fail($"mergeOrder: '{name}' não é um bloco sólido");
             if (!seen.Add(name)) throw Fail($"mergeOrder: '{name}' repetido");
+        }
+
+        foreach (var (name, b) in Backgrounds)
+        {
+            string ctx = $"backgrounds.{name}";
+            if (name.Length == 0 || !name.All(ch => ch is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_'))
+                throw Fail($"{ctx}: o nome deve ter só letras minúsculas, dígitos e '_'");
+            if (b is null) throw Fail($"{ctx}: entrada nula");
+            if (!BackdropGenerator.Styles.Contains(b.Style))
+                throw Fail($"{ctx}: estilo '{b.Style}' desconhecido (use {string.Join(", ", BackdropGenerator.Styles)})");
+            CheckColors(b.Far, 2, $"{ctx}.far");
+            CheckColors(b.Near, 2, $"{ctx}.near");
         }
 
         CheckColors(Player.Skin, 3, "player.skin");

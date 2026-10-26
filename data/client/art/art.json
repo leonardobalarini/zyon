@@ -268,5 +268,13 @@
       18,
       60
     ]
-  }
+  },
+  "backgrounds": [
+    "forest_far",
+    "forest_near",
+    "snow_far",
+    "snow_near",
+    "desert_far",
+    "desert_near"
+  ]
 }
