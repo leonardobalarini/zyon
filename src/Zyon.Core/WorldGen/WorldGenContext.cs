@@ -55,6 +55,9 @@ public sealed class WorldGenContext
     /// <summary>Bioma de cada tile; só o padrão até o passe "biomes" rodar. Null se a configuração não tem biomas (<c>Load(json)</c>).</summary>
     public BiomeMap? Biomes { get; }
 
+    /// <summary>Colunas das raízes plantadas pelo passe "trees", em ordem crescente (só diagnóstico, para os testes).</summary>
+    internal List<int> PlantedTreeRoots { get; } = [];
+
     /// <summary>Definido pelo passe "mountain".</summary>
     public MountainInfo? Mountain { get; internal set; }
 

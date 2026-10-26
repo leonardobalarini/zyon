@@ -17,7 +17,8 @@ internal static class TreeShapes
         {
             case TreeShape.Dead: DeadBranches(tree, h, rng, tiles); break;
             case TreeShape.Pine: PineCrown(tree, h, tiles); break;
-            default: CactusArms(tree, h, rng, tiles); break;
+            case TreeShape.Cactus: CactusArms(tree, h, rng, tiles); break;
+            default: throw new ArgumentOutOfRangeException(nameof(tree), tree.Shape, "forma de árvore desconhecida");
         }
     }
 
@@ -47,7 +48,7 @@ internal static class TreeShapes
         }
     }
 
-    /// <summary>Até 2 braços em lados diferentes: 1 tile para o lado e 1–2 para cima, acima do chão e abaixo do topo.</summary>
+    /// <summary>Até 2 braços em lados diferentes: 1 tile para o lado e 1–2 para cima, começando acima do chão; o braço pode subir até 1 linha acima do topo do tronco.</summary>
     private static void CactusArms(BiomeTree tree, int h, GenRandom rng, List<(int, int, ushort)> tiles)
     {
         int arms = rng.Next(3);

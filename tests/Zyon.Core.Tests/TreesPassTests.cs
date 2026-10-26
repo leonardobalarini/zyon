@@ -18,14 +18,19 @@ public class TreesPassTests
     private static BiomeTree TreeOf(TreeShape shape) =>
         BiomeSet.Resolve(TestData.WorldGenConfig().Biomes!, TestData.Registry()).All.First(b => b.Tree.Shape == shape).Tree;
 
-    /// <summary>Raízes: tronco do bioma da coluna logo acima da superfície.</summary>
+    /// <summary>
+    /// Raízes plantadas pelo passe (diagnóstico interno do contexto: deduzir pelo mundo é frágil, o braço do cacto usa o
+    /// mesmo bloco do tronco). Confere de forma independente que em cada uma há tronco do bioma sobre o bloco de superfície.
+    /// </summary>
     private static List<int> Roots(WorldGenContext ctx)
     {
-        var roots = new List<int>();
-        for (int x = 0; x < ctx.World.Width; x++)
+        var roots = ctx.PlantedTreeRoots.ToList();
+        foreach (int x in roots)
         {
             int s = ctx.Surface[x];
-            if (s > 0 && ctx.World.GetBlock(x, s - 1) == ctx.Biomes!.At(x, s, s).Tree.Trunk) roots.Add(x);
+            var biome = ctx.Biomes!.At(x, s, s);
+            Assert.Equal(biome.Tree.Trunk, ctx.World.GetBlock(x, s - 1));
+            Assert.Equal(biome.SurfaceBlock, ctx.World.GetBlock(x, s));
         }
         return roots;
     }
@@ -84,30 +89,37 @@ public class TreesPassTests
         }
     }
 
-    [Fact]
-    public void EveryTreeBlock_IsConnectedToARoot()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void EveryTreeComponent_HasExactlyOneRoot(int seed)
     {
-        var ctx = Generate(1);
+        var ctx = Generate(seed);
         var world = ctx.World;
+        var roots = Roots(ctx).Select(x => (x, ctx.Surface[x] - 1)).ToHashSet();
         var seen = new HashSet<(int, int)>();
-        var queue = new Queue<(int X, int Y)>();
-        foreach (int x in Roots(ctx))
-        {
-            queue.Enqueue((x, ctx.Surface[x] - 1));
-            seen.Add((x, ctx.Surface[x] - 1));
-        }
-        while (queue.Count > 0)
-        {
-            var (x, y) = queue.Dequeue();
-            foreach (var (nx, ny) in new[] { (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1) })
-                if (ctx.Registry.Block(world.GetBlock(nx, ny)).Tree && seen.Add((nx, ny)))
-                    queue.Enqueue((nx, ny));
-        }
+        int components = 0;
 
         for (int y = 0; y < world.Height; y++)
         for (int x = 0; x < world.Width; x++)
-            if (ctx.Registry.Block(world.GetBlock(x, y)).Tree)
-                Assert.Contains((x, y), seen);
+        {
+            if (!ctx.Registry.Block(world.GetBlock(x, y)).Tree || !seen.Add((x, y))) continue;
+            components++;
+            int rootsInside = 0;
+            var queue = new Queue<(int X, int Y)>();
+            queue.Enqueue((x, y));
+            while (queue.Count > 0)
+            {
+                var (cx, cy) = queue.Dequeue();
+                if (roots.Contains((cx, cy))) rootsInside++;
+                foreach (var (nx, ny) in new[] { (cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1) })
+                    if (world.InBounds(nx, ny) && ctx.Registry.Block(world.GetBlock(nx, ny)).Tree && seen.Add((nx, ny)))
+                        queue.Enqueue((nx, ny));
+            }
+            Assert.True(rootsInside == 1, $"componente de árvore perto de ({x}, {y}) com {rootsInside} raízes");
+        }
+        Assert.Equal(roots.Count, components);
     }
 
     [Fact]
@@ -126,13 +138,18 @@ public class TreesPassTests
         Assert.True(found > 10, $"só {found} decorativos");
     }
 
-    [Fact]
-    public void Pine_CrownNarrowsFrom5To1_AboveTheTrunk()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void Pine_CrownNarrowsFrom5To1_AboveTheTrunk(int seed)
     {
         var tree = TreeOf(TreeShape.Pine);
         var tiles = new List<(int Dx, int Dy, ushort Block)>();
 
-        TreeShapes.Build(tree, new GenRandom(4), tiles);
+        TreeShapes.Build(tree, new GenRandom(seed), tiles);
 
         int h = tiles.Count(t => t.Block == tree.Trunk);
         var crownRows = tiles.Where(t => t.Block == tree.Crown).GroupBy(t => t.Dy).OrderByDescending(g => g.Key).ToList();
@@ -147,23 +164,63 @@ public class TreesPassTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
+    public void BiomeEdges_TaperWithDepth_ShallowBlockThenDefaultStone(int seed)
+    {
+        // Faixa [Left, Right] com a divisa deslocada por ±EdgeNoise (6) e, a d linhas da superfície, d / Taper (4)
+        // colunas para dentro. Coluna Right − 12: de dirtBottom (d ≈ 7–17) até 10 linhas abaixo (d < 28 → até 6 para
+        // dentro) a divisa fica em ≥ Right − 6 − 6 = Right − 12, ainda dentro da faixa (rocha rasa do bioma). Com d ≥ 80
+        // (20 para dentro) a divisa fica em ≤ Right + 6 − 20 = Right − 14 < Right − 12, já fora: rocha rasa do padrão.
+        // Simetria na borda esquerda com Left + 12. Cavernas e minérios abrem tiles: conta em janelas de linhas e em colunas vizinhas (para dentro da faixa, ainda mais longe da divisa).
+        var ctx = Generate(seed);
+        var map = ctx.Biomes!;
+        var band = map.Bands.First(b => b.Biome.ShallowBlock != map.Set.Default.ShallowBlock);
+        string inner = ctx.Registry.Block(band.Biome.ShallowBlock).Name, stone = ctx.Registry.Block(map.Set.Default.ShallowBlock).Name;
+        Assert.Equal(6, map.Set.EdgeNoise);
+        Assert.Equal(4, map.Set.Taper);
+
+        foreach (int x in new[] { band.Right - 12, band.Left + 12 })
+        {
+            int s = ctx.Surface[x];
+            int Count(int from, int to, ushort block) =>
+                Enumerable.Range(from, to - from).Count(y => ctx.World.GetBlock(x, y) == block);
+
+            // cavernas grandes abrem trechos inteiros: soma as colunas x … x + 4 para dentro da faixa
+            int toward = x == band.Right - 12 ? -1 : 1, shallow = 0;
+            for (int k = 0; k < 5; k++)
+                for (int y = ctx.DirtBottom[x + toward * k]; y < ctx.DirtBottom[x + toward * k] + 10; y++)
+                    if (ctx.World.GetBlock(x + toward * k, y) == band.Biome.ShallowBlock) shallow++;
+            Assert.True(shallow >= 1, $"sem {inner} logo abaixo da camada de cima perto de x={x}");
+
+            int deep = s + 80;
+            Assert.True(deep + 6 < ctx.DeepStart[x]);
+            Assert.Equal(0, Count(deep, deep + 6, band.Biome.ShallowBlock));
+            Assert.True(Count(deep, deep + 6, map.Set.Default.ShallowBlock) >= 1, $"sem {stone} fundo em x={x}");
+        }
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
     [InlineData(4)]
-    public void Dead_Has2To4BranchesInTheUpperHalf_AndCactusUpTo2Arms(int seed)
+    public void Dead_Has2To4BranchesInTheUpperHalf_AndCactusUpTo2ArmsOnDistinctSides(int seed)
     {
         var dead = TreeOf(TreeShape.Dead);
         var tiles = new List<(int Dx, int Dy, ushort Block)>();
         TreeShapes.Build(dead, new GenRandom(seed), tiles);
         int h = tiles.Count(t => t.Block == dead.Trunk);
         var branchRoots = tiles.Where(t => t.Block == dead.Crown && Math.Abs(t.Dx) == 1).ToList();
-        Assert.InRange(branchRoots.Count, 1, 4);   // dois galhos no mesmo lado e linha se sobrepõem
+        Assert.InRange(branchRoots.Count, 2, 4);
         Assert.All(branchRoots, t => Assert.True(-t.Dy >= h / 2 && -t.Dy < h));
         Assert.Contains(branchRoots, t => t.Dx < 0);
         Assert.Contains(branchRoots, t => t.Dx > 0);
 
         var cactus = TreeOf(TreeShape.Cactus);
         TreeShapes.Build(cactus, new GenRandom(seed), tiles);
-        var sides = tiles.Where(t => t.Dx != 0).Select(t => Math.Sign(t.Dx)).Distinct().ToList();
-        Assert.True(sides.Count <= 2);
+        var shape = tiles.Select(t => (t.Dx, t.Dy)).ToHashSet();
+        var arms = tiles.Where(t => t.Dx != 0 && !shape.Contains((t.Dx, t.Dy + 1))).Select(t => Math.Sign(t.Dx)).ToList();   // base do braço
+        Assert.True(arms.Count <= 2);
+        if (arms.Count == 2) Assert.NotEqual(arms[0], arms[1]);
         Assert.All(tiles, t => Assert.InRange(Math.Abs(t.Dx), 0, 1));
     }
 }
