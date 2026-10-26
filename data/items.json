@@ -12,5 +12,11 @@
   { "id": "crate",        "name": "Caixote",         "maxStack": 999, "kind": "Block", "placesBlock": "crate" },
   { "id": "pipe",         "name": "Cano",            "maxStack": 999, "kind": "Block", "placesBlock": "pipe" },
   { "id": "vent",         "name": "Grade",           "maxStack": 999, "kind": "Block", "placesBlock": "vent" },
-  { "id": "panel",        "name": "Painel",          "maxStack": 999, "kind": "Block", "placesBlock": "panel" }
+  { "id": "panel",        "name": "Painel",          "maxStack": 999, "kind": "Block", "placesBlock": "panel" },
+  { "id": "snow",         "name": "Neve",            "maxStack": 999, "kind": "Block", "placesBlock": "snow" },
+  { "id": "ice",          "name": "Gelo",            "maxStack": 999, "kind": "Block", "placesBlock": "ice" },
+  { "id": "sand",         "name": "Areia",           "maxStack": 999, "kind": "Block", "placesBlock": "sand" },
+  { "id": "sandstone",    "name": "Arenito",         "maxStack": 999, "kind": "Block", "placesBlock": "sandstone" },
+  { "id": "wood",         "name": "Madeira",         "maxStack": 999, "kind": "Block", "placesBlock": "wood" },
+  { "id": "cactus",       "name": "Cacto",           "maxStack": 999, "kind": "Block", "placesBlock": "cactus" }
 ]

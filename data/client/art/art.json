@@ -14,15 +14,36 @@
     "crate": 9,
     "pipe": 10,
     "vent": 11,
-    "panel": 12
+    "panel": 12,
+    "snow": 13,
+    "ice": 14,
+    "sand": 15,
+    "sandstone": 16,
+    "wood": 17,
+    "dead_trunk": 18,
+    "dead_branch": 19,
+    "pine_trunk": 20,
+    "pine_leaves": 21,
+    "cactus": 22,
+    "dry_grass": 23,
+    "frozen_shrub": 24,
+    "dry_bush": 25
   },
   "walls": {
     "dirt_wall": 0,
     "stone_wall": 1,
-    "metal_wall": 2
+    "metal_wall": 2,
+    "snow_wall": 3,
+    "ice_wall": 4,
+    "sand_wall": 5,
+    "sandstone_wall": 6
   },
   "mergeOrder": [
+    "snow",
+    "sand",
     "dirt",
+    "ice",
+    "sandstone",
     "stone",
     "deep_stone",
     "ore_a",
@@ -109,6 +130,42 @@
     },
     "panel": {
       "cell": 13,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "snow": {
+      "cell": 14,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "ice": {
+      "cell": 15,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "sand": {
+      "cell": 16,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "sandstone": {
+      "cell": 17,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "wood": {
+      "cell": 18,
+      "gripX": 8,
+      "gripY": 14,
+      "pointDeg": -90
+    },
+    "cactus": {
+      "cell": 19,
       "gripX": 8,
       "gripY": 14,
       "pointDeg": -90
