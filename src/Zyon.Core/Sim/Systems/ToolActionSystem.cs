@@ -6,13 +6,14 @@ using Zyon.Core.Physics;
 
 namespace Zyon.Core.Sim.Systems;
 
-/// <summary>Ação primária contextual: ferramenta minera, bloco é colocado.</summary>
+/// <summary>Ação primária contextual: ferramenta minera (bloco de árvore derruba a árvore, ver TreeFelling), bloco é colocado.</summary>
 internal sealed class ToolActionSystem : ISystem
 {
     private static readonly Vector2 TileSize = new(1f, 1f);
 
     private readonly List<(Vector2 Center, Vector2 Size)> placementBlockers = new();
     private readonly List<(ItemStack Stack, Vector2 Position)> pendingDrops = new();
+    private readonly List<(int X, int Y)> felled = new();
 
     public void Update(Simulation sim)
     {
@@ -99,11 +100,23 @@ internal sealed class ToolActionSystem : ISystem
             return;
         }
 
-        sim.Tiles.SetBlock(tx, ty, 0);
-        sim.Emit(new TileChanged(tx, ty, 0, sim.Tiles.GetWall(tx, ty)));
-        if (block.DropItemId != 0)
-            pendingDrops.Add((new ItemStack(block.DropItemId, 1), new Vector2(tx + 0.5f, ty + 0.5f)));
+        Break(sim, tx, ty, block);
+        if (block.Tree)
+        {
+            TreeFelling.Collect(sim.Tiles, sim.Registry, tx, ty, felled);
+            foreach (var (x, y) in felled)
+                Break(sim, x, y, sim.Registry.Block(sim.Tiles.GetBlock(x, y)));
+        }
         StopMining(sim, playerId, ref st);
+    }
+
+    /// <summary>Quebra o tile: some, emite TileChanged e agenda o drop no centro dele.</summary>
+    private void Break(Simulation sim, int x, int y, BlockDef block)
+    {
+        sim.Tiles.SetBlock(x, y, 0);
+        sim.Emit(new TileChanged(x, y, 0, sim.Tiles.GetWall(x, y)));
+        if (block.DropItemId != 0)
+            pendingDrops.Add((new ItemStack(block.DropItemId, 1), new Vector2(x + 0.5f, y + 0.5f)));
     }
 
     private static void StopMining(Simulation sim, int playerId, ref PlayerState st)
